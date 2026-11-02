@@ -1,0 +1,177 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # Run from a tag to roll production back to that commit.
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  LC_ALL: C.UTF-8
+  FC_RUNS: "100"
+
+jobs:
+  base:
+    runs-on: ubuntu-latest
+    outputs:
+      vite_base: ${{ steps.b.outputs.vite_base }}
+      site_url: ${{ steps.b.outputs.site_url }}
+    steps:
+      - id: b
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -n "$PR" ]; then path="/$REPO_NAME/pr-preview/pr-$PR/"; else path="/$REPO_NAME/"; fi
+          echo "vite_base=$path" >> "$GITHUB_OUTPUT"
+          echo "site_url=https://${OWNER,,}.github.io$path" >> "$GITHUB_OUTPUT"
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run verify
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run knip
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm test # unit + property tests with coverage; fails below 95% (vitest.config.ts)
+      - name: Coverage summary
+        if: always()
+        run: |
+          [ -f coverage/coverage-summary.json ] || exit 0
+          node -e '
+            const t = require("./coverage/coverage-summary.json").total;
+            const rows = ["lines", "statements", "functions", "branches"].map((k) => `| ${k} | ${t[k].pct}% |`);
+            console.log(["### Coverage (min 95%)", "", "| metric | covered |", "|---|---|", ...rows].join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: ignore
+
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - name: Compare benchmarks with the base branch (fails if more than 5% slower)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          npm ci
+          base="$RUNNER_TEMP/perf-base"
+          git worktree add --detach "$base" "$BASE_SHA"
+          if [ -f "$base/vitest.perf.config.ts" ]; then (cd "$base" && npm ci); fi
+          node scripts/check-perf.mjs "$base"
+      - if: github.event_name != 'pull_request'
+        run: echo "Benchmarks are compared on pull requests only."
+
+  build:
+    needs: base
+    runs-on: ubuntu-latest
+    env:
+      VITE_BASE: ${{ needs.base.outputs.vite_base }}
+      VITE_BUILD_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/check-size.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: error
+          include-hidden-files: true # keeps .nojekyll
+
+  smoke:
+    needs: [base, build]
+    runs-on: ubuntu-latest
+    env:
+      VITE_BASE: ${{ needs.base.outputs.vite_base }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with: { name: dist, path: dist }
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run smoke
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-report
+          path: |
+            e2e/screenshots
+            playwright-report
+          if-no-files-found: ignore
+
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Personal names denylist
+        env:
+          PII_DENYLIST: ${{ secrets.PII_DENYLIST }}
+        run: |
+          if [ -z "$PII_DENYLIST" ]; then echo "::warning::PII_DENYLIST is not set"; exit 0; fi
+          printf '%s\n' "$PII_DENYLIST" | sed '/^[[:space:]]*$/d' > "$RUNNER_TEMP/deny.txt"
+          if git grep -l -i -F -f "$RUNNER_TEMP/deny.txt" -- . ; then
+            echo "::error::The files above contain a denylisted personal name."
+            exit 1
+          fi
+
+  preview:
+    if: github.event_name == 'pull_request'
+    needs: [base, static, test, build, smoke, secrets]
+    uses: ./.github/workflows/preview.yml
+    with:
+      site_url: ${{ needs.base.outputs.site_url }}
+    permissions:
+      contents: write
+      pull-requests: write
+
+  deploy:
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: [base, static, test, build, smoke, secrets]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      site_url: ${{ needs.base.outputs.site_url }}
+    permissions:
+      contents: write
+      issues: write

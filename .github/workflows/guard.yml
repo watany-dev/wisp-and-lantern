@@ -1,0 +1,123 @@
+name: guard
+
+# Runs the base branch's copy of this file, so a pull request cannot weaken its own gate.
+# Never check out or execute pull request code in this workflow.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  LC_ALL: C.UTF-8
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+  PR: ${{ github.event.pull_request.number }}
+  OWNER: ${{ github.repository_owner }}
+  ACTION: ${{ github.event.action }}
+  BEFORE: ${{ github.event.before }}
+  AFTER: ${{ github.event.after }}
+  # Deadline 2026-12-04 14:00 PST.
+  FREEZE_AT: "2026-12-04T22:00:00Z"
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull request title and commit messages
+        run: |
+          set -euo pipefail
+          title="$(gh pr view "$PR" --json title --jq .title)"
+          if ! grep -Eq '^(feat|fix|chore|docs|test|refactor|perf|ci|build|revert)(\([a-z0-9./-]+\))?!?: [ -~]+$' <<<"$title"; then
+            echo "::error::The title must be an English conventional commit, e.g. 'feat(trial-tell): add color cards'."
+            exit 1
+          fi
+          gh api --paginate "repos/$GH_REPO/pulls/$PR/commits" --jq '.[].commit.message' > msgs.txt
+          if grep -inE 'claude|anthropic' msgs.txt; then
+            echo "::error::Commit messages must not name the scaffold tool vendor."
+            exit 1
+          fi
+          if grep -nP '[\p{Han}\p{Hiragana}\p{Katakana}]' msgs.txt; then
+            echo "::error::Commit messages must be English."
+            exit 1
+          fi
+
+      - name: Protected paths need the maintainer's human-approved label
+        env:
+          PATHS: '^(\.github/|\.kiro/permissions\.yaml$|\.kiro/settings/|scripts/check-|scripts/(wait-for-build|report-failure)\.sh$|eslint\.config\.js$|vitest\.config\.ts$|vitest\.setup\.ts$|vitest\.perf\.config\.ts$|perf/|knip\.json$|playwright\.config\.ts$|package(-lock)?\.json$|\.nvmrc$|docs/evidence/playtest-)'
+          LABEL: human-approved
+        run: |
+          set -euo pipefail
+          has_label() { gh pr view "$PR" --json labels --jq '.labels[].name' | grep -x "$1" >/dev/null; }
+          last_labeler() {
+            gh api --paginate "repos/$GH_REPO/issues/$PR/events" \
+              | jq -s -r --arg l "$1" '[.[][] | select(.event == "labeled" and .label.name == $l)] | last | .actor.login // ""'
+          }
+          gh api --paginate "repos/$GH_REPO/pulls/$PR/files" --jq '.[].filename' > files.txt
+          if ! grep -E "$PATHS" files.txt > hit.txt; then echo "No protected paths changed."; exit 0; fi
+          echo "Protected paths changed:"; cat hit.txt
+          if [ "$ACTION" = synchronize ] && has_label "$LABEL"; then
+            if ! gh api "repos/$GH_REPO/compare/$BEFORE...$AFTER" --jq '.files[].filename' > new.txt || grep -qE "$PATHS" new.txt; then
+              gh pr edit "$PR" --remove-label "$LABEL"
+              echo "::error::New commits touch protected paths, so '$LABEL' was removed. Review and re-apply it."
+              exit 1
+            fi
+          fi
+          has_label "$LABEL" || { echo "::error::Needs the '$LABEL' label from $OWNER."; exit 1; }
+          [ "$(last_labeler "$LABEL")" = "$OWNER" ] || { echo "::error::'$LABEL' must be applied by $OWNER."; exit 1; }
+
+      - name: Post-deadline freeze
+        env:
+          LABEL: hotfix
+        run: |
+          set -euo pipefail
+          if [ "$(date -u +%s)" -lt "$(date -u -d "$FREEZE_AT" +%s)" ]; then echo "Before the deadline."; exit 0; fi
+          last_labeler() {
+            gh api --paginate "repos/$GH_REPO/issues/$PR/events" \
+              | jq -s -r --arg l "$1" '[.[][] | select(.event == "labeled" and .label.name == $l)] | last | .actor.login // ""'
+          }
+          gh pr view "$PR" --json labels --jq '.labels[].name' | grep -x "$LABEL" >/dev/null \
+            || { echo "::error::After the deadline only '$LABEL' pull requests are merged."; exit 1; }
+          [ "$(last_labeler "$LABEL")" = "$OWNER" ] || { echo "::error::'$LABEL' must be applied by $OWNER."; exit 1; }
+          gh api --paginate "repos/$GH_REPO/pulls/$PR/files" --jq '.[].filename' | grep -x 'docs/evidence/post-deadline.md' >/dev/null \
+            || { echo "::error::Record the reason in docs/evidence/post-deadline.md."; exit 1; }
+
+  device-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Device-facing changes need a real-device check of the preview
+        env:
+          PATHS: '^(src/game/|src/content/|public/|index\.html$|vite\.config\.ts$)'
+          LABEL: device-checked
+        run: |
+          set -euo pipefail
+          has_label() { gh pr view "$PR" --json labels --jq '.labels[].name' | grep -x "$1" >/dev/null; }
+          last_labeler() {
+            gh api --paginate "repos/$GH_REPO/issues/$PR/events" \
+              | jq -s -r --arg l "$1" '[.[][] | select(.event == "labeled" and .label.name == $l)] | last | .actor.login // ""'
+          }
+          gh api --paginate "repos/$GH_REPO/pulls/$PR/files" --jq '.[].filename' > files.txt
+          if ! grep -E "$PATHS" files.txt > hit.txt; then echo "No device-facing change."; exit 0; fi
+          echo "Device-facing paths changed:"; cat hit.txt
+          if [ "$ACTION" = synchronize ] && has_label "$LABEL"; then
+            if ! gh api "repos/$GH_REPO/compare/$BEFORE...$AFTER" --jq '.files[].filename' > new.txt || grep -qE "$PATHS" new.txt; then
+              gh pr edit "$PR" --remove-label "$LABEL"
+              echo "::error::New device-facing commits since the last check, so '$LABEL' was removed. Check the new preview and re-apply it."
+              exit 1
+            fi
+          fi
+          has_label "$LABEL" || { echo "::error::Open the preview on a phone and on desktop, tick 'Device check', then add '$LABEL'."; exit 1; }
+          [ "$(last_labeler "$LABEL")" = "$OWNER" ] || { echo "::error::'$LABEL' must be applied by $OWNER."; exit 1; }
+          body="$(gh pr view "$PR" --json body --jq .body | tr -d '\r')"
+          section="$(awk '/^## Device check/{f=1; next} /^## /{f=0} f' <<<"$body")"
+          grep -qiE '^- \[x\] ' <<<"$section" \
+            || { echo "::error::Add the 'Device check' section from .github/pull_request_template.md and tick it."; exit 1; }
+          if grep -nE '^- \[ \] ' <<<"$section"; then echo "::error::'Device check' has unticked items."; exit 1; fi
+          echo "Device check recorded."

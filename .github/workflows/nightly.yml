@@ -1,0 +1,61 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 03:00 JST
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  LC_ALL: C.UTF-8
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+jobs:
+  pbt-deep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - name: Property tests with many runs and a fresh seed
+        run: |
+          export FC_RUNS=2000 FC_SEED="$(shuf -i 1-2147483647 -n 1)"
+          echo "Reproduce: FC_SEED=$FC_SEED FC_RUNS=2000 npx vitest run pbt" | tee -a "$GITHUB_STEP_SUMMARY"
+          npx vitest run pbt
+      - if: failure()
+        run: bash scripts/report-failure.sh "Nightly property tests failed" nightly "$RUN_URL"
+
+  liveness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Expected production build
+        id: exp
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          tag="$(git tag --list 'submitted*' --sort=-creatordate | head -n1)"
+          if [ -n "$tag" ]; then sha="$(git rev-parse "$tag^{commit}")"; else sha="$(git rev-parse origin/main)"; fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "url=https://${OWNER,,}.github.io/$REPO_NAME/" >> "$GITHUB_OUTPUT"
+          echo "Expecting ${tag:-main} = $sha" >> "$GITHUB_STEP_SUMMARY"
+      - name: Production serves the expected build
+        run: bash scripts/wait-for-build.sh "${{ steps.exp.outputs.url }}" "${{ steps.exp.outputs.sha }}" 60
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Smoke production
+        env:
+          BASE_URL: ${{ steps.exp.outputs.url }}
+        run: npm run smoke
+      - if: failure()
+        run: bash scripts/report-failure.sh "Production liveness check failed" liveness "$RUN_URL"

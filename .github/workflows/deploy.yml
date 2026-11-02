@@ -1,0 +1,51 @@
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      site_url: { type: string, required: true }
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  LC_ALL: C.UTF-8
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: dist, path: dist }
+      - uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
+        with:
+          folder: dist
+          branch: gh-pages
+          clean: true
+          clean-exclude: |
+            pr-preview/
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - name: Wait until Pages serves this build
+        env:
+          URL: ${{ inputs.site_url }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/wait-for-build.sh "$URL" "$SHA" 900
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Smoke production
+        env:
+          BASE_URL: ${{ inputs.site_url }}
+        run: npm run smoke
+      - name: Report failure
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/report-failure.sh "Production deploy check failed" production "$RUN_URL"

@@ -1,0 +1,60 @@
+name: preview
+
+on:
+  workflow_call:
+    inputs:
+      site_url: { type: string, required: true }
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  LC_ALL: C.UTF-8
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: dist, path: dist }
+      - uses: rossjrw/pr-preview-action@873417d2df72380da1f3978378fb58560bcde976 # v1.8.2
+        with:
+          source-dir: dist
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: deploy
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - name: Wait until Pages serves this build
+        env:
+          URL: ${{ inputs.site_url }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/wait-for-build.sh "$URL" "$SHA" 900
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Smoke the live preview
+        env:
+          BASE_URL: ${{ inputs.site_url }}
+        run: npm run smoke
+
+  remove:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rossjrw/pr-preview-action@873417d2df72380da1f3978378fb58560bcde976 # v1.8.2
+        with:
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: remove
