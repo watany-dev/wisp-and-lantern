@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript + Vite) that teaches
+Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) that teaches
 6-year-olds how to work with an AI agent. It is a Kiroween 2026 hackathon entry.
 
 ## Commands
 - `npm ci` — install exact versions from the lockfile
 - `npm run dev` — dev server
-- `npm run check` — lint, typecheck, unit and property tests, repository checks. Must pass before every PR.
+- `npm run check` — format, lint and typecheck (`vp check`), knip, unit and property tests, repository checks.
+  Must pass before every PR. `npm run fmt` fixes formatting.
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
 - `npm run font` — regenerate the Japanese subset font after changing any string
 - `npm run metrics` — regenerate `docs/evidence/metrics.md`
@@ -22,7 +23,7 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript + Vite) that
 1. Everything in the repository is English, except the files listed in `scripts/check-cjk-allowlist.txt`.
 2. Japanese child-facing text: hiragana and katakana only, max 12 characters per line, max 2 lines.
    `npm run kid` enforces this.
-3. `src/domain/**` must not import `phaser` (ESLint enforces this).
+3. `src/domain/**` must not import `phaser` (Oxlint enforces this through `lint` in `vite.config.ts`).
 4. The game makes no network requests. Fonts and images are bundled.
 5. No third-party trademarks, logos or characters. Assets are original or CC0; fonts are OFL.
 6. Dependency versions are pinned exactly. Explain any new dependency in the PR.
@@ -34,7 +35,7 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript + Vite) that
 - PR title: English conventional commit, e.g. `feat(trial-tell): add color cards`.
   Fill in every section of `.github/pull_request_template.md`, including Spec and Device check.
 - Protected paths (`.github/`, `.kiro/permissions.yaml`, `.kiro/settings/`, `scripts/check-*`,
-  test and lint configs, `package.json`, `package-lock.json`, `docs/evidence/playtest-*`) need the
+  test and lint configs (`vite.config.ts`, `.zghalint.yml`), `package.json`, `package-lock.json`, `docs/evidence/playtest-*`) need the
   maintainer's `human-approved` label. Never change them to make a check pass; explain the problem in the PR.
 - Never push to `main`, never force-push, never edit playtest records.
 - e2e tests navigate with relative URLs (`page.goto("./?judge=1")`) so they work under any base path,

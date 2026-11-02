@@ -24,10 +24,10 @@ _To be written: what each lesson (L1–L4) means for real AI agents, in one sent
 
 ## How to test
 
-- `npm run check` — lint, typecheck, unused code (knip), unit and property tests with coverage (95% minimum on `src/`, Phaser rendering code excluded), repository checks.
+- `npm run check` — format, lint and typecheck (`vp check`: Oxfmt, Oxlint, TypeScript 7), unused code (knip), unit and property tests with coverage (95% minimum on `src/`, Phaser rendering code excluded), repository checks.
 - `npm run build && npm run smoke` — Playwright smoke on a phone (WebKit) and desktop (Chromium).
 - `npm run bench` — benchmarks in `src/**/__perf__/`. On pull requests CI fails if any is more than 5% slower than the base branch (`scripts/check-perf.mjs`).
-- `FC_RUNS=2000 FC_SEED=<n> npx vitest run pbt` — reproduce a nightly property-test failure.
+- `FC_RUNS=2000 FC_SEED=<n> npx vp test run pbt` — reproduce a nightly property-test failure.
 
 ## Repository map
 
@@ -42,7 +42,7 @@ None.
 
 ## Tooling
 
-The build scaffold (Vite, Phaser, test and CI configuration) started from a standard template. All specs, steering, hooks, agents and game logic are built with Kiro; see `docs/kiro-usage.md`.
+The build scaffold (Vite+, Phaser, test and CI configuration) started from a standard template. Vite+ bundles Vite, Vitest, Oxlint and Oxfmt; their settings live in `vite.config.ts`. CI lints the workflows with zizmor and zghalint. All specs, steering, hooks, agents and game logic are built with Kiro; see `docs/kiro-usage.md`.
 
 ## Third-party tools
 

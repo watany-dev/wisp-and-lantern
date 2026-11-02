@@ -6,7 +6,7 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 2. Local clone: add `doc/` and `.claude/` to `.git/info/exclude`.
 3. Settings → General: allow **squash merging only**; default squash commit message = "Pull request title". Turn on "Automatically delete head branches".
 4. Settings → Rules → Rulesets
-   - **main**: restrict deletions, block force pushes, require linear history, require a pull request (0 approvals), required status checks `static` `test` `perf` `build` `smoke` `secrets` `guard` `device-gate`, "Require branches to be up to date before merging" on, no bypass.
+   - **main**: restrict deletions, block force pushes, require linear history, require a pull request (0 approvals), required status checks `actions` `static` `test` `perf` `build` `smoke` `secrets` `guard` `device-gate`, "Require branches to be up to date before merging" on, no bypass.
    - **tags `submitted*`**: restrict creations, updates and deletions; only Repository admin may bypass.
 5. Settings → Actions → General: default workflow permissions = "Read repository contents and packages". Leave "Allow GitHub Actions to create and approve pull requests" **off**.
 6. Labels: create `human-approved`, `device-checked`, `hotfix`. (`nightly`, `liveness` and `production` are created by `scripts/report-failure.sh`.)
@@ -18,7 +18,8 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 
 | check | workflow | fails when |
 |---|---|---|
-| `static` | ci | `npm run verify`, ESLint, `tsc`, or knip (unused files, exports, dependencies) fails |
+| `actions` | ci | zizmor or zghalint (`.zghalint.yml`) finds a problem in `.github/workflows/` |
+| `static` | ci | `npm run verify`, `vp check` (Oxfmt formatting, Oxlint, TypeScript 7 type check), or knip (unused files, exports, dependencies) fails |
 | `test` | ci | a unit or property test fails, or coverage of `src/` drops below 95% (lines, statements, functions or branches) |
 | `perf` | ci | a benchmark in `src/**/__perf__/` is more than 5% slower than on the base branch |
 | `build` | ci | the production build fails or exceeds the size budget (`scripts/check-size.mjs`) |
