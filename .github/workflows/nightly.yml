@@ -5,9 +5,7 @@ on:
     - cron: "0 18 * * *" # 03:00 JST
   workflow_dispatch: {}
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 env:
   LC_ALL: C.UTF-8
@@ -18,24 +16,40 @@ env:
 jobs:
   pbt-deep:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write # report a failure
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with: { node-version-file: .nvmrc, cache: npm }
-      - run: npm ci
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .nvmrc
+          cache: true
+          run-install: |
+            - args: ['--frozen-lockfile']
       - name: Property tests with many runs and a fresh seed
         run: |
           export FC_RUNS=2000 FC_SEED="$(shuf -i 1-2147483647 -n 1)"
-          echo "Reproduce: FC_SEED=$FC_SEED FC_RUNS=2000 npx vitest run pbt" | tee -a "$GITHUB_STEP_SUMMARY"
-          npx vitest run pbt
-      - if: failure()
+          echo "Reproduce: FC_SEED=$FC_SEED FC_RUNS=2000 vp test run pbt" | tee -a "$GITHUB_STEP_SUMMARY"
+          vp test run pbt
+      - name: Report failure
+        if: failure()
         run: bash scripts/report-failure.sh "Nightly property tests failed" nightly "$RUN_URL"
 
   liveness:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write # report a failure
     steps:
-      - uses: actions/checkout@v7
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Expected production build
         id: exp
         env:
@@ -48,14 +62,22 @@ jobs:
           echo "url=https://${OWNER,,}.github.io/$REPO_NAME/" >> "$GITHUB_OUTPUT"
           echo "Expecting ${tag:-main} = $sha" >> "$GITHUB_STEP_SUMMARY"
       - name: Production serves the expected build
-        run: bash scripts/wait-for-build.sh "${{ steps.exp.outputs.url }}" "${{ steps.exp.outputs.sha }}" 60
-      - uses: actions/setup-node@v7
-        with: { node-version-file: .nvmrc, cache: npm }
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
+        env:
+          URL: ${{ steps.exp.outputs.url }}
+          SHA: ${{ steps.exp.outputs.sha }}
+        run: bash scripts/wait-for-build.sh "$URL" "$SHA" 60
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .nvmrc
+          cache: true
+          run-install: |
+            - args: ['--frozen-lockfile']
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
       - name: Smoke production
         env:
           BASE_URL: ${{ steps.exp.outputs.url }}
         run: npm run smoke
-      - if: failure()
+      - name: Report failure
+        if: failure()
         run: bash scripts/report-failure.sh "Production liveness check failed" liveness "$RUN_URL"

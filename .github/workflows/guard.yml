@@ -3,13 +3,11 @@ name: guard
 # Runs the base branch's copy of this file, so a pull request cannot weaken its own gate.
 # Never check out or execute pull request code in this workflow.
 on:
-  pull_request_target:
+  # Needed to label and comment on pull requests from forks; no pull request code runs here.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review]
 
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+permissions: {}
 
 concurrency:
   group: guard-${{ github.event.pull_request.number }}
@@ -30,6 +28,11 @@ env:
 jobs:
   guard:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # remove a stale label
+      issues: write # labels are issue data
     steps:
       - name: Pull request title and commit messages
         run: |
@@ -51,7 +54,7 @@ jobs:
 
       - name: Protected paths need the maintainer's human-approved label
         env:
-          PATHS: '^(\.github/|\.kiro/permissions\.yaml$|\.kiro/settings/|scripts/check-|scripts/(wait-for-build|report-failure)\.sh$|eslint\.config\.js$|vitest\.config\.ts$|vitest\.setup\.ts$|vitest\.perf\.config\.ts$|perf/|knip\.json$|playwright\.config\.ts$|package(-lock)?\.json$|\.nvmrc$|docs/evidence/playtest-)'
+          PATHS: '^(\.github/|\.kiro/permissions\.yaml$|\.kiro/settings/|scripts/check-|scripts/(wait-for-build|report-failure)\.sh$|vite\.config\.ts$|vitest\.setup\.ts$|vitest\.perf\.config\.ts$|perf/|knip\.json$|\.zghalint\.yml$|playwright\.config\.ts$|package(-lock)?\.json$|\.nvmrc$|docs/evidence/playtest-)'
           LABEL: human-approved
         run: |
           set -euo pipefail
@@ -91,6 +94,11 @@ jobs:
 
   device-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # remove a stale label
+      issues: write # labels are issue data
     steps:
       - name: Device-facing changes need a real-device check of the preview
         env:
