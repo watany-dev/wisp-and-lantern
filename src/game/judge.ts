@@ -46,6 +46,9 @@ export function createGame(initial: GameState): Game {
 }
 
 /** Exposes `window.__game = { state, dispatch }` for e2e tests and judges. */
-export function exposeGame(target: { __game?: Pick<Game, "state" | "dispatch"> }, game: Game): void {
+export function exposeGame(
+  target: { __game?: Pick<Game, "state" | "dispatch"> },
+  game: Game,
+): void {
   target.__game = { state: game.state, dispatch: game.dispatch };
 }

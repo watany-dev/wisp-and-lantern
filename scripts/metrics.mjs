@@ -15,7 +15,9 @@ const counts = new Map(); // surface -> Map(kind -> n)
 const sessions = new Set();
 let records = 0;
 let malformed = 0;
-const logFiles = existsSync(LOG_DIR) ? readdirSync(LOG_DIR).filter((f) => f.endsWith(".jsonl")) : [];
+const logFiles = existsSync(LOG_DIR)
+  ? readdirSync(LOG_DIR).filter((f) => f.endsWith(".jsonl"))
+  : [];
 for (const file of logFiles) {
   for (const line of readFileSync(join(LOG_DIR, file), "utf8").split("\n")) {
     if (!line.trim()) continue;
@@ -34,8 +36,10 @@ for (const file of logFiles) {
     counts.get(surface).set(kind, (counts.get(surface).get(kind) ?? 0) + 1);
   }
 }
-const kinds = [...new Set([...counts.values()].flatMap((m) => [...m.keys()]))].sort();
-const surfaces = [...counts.keys()].sort();
+const kinds = [...new Set([...counts.values()].flatMap((m) => [...m.keys()]))].sort((a, b) =>
+  a.localeCompare(b, "en"),
+);
+const surfaces = [...counts.keys()].sort((a, b) => a.localeCompare(b, "en"));
 
 // Time log: | date | surface | spec/task | start | end | minutes | PR | note |
 const minutesBySurface = new Map();
@@ -45,8 +49,12 @@ const toMinutes = (hhmm) => {
 };
 if (existsSync(TIMELOG)) {
   for (const line of readFileSync(TIMELOG, "utf8").split("\n")) {
-    const cells = line.split("|").slice(1, -1).map((c) => c.trim());
-    if (cells.length < 6 || cells[0] === "date" || /^-+$/.test(cells[0].replace(/:/g, ""))) continue;
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((c) => c.trim());
+    if (cells.length < 6 || cells[0] === "date" || /^-+$/.test(cells[0].replace(/:/g, "")))
+      continue;
     const [, surface, , start, end, minutesCell] = cells;
     let minutes = Number(minutesCell);
     if (!minutesCell || Number.isNaN(minutes)) {
@@ -63,9 +71,13 @@ const totalMinutes = [...minutesBySurface.values()].reduce((a, b) => a + b, 0);
 // Merged pull requests
 let mergedPrs = "n/a (gh unavailable)";
 try {
-  const out = execFileSync("gh", ["pr", "list", "--state", "merged", "--limit", "1000", "--json", "number"], {
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  const out = execFileSync(
+    "gh",
+    ["pr", "list", "--state", "merged", "--limit", "1000", "--json", "number"],
+    {
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
   mergedPrs = String(JSON.parse(out.toString()).length);
 } catch {
   // keep n/a
@@ -83,7 +95,10 @@ const lines = [
   "",
 ];
 if (surfaces.length) {
-  lines.push(`| surface | ${kinds.join(" | ")} | total |`, `|---|${kinds.map(() => "---|").join("")}---|`);
+  lines.push(
+    `| surface | ${kinds.join(" | ")} | total |`,
+    `|---|${kinds.map(() => "---|").join("")}---|`,
+  );
   for (const s of surfaces) {
     const m = counts.get(s);
     const row = kinds.map((k) => m.get(k) ?? 0);
@@ -95,7 +110,8 @@ if (surfaces.length) {
 lines.push("", "## Time per surface (from timelog.md)", "");
 if (minutesBySurface.size) {
   lines.push("| surface | minutes | hours |", "|---|---|---|");
-  for (const [s, m] of [...minutesBySurface].sort()) lines.push(`| ${s} | ${m} | ${(m / 60).toFixed(1)} |`);
+  for (const [s, m] of [...minutesBySurface].sort(([a], [b]) => a.localeCompare(b, "en")))
+    lines.push(`| ${s} | ${m} | ${(m / 60).toFixed(1)} |`);
   lines.push(`| **total** | **${totalMinutes}** | **${(totalMinutes / 60).toFixed(1)}** |`);
 } else {
   lines.push("No entries yet.");

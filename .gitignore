@@ -152,3 +152,4 @@ vite.config.ts.timestamp-*
 e2e/screenshots
 playwright-report
 test-results
+.vitest/

@@ -21,7 +21,10 @@ if (!existsSync(STEERING)) {
 
 const enforce = Date.now() >= ENFORCE_FROM;
 const invariants = unique(read(STEERING).match(/INV-\d+/g) ?? []);
-const pbt = ls(PBT_DIR).filter((f) => f.endsWith(".pbt.test.ts")).map((f) => read(join(PBT_DIR, f))).join("\n");
+const pbt = ls(PBT_DIR)
+  .filter((f) => f.endsWith(".pbt.test.ts"))
+  .map((f) => read(join(PBT_DIR, f)))
+  .join("\n");
 const untestedInv = invariants.filter((id) => !new RegExp(`${id}(?!\\d)`).test(pbt));
 
 const tests = [PBT_DIR, "e2e"].flatMap((d) => ls(d).map((f) => read(join(d, f)))).join("\n");
@@ -40,18 +43,34 @@ for (const spec of ls(SPECS)) {
 }
 
 for (const id of untestedInv) {
-  console.log(`${enforce ? "::error::" : "::warning::"}${id} has no property test in ${PBT_DIR}/*.pbt.test.ts`);
+  console.log(
+    `${enforce ? "::error::" : "::warning::"}${id} has no property test in ${PBT_DIR}/*.pbt.test.ts`,
+  );
 }
 for (const r of untrackedReq) console.log(`::warning::${r} is in neither tests nor tasks.md`);
 
 if (process.env.GITHUB_STEP_SUMMARY) {
-  const inv = invariants.map((id) => `| ${id} | ${untestedInv.includes(id) ? "missing" : "tested"} |`);
+  const inv = invariants.map(
+    (id) => `| ${id} | ${untestedInv.includes(id) ? "missing" : "tested"} |`,
+  );
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    ["### Traceability", "", "| invariant | property test |", "|---|---|", ...inv, "",
-      "| spec | requirement | in tests | in tasks.md |", "|---|---|---|---|", ...rows, ""].join("\n"),
+    [
+      "### Traceability",
+      "",
+      "| invariant | property test |",
+      "|---|---|",
+      ...inv,
+      "",
+      "| spec | requirement | in tests | in tasks.md |",
+      "|---|---|---|---|",
+      ...rows,
+      "",
+    ].join("\n"),
   );
 }
 
 if (enforce && untestedInv.length) process.exit(1);
-console.log(`check-trace: ${invariants.length} invariants, ${untestedInv.length} without tests${enforce ? "" : " (warning only before 2026-11-07 JST)"}`);
+console.log(
+  `check-trace: ${invariants.length} invariants, ${untestedInv.length} without tests${enforce ? "" : " (warning only before 2026-11-07 JST)"}`,
+);

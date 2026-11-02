@@ -2,46 +2,48 @@
   "name": "wisp-and-lantern",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "license": "MIT",
-  "engines": {
-    "node": ">=26 <27"
-  },
+  "type": "module",
   "scripts": {
-    "dev": "vite --host",
-    "build": "vite build",
-    "preview": "vite preview --port 4173 --host",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --coverage",
-    "test:watch": "vitest",
+    "dev": "vp dev --host",
+    "build": "vp build",
+    "preview": "vp preview --port 4173 --host",
+    "fmt": "vp fmt",
+    "static": "vp check",
+    "test": "vp test run --coverage",
+    "test:watch": "vp test",
     "smoke": "playwright test",
     "knip": "knip",
-    "bench": "vitest run --config vitest.perf.config.ts",
+    "bench": "vp test run --config vitest.perf.config.ts",
     "perf": "node scripts/check-perf.mjs",
     "kid": "node scripts/check-kid-strings.mjs",
     "font": "node scripts/subset-font.mjs",
     "verify": "bash scripts/check-submission.sh && node scripts/check-kid-strings.mjs && node scripts/check-font-coverage.mjs && node scripts/check-evidence.mjs && node scripts/check-trace.mjs",
     "metrics": "node scripts/metrics.mjs",
-    "check": "mkdir -p .cache && (npm run lint && npm run typecheck && npm run knip && npm run test && npm run verify; echo $? > .cache/last-test-status; exit $(cat .cache/last-test-status))"
+    "check": "mkdir -p .cache && (npm run static && npm run knip && npm run test && npm run verify; echo $? > .cache/last-test-status; exit $(cat .cache/last-test-status))"
   },
   "dependencies": {
     "phaser": "3.90.0"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
     "@types/node": "26.6.6",
     "@vitest/coverage-v8": "5.0.5",
-    "eslint": "10.14.0",
     "fast-check": "4.10.2",
     "fontkit": "2.0.4",
-    "globals": "17.14.0",
     "knip": "6.44.1",
     "subset-font": "2.9.0",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.72.1",
-    "vite": "8.3.5",
+    "typescript": "7.0.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vite-plus": "1.4.0",
     "vitest": "5.0.5"
-  }
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=26 <27"
+  },
+  "packageManager": "npm@11.20.0"
 }

@@ -1,6 +1,6 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { reduce } from "../reducer";
 import { initialState } from "../state";
 

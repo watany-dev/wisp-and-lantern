@@ -39,10 +39,12 @@ for (const file of files) {
     rows.push(`| ${rel} | ${(size / KB).toFixed(1)} KB | — |`);
     if (size > 200 * KB) problems.push(`${rel} is ${(size / KB).toFixed(1)} KB (max 200 KB)`);
   }
-  if (ext === ".ttf" || ext === ".otf") problems.push(`${rel}: raw font files must not be deployed`);
+  if (ext === ".ttf" || ext === ".otf")
+    problems.push(`${rel}: raw font files must not be deployed`);
 }
 if (!existsSync(join(DIST, ".nojekyll"))) problems.push(".nojekyll is missing from dist/");
-if (gzipCode > MB) problems.push(`gzip(JS + CSS) is ${(gzipCode / KB).toFixed(1)} KB (max 1024 KB)`);
+if (gzipCode > MB)
+  problems.push(`gzip(JS + CSS) is ${(gzipCode / KB).toFixed(1)} KB (max 1024 KB)`);
 if (total > 15 * MB) problems.push(`dist/ is ${(total / MB).toFixed(2)} MB (max 15 MB)`);
 
 const summary = [

@@ -1,7 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../events";
 import { reduce } from "../reducer";
 import { initialState } from "../state";

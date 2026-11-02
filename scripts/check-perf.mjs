@@ -26,7 +26,9 @@ if (!baseDir) {
   process.exit(2);
 }
 if (!existsSync(join(baseDir, CONFIG))) {
-  console.log(`check-perf: skip (the base has no ${CONFIG}, so there is nothing to compare against)`);
+  console.log(
+    `check-perf: skip (the base has no ${CONFIG}, so there is nothing to compare against)`,
+  );
   process.exit(0);
 }
 
@@ -70,7 +72,9 @@ const median = (xs) => {
 };
 
 function compare() {
-  const names = [...new Set([...results.base.keys(), ...results.head.keys()])].sort();
+  const names = [...new Set([...results.base.keys(), ...results.head.keys()])].sort((a, b) =>
+    a.localeCompare(b, "en"),
+  );
   return names.map((name) => {
     const b = results.base.get(name);
     const h = results.head.get(name);
@@ -93,7 +97,14 @@ if (rows.some((r) => r.status === "slower")) {
   rows = compare();
 }
 
-const ns = (v) => (v === undefined ? "—" : v >= 1e6 ? `${(v / 1e6).toFixed(2)} ms` : v >= 1e3 ? `${(v / 1e3).toFixed(2)} µs` : `${v.toFixed(1)} ns`);
+const ns = (v) =>
+  v === undefined
+    ? "—"
+    : v >= 1e6
+      ? `${(v / 1e6).toFixed(2)} ms`
+      : v >= 1e3
+        ? `${(v / 1e3).toFixed(2)} µs`
+        : `${v.toFixed(1)} ns`;
 const pct = (c) => (c === undefined ? "—" : `${c >= 0 ? "+" : ""}${(c * 100).toFixed(1)}%`);
 const icon = { ok: "ok", slower: "**slower**", new: "new", removed: "removed" };
 const summary = [
@@ -103,7 +114,9 @@ const summary = [
   "",
   "| benchmark | base | head | change | status |",
   "|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.name} | ${ns(r.base)} | ${ns(r.head)} | ${pct(r.change)} | ${icon[r.status]} |`),
+  ...rows.map(
+    (r) => `| ${r.name} | ${ns(r.base)} | ${ns(r.head)} | ${pct(r.change)} | ${icon[r.status]} |`,
+  ),
   "",
 ].join("\n");
 console.log(summary);
@@ -114,7 +127,10 @@ for (const r of rows.filter((x) => x.status === "removed")) {
 }
 const slower = rows.filter((r) => r.status === "slower");
 if (slower.length) {
-  for (const r of slower) console.log(`::error::${r.name} is ${pct(r.change)} slower than the base (limit +${THRESHOLD * 100}%).`);
+  for (const r of slower)
+    console.log(
+      `::error::${r.name} is ${pct(r.change)} slower than the base (limit +${THRESHOLD * 100}%).`,
+    );
   process.exit(1);
 }
 console.log("check-perf: ok");

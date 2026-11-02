@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["scripts/*.mjs", "src/**/__perf__/*.perf.ts"],
-  "project": ["src/**/*.ts", "scripts/**/*.mjs", "e2e/**/*.ts", "perf/**/*.ts", "*.ts", "*.js"]
+  "entry": ["scripts/*.mjs", "src/**/__perf__/*.perf.ts", "vitest.perf.config.ts"],
+  "project": ["src/**/*.ts", "scripts/**/*.mjs", "e2e/**/*.ts", "perf/**/*.ts", "*.ts"]
 }

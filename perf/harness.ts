@@ -3,7 +3,7 @@
 // ({ name, medianNs, samples }) to the file named by PERF_OUT, if set.
 // `scripts/check-perf.mjs` compares those numbers between the base branch and a pull request.
 import { appendFileSync } from "node:fs";
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 
 const BATCH_NS = 10_000_000n; // each sample runs fn long enough to take at least 10 ms
 const WARMUP_BATCHES = 3;
@@ -29,7 +29,8 @@ export function measure(name: string, fn: () => unknown): void {
     while (timeBatch(fn, iterations) < BATCH_NS) iterations *= 2;
     for (let i = 0; i < WARMUP_BATCHES; i += 1) timeBatch(fn, iterations);
     const samples: number[] = [];
-    for (let i = 0; i < SAMPLES; i += 1) samples.push(Number(timeBatch(fn, iterations)) / iterations);
+    for (let i = 0; i < SAMPLES; i += 1)
+      samples.push(Number(timeBatch(fn, iterations)) / iterations);
     const medianNs = median(samples);
     const id = `${task.file.name} > ${name}`;
     console.log(`${id}: ${medianNs.toFixed(1)} ns/op (${iterations} ops per sample)`);

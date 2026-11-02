@@ -27,8 +27,12 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const { width } = this.scale;
-    this.title = this.add.text(width / 2, 240, "", { ...textStyle, fontSize: "40px" }).setOrigin(0.5);
-    this.prompt = this.add.text(width / 2, 340, "", { ...textStyle, fontSize: "24px" }).setOrigin(0.5);
+    this.title = this.add
+      .text(width / 2, 240, "", { ...textStyle, fontSize: "40px" })
+      .setOrigin(0.5);
+    this.prompt = this.add
+      .text(width / 2, 340, "", { ...textStyle, fontSize: "24px" })
+      .setOrigin(0.5);
     this.add.image(width / 2 + 60, 520, "wisp");
     const { x, y } = this.game_.state().hero;
     this.hero = this.add.image(x, y, "hero");
@@ -52,7 +56,11 @@ export class TitleScene extends Phaser.Scene {
     const distance = Math.hypot(dx, dy);
     if (distance < 1) return;
     const step = Math.min(distance, (balance.heroSpeed * deltaMs) / 1000);
-    this.game_.dispatch({ type: "MoveHeroTo", x: hero.x + (dx / distance) * step, y: hero.y + (dy / distance) * step });
+    this.game_.dispatch({
+      type: "MoveHeroTo",
+      x: hero.x + (dx / distance) * step,
+      y: hero.y + (dy / distance) * step,
+    });
   }
 
   private render(state: GameState): void {

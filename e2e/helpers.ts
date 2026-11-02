@@ -27,7 +27,9 @@ export async function expectBundledFont(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.fonts.check("16px ZenMaru", "あ"))).toBe(true);
   // check() is also true when no face matches, so require a loaded ZenMaru face as well.
   const loaded = await page.evaluate(() =>
-    [...document.fonts].some((f) => f.family.replace(/"/g, "") === "ZenMaru" && f.status === "loaded"),
+    [...document.fonts].some(
+      (f) => f.family.replace(/"/g, "") === "ZenMaru" && f.status === "loaded",
+    ),
   );
   expect(loaded).toBe(true);
 }

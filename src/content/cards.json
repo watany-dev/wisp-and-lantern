@@ -1,5 +1,23 @@
 [
-  { "id": "red", "color": "#d33", "shape": "circle", "pattern": "stripes-v", "label": { "ja": "あかい", "en": "red" } },
-  { "id": "blue", "color": "#36c", "shape": "square", "pattern": "dots", "label": { "ja": "あおい", "en": "blue" } },
-  { "id": "yellow", "color": "#ec3", "shape": "triangle", "pattern": "plain", "label": { "ja": "きいろい", "en": "yellow" } }
+  {
+    "id": "red",
+    "color": "#d33",
+    "shape": "circle",
+    "pattern": "stripes-v",
+    "label": { "ja": "あかい", "en": "red" }
+  },
+  {
+    "id": "blue",
+    "color": "#36c",
+    "shape": "square",
+    "pattern": "dots",
+    "label": { "ja": "あおい", "en": "blue" }
+  },
+  {
+    "id": "yellow",
+    "color": "#ec3",
+    "shape": "triangle",
+    "pattern": "plain",
+    "label": { "ja": "きいろい", "en": "yellow" }
+  }
 ]

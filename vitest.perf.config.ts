@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite-plus";
 
 // Performance benchmarks (`src/**/__perf__/*.perf.ts`, written with `perf/harness.ts`).
 // `scripts/check-perf.mjs` runs them against the base branch and the pull request.

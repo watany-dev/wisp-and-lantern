@@ -18,7 +18,8 @@ function checkKidText(file, path, text) {
   if (lines.length > MAX_LINES) report(file, path, `${lines.length} lines (max ${MAX_LINES})`);
   for (const line of lines) {
     const length = [...line.replace(/\s/gu, "")].length;
-    if (length > MAX_CHARS) report(file, path, `${length} characters in "${line}" (max ${MAX_CHARS})`);
+    if (length > MAX_CHARS)
+      report(file, path, `${length} characters in "${line}" (max ${MAX_CHARS})`);
   }
 }
 
@@ -56,15 +57,19 @@ else {
   cards.forEach((card, i) => {
     const at = `[${i}]`;
     for (const field of ["shape", "pattern"]) {
-      if (typeof card?.[field] !== "string" || !card[field].trim()) report(cardsFile, `${at}.${field}`, "must be a non-empty string");
+      if (typeof card?.[field] !== "string" || !card[field].trim())
+        report(cardsFile, `${at}.${field}`, "must be a non-empty string");
     }
     for (const lang of ["ja", "en"]) {
       const v = card?.label?.[lang];
-      if (typeof v !== "string" || !v.trim()) report(cardsFile, `${at}.label.${lang}`, "must be a non-empty string");
+      if (typeof v !== "string" || !v.trim())
+        report(cardsFile, `${at}.label.${lang}`, "must be a non-empty string");
     }
-    if (typeof card?.label?.ja === "string") checkKidText(cardsFile, `${at}.label.ja`, card.label.ja);
+    if (typeof card?.label?.ja === "string")
+      checkKidText(cardsFile, `${at}.label.ja`, card.label.ja);
     const triple = JSON.stringify([card?.color, card?.shape, card?.pattern]);
-    if (seen.has(triple)) report(cardsFile, at, `same color, shape and pattern as [${seen.get(triple)}]`);
+    if (seen.has(triple))
+      report(cardsFile, at, `same color, shape and pattern as [${seen.get(triple)}]`);
     else seen.set(triple, i);
   });
 }
