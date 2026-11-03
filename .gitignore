@@ -147,3 +147,9 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Wisp & Lantern
+e2e/screenshots
+playwright-report
+test-results
+.vitest/

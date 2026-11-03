@@ -1,0 +1,8 @@
+# zghalint fails only on errors, so the rules this repository relies on are raised to errors.
+# zizmor runs next to it in the same CI job.
+rules:
+  SEC001: { severity: error } # actions pinned to a full commit SHA
+  SEC016: { severity: error } # no dependency cache in deploy workflows
+  SEC018: { severity: error } # checkout with persist-credentials: false
+  PERM002: { severity: error } # job-level permissions with third-party actions
+  BP001: { severity: error } # every job has timeout-minutes

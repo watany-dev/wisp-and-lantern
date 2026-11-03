@@ -1,0 +1,8 @@
+# Files that may contain Japanese text. Everything else in the repository is English.
+^src/content/strings\.ja\.json$
+^src/content/parents\.ja\.json$
+^src/content/cards\.json$
+^\.kiro/steering/kid-content\.md$
+^\.kiro/specs/
+^docs/evidence/playtest-
+^e2e/
