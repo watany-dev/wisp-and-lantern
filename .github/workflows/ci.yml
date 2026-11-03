@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch: {} # Run from a tag to roll production back to that commit.
+  workflow_dispatch: {} # Run from a submitted* tag to roll production back to that commit.
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -334,7 +334,7 @@ jobs:
       pull-requests: write # sticky preview comment
 
   deploy:
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/submitted'))
     needs: [base, actions, static, test, mutation, sast, build, smoke, secrets]
     uses: $/.github/workflows/deploy.yml
     with:
