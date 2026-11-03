@@ -24,7 +24,7 @@
     "check": "mkdir -p .cache && (npm run static && npm run knip && npm run test && npm run verify; echo $? > .cache/last-test-status; exit $(cat .cache/last-test-status))"
   },
   "dependencies": {
-    "phaser": "3.90.0"
+    "phaser": "4.2.1"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
