@@ -28,7 +28,9 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 - `checkModel` (`src/domain/__tests__/support/model-check.ts`) visits every state the reducer can reach
   through a small event alphabet, checks invariants and that the goal is always still reachable (no
   soft-lock), and reports the shortest event trace to a bad state. Each trial gets a `*.model.test.ts`.
-- `.kiro/` — specs, steering, hooks, agents. `docs/evidence/` — records of how the game was built.
+- `.kiro/` — specs, steering, hooks, agents, skills. `docs/evidence/` — records of how the game was built.
+- `.kiro/skills/` — `/kick #n` fixes issues in one PR; `/wrapup` reviews a finished change, including
+  formal QA of rule changes with `checkModel`. See `.kiro/skills/README.md`.
 - `docs/adr/` — architecture decisions. Add a record when a change reverses or extends one.
 
 ## Hard rules
