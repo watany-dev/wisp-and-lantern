@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "evidence-log",
+      "description": "When the agent stops, append one metadata record to docs/evidence/kiro-log/<session>.jsonl. The surface defaults to web; export EVIDENCE_SURFACE=ide or cli locally to override it.",
+      "trigger": "Stop",
+      "action": {
+        "type": "command",
+        "command": "EVIDENCE_SURFACE=\"${EVIDENCE_SURFACE:-web}\" bash scripts/evidence-log.sh agent-stop"
+      },
+      "timeout": 30
+    }
+  ]
+}

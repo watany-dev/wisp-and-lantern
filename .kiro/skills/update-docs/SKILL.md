@@ -39,8 +39,10 @@ Check and update:
 
 - `README.md`: play instructions, judge parameters, how to run and test,
   repository map, credits
-- `AGENTS.md`: commands, layout, hard rules, workflow. Keep it short; it is
-  read at the start of every agent session.
+- `AGENTS.md`: commands, workflow, and pointers to `.kiro/steering/` for layout
+  and hard rules. Keep it short; it is read at the start of every agent session.
+- `.kiro/steering/`: `structure.md` (layout), `tech.md` (stack, enforcement),
+  `product.md` (hard rules, never renumbered)
 - `CHANGELOG.md` for user-visible changes
 
 ## Phase 4: Consistency
