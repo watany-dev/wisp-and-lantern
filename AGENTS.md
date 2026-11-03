@@ -17,6 +17,8 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
   no `Math.random()` without an injected RNG.
 - `src/game/` — Phaser scenes, input, effects. Renders state and dispatches events; never mutates state.
 - `src/content/` — all player-facing text and cards (JSON). No player-facing literals in `src/game/`.
+- Property tests call `checkProperty(name, property)` from `src/domain/__tests__/support/pbt.ts`. When one
+  fails, commit the reported `seed` and `path` to `support/pbt-regressions.json` together with the fix.
 - `.kiro/` — specs, steering, hooks, agents. `docs/evidence/` — records of how the game was built.
 
 ## Hard rules

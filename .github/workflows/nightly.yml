@@ -34,6 +34,7 @@ jobs:
         run: |
           export FC_RUNS=2000 FC_SEED="$(shuf -i 1-2147483647 -n 1)"
           echo "Reproduce: FC_SEED=$FC_SEED FC_RUNS=2000 vp test run pbt" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "With the fix, add the failure's seed and path to src/domain/__tests__/support/pbt-regressions.json." | tee -a "$GITHUB_STEP_SUMMARY"
           vp test run pbt
       - name: Report failure
         if: failure()
