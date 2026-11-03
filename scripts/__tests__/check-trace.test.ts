@@ -16,6 +16,16 @@ describe("check-trace", () => {
     expect(r.out).toContain("2 invariants, 0 without tests");
   });
 
+  it("ignores subdirectories of the test folders, such as support/", () => {
+    const r = check({
+      [STEERING]: "INV-1",
+      [PBT]: "// INV-1\n",
+      "src/domain/__tests__/support/pbt.ts": "export {};\n",
+    });
+    expect(r).toMatchObject({ status: 0 });
+    expect(r.out).toContain("1 invariants, 0 without tests");
+  });
+
   it("reports an untested invariant without matching a longer id", () => {
     // Before 2026-11-07 JST this is a warning, after it an error; the report is the same.
     const r = check({ [STEERING]: "INV-1", [PBT]: "// INV-10\n" });
