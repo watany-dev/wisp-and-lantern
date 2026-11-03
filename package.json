@@ -12,6 +12,7 @@
     "static": "vp check",
     "test": "vp test run --coverage",
     "test:watch": "vp test",
+    "mutation": "stryker run",
     "smoke": "playwright test",
     "knip": "knip",
     "bench": "vp test run --config vitest.perf.config.ts",
@@ -27,6 +28,8 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "26.6.6",
     "@vitest/coverage-v8": "5.0.5",
     "fast-check": "4.10.2",

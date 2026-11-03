@@ -8,6 +8,8 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 - `npm run dev` — dev server
 - `npm run check` — format, lint and typecheck (`vp check`), knip, unit and property tests, repository checks.
   Must pass before every PR. `npm run fmt` fixes formatting.
+- `npm run mutation` — Stryker over the unit-tested code; any surviving mutant fails CI. Kill it with a
+  test, or for an equivalent mutant add `// Stryker disable next-line <mutator>: <why no test can tell>`
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
 - `npm run font` — regenerate the Japanese subset font after changing any string
 - `npm run metrics` — regenerate `docs/evidence/metrics.md`

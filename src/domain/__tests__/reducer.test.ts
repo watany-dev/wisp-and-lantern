@@ -4,6 +4,15 @@ import { describe, expect, it } from "vite-plus/test";
 import { reduce } from "../reducer";
 import { initialState } from "../state";
 
+describe("initialState", () => {
+  it("starts on the title screen in English with no trial progress and no charms", () => {
+    expect(initialState.lang).toBe("en");
+    expect(initialState.phase).toBe("title");
+    expect(initialState.trial).toBe(0);
+    expect(initialState.charms).toEqual([]);
+  });
+});
+
 describe("reduce", () => {
   it("Start moves the game from the title to the trial", () => {
     const next = reduce(initialState, { type: "Start" });
