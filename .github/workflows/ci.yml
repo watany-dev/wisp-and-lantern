@@ -255,8 +255,36 @@ jobs:
         with:
           name: dist
           path: dist
+      # The key has the runner image version because the .deb files come from that image's mirror.
+      - name: Playwright cache key
+        id: playwright
+        run: |
+          version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          echo "key=playwright-$RUNNER_OS-$version-$ImageVersion" >> "$GITHUB_OUTPUT"
+      - name: Cache browsers and system packages
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/apt-debs
+          key: ${{ steps.playwright.outputs.key }}
+      # apt still runs update and checks the hash of every .deb from its signed index, so a stale or
+      # tampered file in the cache is downloaded again, not installed.
+      - name: Install system packages for browsers
+        run: |
+          if compgen -G "$HOME/apt-debs/*.deb" > /dev/null; then
+            sudo cp "$HOME"/apt-debs/*.deb /var/cache/apt/archives/
+          fi
+          npx playwright install-deps chromium webkit
+      - name: Keep downloaded system packages for the cache
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/apt-debs"
+          sudo cp /var/cache/apt/archives/*.deb "$HOME/apt-debs/"
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/apt-debs"
       - name: Install browsers
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install chromium webkit
       - name: Smoke
         run: npm run smoke
       - name: Upload smoke report
