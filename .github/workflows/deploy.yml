@@ -16,6 +16,11 @@ jobs:
   production:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Shows each deploy under Deployments and gives the environment's branch and tag rules
+    # (docs/maintainer-setup.md) a place to refuse a deploy from any other ref.
+    environment:
+      name: production
+      url: ${{ inputs.site_url }}
     permissions:
       contents: write # push to gh-pages
       issues: write # report a failed production check
