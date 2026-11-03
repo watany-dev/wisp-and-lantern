@@ -78,6 +78,8 @@ export default defineConfig({
         env: { node: true },
       },
       {
+        // The reducer is pure: same state and event, same result. Time, randomness and the
+        // browser come in through events or an injected RNG, never from globals.
         files: ["src/domain/**/*.ts"],
         rules: {
           "no-restricted-imports": [
@@ -86,6 +88,29 @@ export default defineConfig({
               paths: [{ name: "phaser", message: "src/domain must stay pure: no Phaser." }],
               patterns: [{ group: ["phaser/*"], message: "src/domain must stay pure: no Phaser." }],
             },
+          ],
+          "no-restricted-properties": [
+            "error",
+            { object: "Math", property: "random", message: "Use the injected RNG." },
+          ],
+          "no-restricted-globals": [
+            "error",
+            { name: "Date", message: "Pass time in through an event." },
+            { name: "performance", message: "Pass time in through an event." },
+            { name: "crypto", message: "Use the injected RNG." },
+            ...[
+              "window",
+              "globalThis",
+              "document",
+              "navigator",
+              "localStorage",
+              "sessionStorage",
+              "fetch",
+              "XMLHttpRequest",
+              "setTimeout",
+              "setInterval",
+              "requestAnimationFrame",
+            ].map((name) => ({ name, message: "src/domain must stay pure: no browser APIs." })),
           ],
         },
       },

@@ -23,7 +23,8 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 1. Everything in the repository is English, except the files listed in `scripts/check-cjk-allowlist.txt`.
 2. Japanese child-facing text: hiragana and katakana only, max 12 characters per line, max 2 lines.
    `npm run kid` enforces this.
-3. `src/domain/**` must not import `phaser` (Oxlint enforces this through `lint` in `vite.config.ts`).
+3. `src/domain/**` must not import `phaser` or touch `Date`, `Math.random`, `crypto`, timers or browser
+   globals (Oxlint enforces this through `lint` in `vite.config.ts`).
 4. The game makes no network requests. Fonts and images are bundled.
 5. No third-party trademarks, logos or characters. Assets are original or CC0; fonts are OFL.
 6. Dependency versions are pinned exactly. Explain any new dependency in the PR.
