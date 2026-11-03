@@ -12,11 +12,15 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 6. Labels: none to create. (`nightly`, `liveness` and `production` are created by `scripts/report-failure.sh`.)
 7. Secrets: `PII_DENYLIST` — children's real names and nicknames, one per line. Never commit this list.
 8. After the first deploy from `main` creates the `gh-pages` branch: Settings → Pages → Source = "Deploy from a branch", `gh-pages` / `/ (root)`.
-9. About: set Website to the production URL and check that the MIT license is shown.
-10. When the repository is public: Settings → Advanced Security → turn on Dependabot alerts and
+9. Settings → Environments → **production** (created by the first deploy from `main`; create it by hand
+   if you do this earlier). Turn on "Deployment branches and tags" → "Selected branches and tags" and add
+   two rules: branch `main`, and tag `submitted*`. Add no required reviewers (ADR 0004). A deploy from any
+   other ref is then refused. The **preview** environment (PR previews) needs no rules.
+10. About: set Website to the production URL and check that the MIT license is shown.
+11. When the repository is public: Settings → Advanced Security → turn on Dependabot alerts and
     Private vulnerability reporting (`SECURITY.md` points reporters there). Code scanning then shows
     the Semgrep results that the `sast` job uploads; leave CodeQL default setup off.
-11. Dependabot (`.github/dependabot.yml`) opens weekly pull requests. They pass the same required
+12. Dependabot (`.github/dependabot.yml`) opens weekly pull requests. They pass the same required
     checks as any other pull request; merge them when green.
 
 ## What each required check does
@@ -64,6 +68,5 @@ digest pin: moving to a tag would weaken the pinning policy.
    ShellCheck digest is in `.github/workflows/ci.yml` and `scripts/lint-shell.sh`.
 4. Run `npm run check` (it runs ShellCheck via `scripts/lint-shell.sh` when a binary or Docker is
    available). Fix any new findings in the code; suppress only a false positive, with the reason.
-5. Open the pull request. `.github/` is a protected path (`AGENTS.md`), so it needs the
-   `human-approved` label and the reason in the Decisions section; the required `actions`, `static`
-   and `sast` checks must be green before merge.
+5. Open the pull request. `.github/` is a protected path (`AGENTS.md`), so give the reason in the
+   Decisions section; the required `actions`, `static` and `sast` checks must be green before merge.
