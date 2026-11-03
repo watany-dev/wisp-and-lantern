@@ -25,6 +25,9 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 - `src/content/` — all player-facing text and cards (JSON). No player-facing literals in `src/game/`.
 - Property tests call `checkProperty(name, property)` from `src/domain/__tests__/support/pbt.ts`. When one
   fails, commit the reported `seed` and `path` to `support/pbt-regressions.json` together with the fix.
+- `checkModel` (`src/domain/__tests__/support/model-check.ts`) visits every state the reducer can reach
+  through a small event alphabet, checks invariants and that the goal is always still reachable (no
+  soft-lock), and reports the shortest event trace to a bad state. Each trial gets a `*.model.test.ts`.
 - `.kiro/` — specs, steering, hooks, agents. `docs/evidence/` — records of how the game was built.
 
 ## Hard rules
