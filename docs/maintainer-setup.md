@@ -33,3 +33,37 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 | `smoke` | ci | the Playwright smoke fails on the built site under the deploy base path |
 | `secrets` | ci | gitleaks finds a secret, or a name from `PII_DENYLIST` appears |
 | `guard` | guard | the title or commits break the conventions |
+
+## Updating the pinned Semgrep and ShellCheck images
+
+`ci.yml` runs Semgrep (`sast` job) and ShellCheck (`static` job) as `docker run image@sha256:...`.
+Dependabot's `github-actions` ecosystem only sees `uses:` lines and there is no `docker` entry that
+could see these digests, so **nobody gets a pull request for them**. Bump them by hand on the first
+working day of each month (a recurring calendar reminder for the maintainer is enough). Keep the
+digest pin: moving to a tag would weaken the pinning policy.
+
+| tool | image | version appears in |
+|---|---|---|
+| Semgrep | `semgrep/semgrep` | `ci.yml` step name "Semgrep x.y.z (...)" and the `@sha256:` of that step |
+| ShellCheck | `koalaman/shellcheck` | `ci.yml` step name "Shell scripts (ShellCheck x.y.z)", the `@sha256:` of that step, **and** `image=` in `scripts/lint-shell.sh` |
+
+1. Find the latest release: <https://github.com/semgrep/semgrep/releases> and
+   <https://github.com/koalaman/shellcheck/releases>. Read the release notes; a new Semgrep can add
+   findings to `p/default` that fail `sast`.
+2. Resolve the digest of the release tag. This is the digest of the multi-arch index, which is what
+   `docker run` resolves on the runner:
+
+   ```sh
+   docker buildx imagetools inspect semgrep/semgrep:1.178.0 --format '{{.Manifest.Digest}}'
+   docker buildx imagetools inspect koalaman/shellcheck:v0.11.0 --format '{{.Manifest.Digest}}'
+   ```
+
+   (Replace the tags with the new versions. `crane digest <image>:<tag>` gives the same value.)
+3. Replace the `sha256:` value **and** the version in the step name in the same commit. Search with
+   `grep -rn "semgrep/semgrep@\|koalaman/shellcheck@" .github scripts` and update every hit; the
+   ShellCheck digest is in `.github/workflows/ci.yml` and `scripts/lint-shell.sh`.
+4. Run `npm run check` (it runs ShellCheck via `scripts/lint-shell.sh` when a binary or Docker is
+   available). Fix any new findings in the code; suppress only a false positive, with the reason.
+5. Open the pull request. `.github/` is a protected path (`AGENTS.md`), so it needs the
+   `human-approved` label and the reason in the Decisions section; the required `actions`, `static`
+   and `sast` checks must be green before merge.
