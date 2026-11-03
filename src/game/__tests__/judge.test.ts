@@ -22,6 +22,13 @@ describe("readJudgeParams", () => {
     });
     expect(readJudgeParams("?trial=1.5").trial).toBeNull();
   });
+
+  it("accepts trials 1 to 6 inclusive and both languages", () => {
+    expect(readJudgeParams("?trial=1").trial).toBe(1);
+    expect(readJudgeParams("?trial=6").trial).toBe(6);
+    expect(readJudgeParams("?trial=0").trial).toBeNull();
+    expect(readJudgeParams("?lang=en").lang).toBe("en");
+  });
 });
 
 describe("pickLang", () => {

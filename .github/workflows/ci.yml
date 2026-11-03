@@ -78,6 +78,15 @@ jobs:
         run: vp check
       - name: Unused files, exports and dependencies (knip)
         run: npm run knip
+      - name: Registry signatures and provenance of installed packages
+        run: npm audit signatures
+      - name: Known high or critical advisories in shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Shell scripts (ShellCheck 0.11.0)
+        run: >-
+          docker run --rm -v "$PWD:/mnt" -w /mnt
+          koalaman/shellcheck@sha256:bb596a0d169b85ddd81d8b6d3a2ff6d5baf5fca10b97f575ebc647c3dff62b3d
+          scripts/*.sh
 
   test:
     runs-on: ubuntu-latest
@@ -111,6 +120,55 @@ jobs:
         with:
           name: coverage
           path: coverage
+          if-no-files-found: ignore
+
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Semgrep 1.178.0 (p/default rules, fails on any finding)
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src
+          semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b
+          semgrep scan --config p/default --error --metrics=off --sarif-output=semgrep.sarif
+      # Code scanning needs a public repository (or GitHub Advanced Security); the scan above
+      # gates either way.
+      - name: Upload SARIF to code scanning
+        if: always() && !github.event.repository.private
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .nvmrc
+          cache: true
+          run-install: |
+            - args: ['--frozen-lockfile']
+      - name: Mutation tests (fails on any surviving mutant, see stryker.config.json)
+        run: npm run mutation
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation
+          path: reports/mutation
           if-no-files-found: ignore
 
   perf:
@@ -239,7 +297,7 @@ jobs:
 
   preview:
     if: github.event_name == 'pull_request'
-    needs: [base, actions, static, test, build, smoke, secrets]
+    needs: [base, actions, static, test, mutation, sast, build, smoke, secrets]
     uses: $/.github/workflows/preview.yml
     with:
       site_url: ${{ needs.base.outputs.site_url }}
@@ -249,7 +307,7 @@ jobs:
 
   deploy:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-    needs: [base, actions, static, test, build, smoke, secrets]
+    needs: [base, actions, static, test, mutation, sast, build, smoke, secrets]
     uses: $/.github/workflows/deploy.yml
     with:
       site_url: ${{ needs.base.outputs.site_url }}

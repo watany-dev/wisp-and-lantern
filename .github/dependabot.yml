@@ -1,0 +1,41 @@
+# Weekly updates, held back 7 days after release so a compromised version has time to be pulled.
+# Versions stay exact (AGENTS.md rule 6). package.json and workflows are protected paths, so each
+# pull request still needs the maintainer's human-approved label.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Tokyo
+    cooldown:
+      default-days: 7
+    versioning-strategy: increase
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      # Vite+ ships vite, vitest and the linters together; move them in one pull request.
+      vite-plus:
+        patterns: ["vite-plus", "vite", "vitest", "@vitest/*", "@voidzero-dev/*"]
+      stryker:
+        patterns: ["@stryker-mutator/*"]
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Tokyo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]

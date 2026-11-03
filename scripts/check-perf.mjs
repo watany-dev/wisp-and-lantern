@@ -45,7 +45,7 @@ function run(side, round) {
     encoding: "utf8",
   });
   if (r.status !== 0) {
-    console.error(r.stdout, r.stderr);
+    process.stderr.write(`${r.stdout}${r.stderr}\n`);
     console.error(`::error::check-perf: the ${side} benchmarks failed to run`);
     process.exit(1);
   }

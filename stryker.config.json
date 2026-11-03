@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "vitest": {
+    "configFile": "vite.config.ts"
+  },
+  "_comment": "TypeScript 7 has no JS API, which Stryker uses only to rewrite tsconfig extends and references. tsconfig.json has neither, so the rewrite is skipped by naming a file that does not exist.",
+  "tsconfigFile": ".stryker-skip-tsconfig-rewrite.json",
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/__tests__/**",
+    "!src/**/__perf__/**",
+    "!src/main.ts",
+    "!src/game/boot.ts",
+    "!src/game/scenes/**",
+    "!src/game/fx/**",
+    "!src/game/ui/**"
+  ],
+  "coverageAnalysis": "perTest",
+  "thresholds": {
+    "high": 100,
+    "low": 95,
+    "break": 100
+  },
+  "reporters": ["clear-text", "progress", "html", "json"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "tempDirName": ".cache/stryker-tmp",
+  "cleanTempDir": "always"
+}

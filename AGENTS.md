@@ -8,7 +8,13 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 - `npm run dev` — dev server
 - `npm run check` — format, lint and typecheck (`vp check`), knip, unit and property tests, repository checks.
   Must pass before every PR. `npm run fmt` fixes formatting.
+- `npm run mutation` — Stryker over the unit-tested code; any surviving mutant fails CI. Kill it with a
+  test, or for an equivalent mutant add `// Stryker disable next-line <mutator>: <why no test can tell>`
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
+- `scripts/__tests__/` runs every `check-*` gate against fixtures (part of `npm test`); CI also runs
+  ShellCheck over `scripts/*.sh`. Change a gate together with its test.
+- CI runs Semgrep (`p/default`) and fails on any finding. Fix the code; suppress only a false positive
+  with `// nosemgrep: <rule-id>` and the reason on the same line.
 - `npm run font` — regenerate the Japanese subset font after changing any string
 - `npm run metrics` — regenerate `docs/evidence/metrics.md`
 
@@ -17,16 +23,24 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
   no `Math.random()` without an injected RNG.
 - `src/game/` — Phaser scenes, input, effects. Renders state and dispatches events; never mutates state.
 - `src/content/` — all player-facing text and cards (JSON). No player-facing literals in `src/game/`.
+- Property tests call `checkProperty(name, property)` from `src/domain/__tests__/support/pbt.ts`. When one
+  fails, commit the reported `seed` and `path` to `support/pbt-regressions.json` together with the fix.
+- `checkModel` (`src/domain/__tests__/support/model-check.ts`) visits every state the reducer can reach
+  through a small event alphabet, checks invariants and that the goal is always still reachable (no
+  soft-lock), and reports the shortest event trace to a bad state. Each trial gets a `*.model.test.ts`.
 - `.kiro/` — specs, steering, hooks, agents. `docs/evidence/` — records of how the game was built.
+- `docs/adr/` — architecture decisions. Add a record when a change reverses or extends one.
 
 ## Hard rules
 1. Everything in the repository is English, except the files listed in `scripts/check-cjk-allowlist.txt`.
 2. Japanese child-facing text: hiragana and katakana only, max 12 characters per line, max 2 lines.
    `npm run kid` enforces this.
-3. `src/domain/**` must not import `phaser` (Oxlint enforces this through `lint` in `vite.config.ts`).
+3. `src/domain/**` must not import `phaser` or touch `Date`, `Math.random`, `crypto`, timers or browser
+   globals (Oxlint enforces this through `lint` in `vite.config.ts`).
 4. The game makes no network requests. Fonts and images are bundled.
 5. No third-party trademarks, logos or characters. Assets are original or CC0; fonts are OFL.
-6. Dependency versions are pinned exactly. Explain any new dependency in the PR.
+6. Dependency versions are pinned exactly. Explain any new dependency in the PR. `check-licenses.mjs`
+   allows only npm-registry packages with permissive licenses in shipped code.
 7. Meaning is never carried by color alone. Every interaction works with one finger and with a mouse.
 
 ## Workflow

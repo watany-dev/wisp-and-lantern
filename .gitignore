@@ -153,3 +153,6 @@ e2e/screenshots
 playwright-report
 test-results
 .vitest/
+
+# Mutation testing (stryker.config.json)
+reports/

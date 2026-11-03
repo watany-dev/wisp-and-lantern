@@ -12,7 +12,10 @@ const SPECS = ".kiro/specs";
 
 const read = (f) => (existsSync(f) ? readFileSync(f, "utf8") : "");
 const ls = (d) => (existsSync(d) ? readdirSync(d) : []);
-const unique = (xs) => [...new Set(xs)];
+// Fixed patterns only: an id never matches a longer one (INV-1 vs INV-10, REQ-1.1 vs REQ-1.10).
+const INV = /INV-\d+/g;
+const REQ = /REQ-\d+\.\d+(?![\d.])/g;
+const ids = (text, re) => new Set(text.match(re) ?? []);
 
 if (!existsSync(STEERING)) {
   console.log(`check-trace: skip (${STEERING} not found)`);
@@ -20,23 +23,26 @@ if (!existsSync(STEERING)) {
 }
 
 const enforce = Date.now() >= ENFORCE_FROM;
-const invariants = unique(read(STEERING).match(/INV-\d+/g) ?? []);
+const invariants = [...ids(read(STEERING), INV)];
 const pbt = ls(PBT_DIR)
   .filter((f) => f.endsWith(".pbt.test.ts"))
   .map((f) => read(join(PBT_DIR, f)))
   .join("\n");
-const untestedInv = invariants.filter((id) => !new RegExp(`${id}(?!\\d)`).test(pbt));
+const testedInv = ids(pbt, INV);
+const untestedInv = invariants.filter((id) => !testedInv.has(id));
 
-const tests = [PBT_DIR, "e2e"].flatMap((d) => ls(d).map((f) => read(join(d, f)))).join("\n");
+const tests = ids(
+  [PBT_DIR, "e2e"].flatMap((d) => ls(d).map((f) => read(join(d, f)))).join("\n"),
+  REQ,
+);
 const rows = [];
 const untrackedReq = [];
 for (const spec of ls(SPECS)) {
-  const reqs = unique(read(join(SPECS, spec, "requirements.md")).match(/REQ-\d+\.\d+/g) ?? []);
-  const tasks = read(join(SPECS, spec, "tasks.md"));
+  const reqs = ids(read(join(SPECS, spec, "requirements.md")), REQ);
+  const tasks = ids(read(join(SPECS, spec, "tasks.md")), REQ);
   for (const id of reqs) {
-    const re = new RegExp(`${id.replace(".", "\\.")}(?![\\d.])`);
-    const inTests = re.test(tests);
-    const inTasks = re.test(tasks);
+    const inTests = tests.has(id);
+    const inTasks = tasks.has(id);
     rows.push(`| ${spec} | ${id} | ${inTests ? "yes" : "no"} | ${inTasks ? "yes" : "no"} |`);
     if (!inTests && !inTasks) untrackedReq.push(`${spec}: ${id}`);
   }

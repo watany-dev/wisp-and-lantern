@@ -30,6 +30,7 @@ fi
 git ls-files public | grep -qiE '\.(ttf|otf)$' && err "raw font files under public/ would be deployed; keep them in assets-src/"
 
 # Exact dependency versions, pinned MCP servers.
+# shellcheck disable=SC2016 # JavaScript in single quotes: nothing here is meant to expand.
 node -e '
   const p = require("./package.json");
   const bad = Object.entries({ ...p.dependencies, ...p.devDependencies }).filter(([, v]) => /^[\^~*]|latest|x/.test(v));

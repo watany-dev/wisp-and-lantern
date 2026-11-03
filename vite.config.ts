@@ -32,7 +32,8 @@ export default defineConfig({
 
   // `vp test` (Vitest). Benchmarks use vitest.perf.config.ts instead.
   test: {
-    include: ["src/**/__tests__/**/*.test.ts"],
+    // scripts/__tests__ runs the repository checks against fixtures, so a broken gate cannot pass.
+    include: ["src/**/__tests__/**/*.test.ts", "scripts/__tests__/**/*.test.ts"],
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     coverage: {
@@ -59,25 +60,44 @@ export default defineConfig({
   // `vp lint` and `vp check` (Oxlint, type-aware through TypeScript 7).
   lint: {
     plugins: ["eslint", "typescript", "unicorn", "oxc"],
-    categories: { correctness: "error" },
+    categories: { correctness: "error", suspicious: "error" },
     env: { builtin: true },
     ignorePatterns: generated,
-    options: { typeAware: true, typeCheck: true },
+    options: { typeAware: true, typeCheck: true, reportUnusedDisableDirectives: "error" },
     rules: {
       "no-var": "error",
       "prefer-const": "error",
       "typescript/ban-ts-comment": "error",
       "typescript/no-explicit-any": "error",
       "vite-plus/prefer-vite-plus-imports": "error",
+      // Size limits keep each unit reviewable on a phone-sized diff.
+      "max-lines-per-function": ["error", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-params": ["error", { max: 5 }],
+      "max-depth": ["error", { max: 4 }],
+      "max-nested-callbacks": ["error", { max: 4 }],
+      complexity: ["error", { max: 15 }],
+      // `window.__game` is the e2e contract (AGENTS.md), and scenes cannot use Phaser's `game`.
+      "no-underscore-dangle": "off",
+      // `[...xs].sort()` is the house idiom; `toSorted` is not in the ES2022 lib we target.
+      "unicorn/no-array-sort": "off",
+      // TypeScript already rejects a function that can fall off the end of a non-exhaustive switch.
+      "typescript/consistent-return": "off",
     },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     overrides: [
       { files: ["src/**/*.ts"], env: { browser: true } },
       {
-        files: ["scripts/**/*.mjs", "*.ts", "e2e/**/*.ts", "perf/**/*.ts"],
+        files: ["scripts/**/*.mjs", "scripts/**/*.ts", "*.ts", "e2e/**/*.ts", "perf/**/*.ts"],
         env: { node: true },
       },
       {
+        // page.evaluate() runs in the browser, where the test cannot import the game's types.
+        files: ["e2e/**/*.ts"],
+        rules: { "typescript/no-unsafe-type-assertion": "off" },
+      },
+      {
+        // The reducer is pure: same state and event, same result. Time, randomness and the
+        // browser come in through events or an injected RNG, never from globals.
         files: ["src/domain/**/*.ts"],
         rules: {
           "no-restricted-imports": [
@@ -86,6 +106,29 @@ export default defineConfig({
               paths: [{ name: "phaser", message: "src/domain must stay pure: no Phaser." }],
               patterns: [{ group: ["phaser/*"], message: "src/domain must stay pure: no Phaser." }],
             },
+          ],
+          "no-restricted-properties": [
+            "error",
+            { object: "Math", property: "random", message: "Use the injected RNG." },
+          ],
+          "no-restricted-globals": [
+            "error",
+            { name: "Date", message: "Pass time in through an event." },
+            { name: "performance", message: "Pass time in through an event." },
+            { name: "crypto", message: "Use the injected RNG." },
+            ...[
+              "window",
+              "globalThis",
+              "document",
+              "navigator",
+              "localStorage",
+              "sessionStorage",
+              "fetch",
+              "XMLHttpRequest",
+              "setTimeout",
+              "setInterval",
+              "requestAnimationFrame",
+            ].map((name) => ({ name, message: "src/domain must stay pure: no browser APIs." })),
           ],
         },
       },
