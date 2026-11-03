@@ -21,7 +21,8 @@
     "font": "node scripts/subset-font.mjs",
     "verify": "bash scripts/check-submission.sh && node scripts/check-licenses.mjs && node scripts/check-kid-strings.mjs && node scripts/check-font-coverage.mjs && node scripts/check-evidence.mjs && node scripts/check-trace.mjs",
     "metrics": "node scripts/metrics.mjs",
-    "check": "mkdir -p .cache && (npm run static && npm run knip && npm run test && npm run verify; echo $? > .cache/last-test-status; exit $(cat .cache/last-test-status))"
+    "lint:shell": "bash scripts/lint-shell.sh",
+    "check": "mkdir -p .cache && (npm run static && npm run knip && npm run test && npm run verify && npm run lint:shell && npm run mutation && npm run build && node scripts/check-size.mjs; echo $? > .cache/last-test-status; exit $(cat .cache/last-test-status))"
   },
   "dependencies": {
     "phaser": "4.2.1"
