@@ -15,18 +15,19 @@ const event: fc.Arbitrary<GameEvent> = fc.oneof(
 );
 
 describe("reduce (properties)", () => {
-  it("keeps phase in title|trial and trial >= 0 for any event sequence", () => {
+  it("INV-1, INV-2: keeps phase in title|trial and trial a non-negative integer for any event sequence", () => {
     checkProperty(
       "phase-and-trial-bounds",
       fc.property(fc.array(event), (events) => {
         const end = events.reduce(reduce, initialState);
         expect(["title", "trial"]).toContain(end.phase);
+        expect(Number.isInteger(end.trial)).toBe(true);
         expect(end.trial).toBeGreaterThanOrEqual(0);
       }),
     );
   });
 
-  it("never mutates the state it is given (frozen input does not throw)", () => {
+  it("INV-3: never mutates the state it is given (frozen input does not throw)", () => {
     checkProperty(
       "no-mutation",
       fc.property(fc.array(event), (events) => {
@@ -35,7 +36,7 @@ describe("reduce (properties)", () => {
     );
   });
 
-  it("is deterministic: replaying the same events gives the same state", () => {
+  it("INV-4: is deterministic: replaying the same events gives the same state", () => {
     checkProperty(
       "deterministic-replay",
       fc.property(fc.array(event), (events) => {
