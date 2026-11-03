@@ -13,6 +13,8 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
 - `scripts/__tests__/` runs every `check-*` gate against fixtures (part of `npm test`); CI also runs
   ShellCheck over `scripts/*.sh`. Change a gate together with its test.
+- CI runs Semgrep (`p/default`) and fails on any finding. Fix the code; suppress only a false positive
+  with `// nosemgrep: <rule-id>` and the reason on the same line.
 - `npm run font` — regenerate the Japanese subset font after changing any string
 - `npm run metrics` — regenerate `docs/evidence/metrics.md`
 

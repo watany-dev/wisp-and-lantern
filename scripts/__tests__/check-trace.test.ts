@@ -26,11 +26,12 @@ describe("check-trace", () => {
     const r = check({
       [STEERING]: "INV-1",
       [PBT]: "// INV-1 REQ-1.1",
-      ".kiro/specs/01-core/requirements.md": "REQ-1.1 REQ-1.2 REQ-1.3",
-      ".kiro/specs/01-core/tasks.md": "- [ ] 1. REQ-1.2",
+      ".kiro/specs/01-core/requirements.md": "REQ-1.1 REQ-1.2 REQ-1.3 REQ-1.4",
+      ".kiro/specs/01-core/tasks.md": "- [ ] 1. REQ-1.2\n- [ ] 2. REQ-1.40 REQ-1.4.1",
     });
     expect(r.status).toBe(0);
     expect(r.out).toContain("::warning::01-core: REQ-1.3 is in neither tests nor tasks.md");
+    expect(r.out).toContain("::warning::01-core: REQ-1.4 is in neither tests nor tasks.md");
     expect(r.out).not.toContain("REQ-1.1 is in neither");
     expect(r.out).not.toContain("REQ-1.2 is in neither");
   });

@@ -122,6 +122,30 @@ jobs:
           path: coverage
           if-no-files-found: ignore
 
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Semgrep 1.178.0 (p/default rules, fails on any finding)
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src
+          semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b
+          semgrep scan --config p/default --error --metrics=off --sarif-output=semgrep.sarif
+      # Code scanning needs a public repository (or GitHub Advanced Security); the scan above
+      # gates either way.
+      - name: Upload SARIF to code scanning
+        if: always() && !github.event.repository.private
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
   mutation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -273,7 +297,7 @@ jobs:
 
   preview:
     if: github.event_name == 'pull_request'
-    needs: [base, actions, static, test, mutation, build, smoke, secrets]
+    needs: [base, actions, static, test, mutation, sast, build, smoke, secrets]
     uses: $/.github/workflows/preview.yml
     with:
       site_url: ${{ needs.base.outputs.site_url }}
@@ -283,7 +307,7 @@ jobs:
 
   deploy:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-    needs: [base, actions, static, test, mutation, build, smoke, secrets]
+    needs: [base, actions, static, test, mutation, sast, build, smoke, secrets]
     uses: $/.github/workflows/deploy.yml
     with:
       site_url: ${{ needs.base.outputs.site_url }}
