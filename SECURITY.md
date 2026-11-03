@@ -29,3 +29,8 @@ Fixes ship through the normal pull request flow; after the submission deadline t
 - Workflows pin third-party actions to commit SHAs and are checked by zizmor and zghalint.
 - Semgrep scans every pull request; gitleaks scans for secrets.
 - Changes to workflows, checks and test configuration need the maintainer's `human-approved` label.
+- Kiro agents run behind [ptuf](https://github.com/watany-dev/ptuf), a rule-based `PreToolUse`
+  hook (`.kiro/hooks/ptuf.json`, policy in `.ptuf.yaml`). It blocks destructive deletes, remote
+  scripts piped into a shell, force pushes, reads of credential files and edits to its own hook
+  and config. The binary is pinned by version and SHA-256 in `scripts/bootstrap-ptuf.sh`. If it is
+  missing, tool calls are blocked rather than allowed.

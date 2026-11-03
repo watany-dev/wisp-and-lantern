@@ -22,3 +22,6 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 - Semgrep static analysis in CI.
 - Exhaustive model check of the reducer for invariants and soft-locks.
 - `SECURITY.md`, architecture decision records in `docs/adr/`, and this changelog.
+- ptuf guardrail for Kiro agents: a `SessionStart` hook installs the pinned, checksum-verified
+  binary and a `PreToolUse` hook checks every tool call against `.ptuf.yaml`, failing closed when
+  the binary is missing.

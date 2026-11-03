@@ -41,10 +41,19 @@ property test in the same PR.
   and read state through `window.__game`.
 
 ## Cloud sessions
-- The sandbox is a fresh clone every time. The `SessionStart` hook runs `npm ci`; if `node_modules`
-  is missing, run it yourself.
+- The sandbox is a fresh clone every time. If `node_modules` is missing, run `npm ci` yourself.
+- The `SessionStart` hook runs `scripts/bootstrap-ptuf.sh`, which installs the pinned
+  [ptuf](https://github.com/watany-dev/ptuf) binary into `.cache/bin/`. The `PreToolUse` hook then
+  sends every tool call to ptuf (policy in `.ptuf.yaml`). Some calls are denied (for example
+  `rm -rf ~`, `curl … | sh`, `git push --force`, reading `.env`) and some need the user's approval
+  (for example `bash -c`, `git reset --hard`), which counts as a denial when nobody can approve. On
+  `main`, destructive git commands are denied. If ptuf is missing, every tool call is blocked until
+  the bootstrap succeeds.
+- When ptuf blocks a call, use the safer alternative it prints. Do not work around it. Only the
+  maintainer changes `.kiro/hooks/`, `.ptuf.yaml` and `scripts/bootstrap-ptuf.sh`; ptuf itself
+  denies edits to the first two.
 - Do exactly one task, run `npm run check`, commit, and open a PR. Do not start the next task.
-- The `AgentStop` hook appends to `docs/evidence/kiro-log/<session>.jsonl`. Commit that file with
+- The `Stop` hook appends to `docs/evidence/kiro-log/<session>.jsonl`. Commit that file with
   your change and never edit existing lines.
 - You cannot test on a real phone. The maintainer checks the PR preview URL on devices and applies
   `device-checked`; that check is required for changes under `src/game/`, `src/content/` and `public/`.

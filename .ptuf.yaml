@@ -1,0 +1,19 @@
+# ptuf policy for agent tool calls (.kiro/hooks/ptuf.json). Built-in packs stay on; see
+# https://github.com/watany-dev/ptuf/blob/main/docs/design/policy-packs.md
+version: 1
+mode: enforce
+failClosed: true
+
+packs:
+  # AGENTS.md: never push to main or rewrite it. Blocks reset --hard, clean -fdx, branch -D and
+  # stash clear while main is checked out.
+  core.project_hygiene:
+    enabled: true
+    protectedBranches:
+      - main
+
+audit:
+  # Gitignored. Cloud sandboxes may not allow writes to $HOME.
+  path: .cache/ptuf/audit.jsonl
+  includeDenied: true
+  redaction: strict

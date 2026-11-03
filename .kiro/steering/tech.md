@@ -16,6 +16,8 @@ Versions are pinned in `package.json`; that file wins if this list is out of dat
 - Repository gates: `scripts/check-*.mjs`, run by `npm run verify`, each tested against fixtures in
   `scripts/__tests__/`. CI adds Semgrep, ShellCheck, zizmor, zghalint, gitleaks and `npm audit`.
 - Hosting: static files on GitHub Pages, with a preview per pull request (ADR 0002).
+- Agent guardrail: ptuf, version and checksums pinned in `scripts/bootstrap-ptuf.sh`, policy in
+  `.ptuf.yaml`. It runs as a Kiro `PreToolUse` hook and is not an npm dependency.
 
 ## How the hard rules are enforced
 
