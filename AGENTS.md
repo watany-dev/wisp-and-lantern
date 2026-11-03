@@ -33,7 +33,8 @@ Wisp & Lantern is a portrait mobile web game (Phaser 3 + TypeScript 7 + Vite+) t
    globals (Oxlint enforces this through `lint` in `vite.config.ts`).
 4. The game makes no network requests. Fonts and images are bundled.
 5. No third-party trademarks, logos or characters. Assets are original or CC0; fonts are OFL.
-6. Dependency versions are pinned exactly. Explain any new dependency in the PR.
+6. Dependency versions are pinned exactly. Explain any new dependency in the PR. `check-licenses.mjs`
+   allows only npm-registry packages with permissive licenses in shipped code.
 7. Meaning is never carried by color alone. Every interaction works with one finger and with a mouse.
 
 ## Workflow

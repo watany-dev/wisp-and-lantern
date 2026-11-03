@@ -78,6 +78,10 @@ jobs:
         run: vp check
       - name: Unused files, exports and dependencies (knip)
         run: npm run knip
+      - name: Registry signatures and provenance of installed packages
+        run: npm audit signatures
+      - name: Known high or critical advisories in shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Shell scripts (ShellCheck 0.11.0)
         run: >-
           docker run --rm -v "$PWD:/mnt" -w /mnt
