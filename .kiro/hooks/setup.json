@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "setup-session",
+      "description": "When a session starts, check that Node matches .nvmrc and run npm ci, so npm run check works in a fresh cloud clone. Fails loudly with the Node version when it does not match. Works from the repository root or the workspace root that contains the clone (Kiro Web).",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\"; [ -f scripts/setup-session.sh ] || for d in */; do [ -f \"$d/scripts/setup-session.sh\" ] && cd \"$d\" && break; done; bash scripts/setup-session.sh"
+      },
+      "timeout": 300
+    }
+  ]
+}
