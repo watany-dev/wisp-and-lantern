@@ -7,7 +7,8 @@ not edited after it is accepted; a later record supersedes it and says so.
 |---|---|---|
 | [0001](0001-pure-domain-reducer.md) | Game rules are a pure reducer, separate from Phaser | Accepted |
 | [0002](0002-static-pages-with-previews.md) | Static GitHub Pages site with a preview per pull request | Accepted |
-| [0003](0003-quality-gates.md) | Which quality gates block a merge, and which we left out | Accepted |
+| [0003](0003-quality-gates.md) | Which quality gates block a merge, and which we left out | Accepted; Process gates superseded by 0004 |
+| [0004](0004-no-human-gates.md) | No pull request waits for a human | Accepted |
 
 ## Format
 

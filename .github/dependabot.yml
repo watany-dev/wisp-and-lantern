@@ -1,6 +1,6 @@
 # Weekly updates, held back 7 days after release so a compromised version has time to be pulled.
-# Versions stay exact (AGENTS.md rule 6). package.json and workflows are protected paths, so each
-# pull request still needs the maintainer's human-approved label.
+# Versions stay exact (AGENTS.md rule 6). Each pull request passes the same required checks as any
+# other.
 version: 2
 updates:
   - package-ecosystem: npm

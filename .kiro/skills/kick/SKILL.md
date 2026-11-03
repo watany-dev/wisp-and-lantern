@@ -2,8 +2,8 @@
 name: kick
 description: >
   Fix the given GitHub issues, verify the fix on a production build, run the
-  wrapup skill, open one PR that closes the issues, and keep its CI green until
-  it is merged. Use when the user invokes /kick with issue numbers, for example
+  wrapup skill, open one PR that closes the issues, keep its CI green and merge
+  it. Use when the user invokes /kick with issue numbers, for example
   "/kick #12 #34".
 metadata:
   adapted-from: watany-dev/chokkin .claude/skills/kick
@@ -14,8 +14,9 @@ metadata:
 Resolve every issue the user names in a single PR. Do not open new issues
 (see step 6 for the one exception).
 
-When something is unclear, stop and ask the user, and include the answer you
-recommend. Do not ask what you can find out by reading the code.
+When something is unclear, do not stop: take the answer you would have
+recommended and record the question and your choice in the PR's Decisions
+section. Do not guess what you can find out by reading the code.
 
 `AGENTS.md` applies throughout: hard rules, protected paths, never push to
 `main`, never force-push, never edit playtest records.
@@ -36,7 +37,8 @@ recommend. Do not ask what you can find out by reading the code.
    issue against the built site (`?judge=1`, `?trial=n`, `window.__game`),
    with Playwright if needed, and confirm it is gone. If the change touches
    `src/domain/`, also run `npm run mutation` and `npm run bench`. You cannot
-   test on a real phone: the maintainer does that on the PR preview. When you
+   test on a real phone; the Playwright smoke covers mobile and desktop, and
+   real devices are covered by the weekly pass in `docs/device-checklist.md`. When you
    notice a nearby bug or something you cannot explain, fix light ones on the
    spot (separate commit) and repeat step 3.
 4. **Run the `wrapup` skill** (read `.kiro/skills/wrapup/SKILL.md` and follow
@@ -47,23 +49,24 @@ recommend. Do not ask what you can find out by reading the code.
    English conventional commit. Body: English, every section of
    `.github/pull_request_template.md`, `Closes #<n>` for each issue. Focus on
    what the issues do not tell: decisions, intent, rejected options. Include
-   the step 3 results. Do not repeat what the diff shows. Leave the Device
-   check boxes for the maintainer. End with a `Found, not fixed` section, one
+   the step 3 results. Do not repeat what the diff shows. End with a
+   `Found, not fixed` section, one
    line per thing you noticed along the way. Commit the session's
    `docs/evidence/kiro-log/` file if one exists. Create the PR through the
    REST API: `gh api repos/{owner}/{repo}/pulls -f title=... -f body=... -f head=<branch> -f base=main`.
-6. **Do not file issues.** Heavy findings go in the `Found, not fixed`
-   section; the user turns the ones they want into issues. One exception, at
-   most one per PR: a reproducible crash or soft-lock (a child can no longer
-   finish a trial) that no open issue, spec task or roadmap item covers. Put
-   the event trace or reproduction steps in the issue body.
-7. **Follow up.** Every 15 minutes, check the PR
-   (`gh api repos/{owner}/{repo}/pulls/<n>`, `gh run list --branch <branch>`,
-   `gh run view <id> --log-failed`, review comments at
-   `gh api repos/{owner}/{repo}/pulls/<n>/comments`). Keep CI green and address
-   review comments. A missing `human-approved` or `device-checked` label is the
-   maintainer's step: report it, do not work around it. Stop when the PR is
-   merged or closed.
+6. **File issues for heavy findings.** After the PR is open, open one issue
+   per heavy item in `Found, not fixed` that no open issue, spec task or
+   roadmap item already covers, and link it from that line. Put the event
+   trace or reproduction steps in the issue body. Do not fix them in this PR.
+7. **Merge.** Check the PR (`gh api repos/{owner}/{repo}/pulls/<n>`,
+   `gh run list --branch <branch>`, `gh run view <id> --log-failed`, review
+   comments at `gh api repos/{owner}/{repo}/pulls/<n>/comments`). Keep CI green
+   and address review comments. If the branch is behind `main`, update it with
+   `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/update-branch` and wait for CI
+   again. When every required check is green, squash-merge it:
+   `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash`.
+   Never merge with a failing or pending check. Stop when the PR is merged or
+   closed.
 
 ## Light and heavy
 

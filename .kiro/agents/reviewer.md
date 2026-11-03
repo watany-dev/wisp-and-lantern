@@ -37,8 +37,8 @@ you never edit files, commit or push. Report findings and let the main agent dec
    - Tests: every changed branch has a test that would fail if it broke. Rule changes have a
      property or model-check test. Every INV-n in `domain-invariants.md` appears in a
      `*.pbt.test.ts` (`scripts/check-trace.mjs` fails CI otherwise).
-   - Protected paths (listed in `AGENTS.md`): flag any change to them. The PR needs the maintainer's
-     `human-approved` label, and a protected file must never be changed to make a check pass.
+   - Protected paths (listed in `AGENTS.md`): flag any change to them. The PR must give the reason,
+     and a protected file must never be changed to make a check pass.
    - Strings: if `src/content/` changed, say that the kid-reader agent should run.
 4. Run `npm run check` and record the exit code. Do not fix failures.
 

@@ -1,6 +1,6 @@
 # 0003. Which quality gates block a merge, and which we left out
 
-- Status: Accepted
+- Status: Accepted; the Process gates are superseded by [0004](0004-no-human-gates.md)
 - Date: 2026-11-03
 
 ## Context

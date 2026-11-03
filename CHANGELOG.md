@@ -25,3 +25,9 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 - ptuf guardrail for Kiro agents: a `SessionStart` hook installs the pinned, checksum-verified
   binary and a `PreToolUse` hook checks every tool call against `.ptuf.yaml`, failing closed when
   the binary is missing.
+
+### Changed
+
+- No pull request waits for a human (ADR 0004): the `human-approved`, `device-checked` and `hotfix`
+  label gates and the post-deadline freeze are removed, and agents merge their own pull request once
+  every required check is green. Real devices are checked weekly instead of per pull request.
