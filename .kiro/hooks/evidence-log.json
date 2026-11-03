@@ -3,11 +3,11 @@
   "hooks": [
     {
       "name": "evidence-log",
-      "description": "When the agent stops, append one metadata record to docs/evidence/kiro-log/<session>.jsonl. The surface defaults to web; export EVIDENCE_SURFACE=ide or cli locally to override it.",
+      "description": "When the agent stops, append one metadata record to docs/evidence/kiro-log/<session>.jsonl. Works from the repository root, a subdirectory, or the workspace root that contains the clone (Kiro Web). The surface defaults to web; export EVIDENCE_SURFACE=ide or cli locally to override it.",
       "trigger": "Stop",
       "action": {
         "type": "command",
-        "command": "EVIDENCE_SURFACE=\"${EVIDENCE_SURFACE:-web}\" bash scripts/evidence-log.sh agent-stop"
+        "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\"; [ -f scripts/evidence-log.sh ] || for d in */; do [ -f \"$d/scripts/evidence-log.sh\" ] && cd \"$d\" && break; done; EVIDENCE_SURFACE=\"${EVIDENCE_SURFACE:-web}\" bash scripts/evidence-log.sh agent-stop"
       },
       "timeout": 30
     }
