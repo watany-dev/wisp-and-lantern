@@ -68,6 +68,5 @@ digest pin: moving to a tag would weaken the pinning policy.
    ShellCheck digest is in `.github/workflows/ci.yml` and `scripts/lint-shell.sh`.
 4. Run `npm run check` (it runs ShellCheck via `scripts/lint-shell.sh` when a binary or Docker is
    available). Fix any new findings in the code; suppress only a false positive, with the reason.
-5. Open the pull request. `.github/` is a protected path (`AGENTS.md`), so it needs the
-   `human-approved` label and the reason in the Decisions section; the required `actions`, `static`
-   and `sast` checks must be green before merge.
+5. Open the pull request. `.github/` is a protected path (`AGENTS.md`), so give the reason in the
+   Decisions section; the required `actions`, `static` and `sast` checks must be green before merge.
