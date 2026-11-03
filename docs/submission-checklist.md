@@ -7,7 +7,7 @@
 - [ ] Following only README "For judges", a third person reaches trials 1, 3, 6 and the parent screen on desktop within 4 minutes
 - [ ] Trial 1 is solvable in grayscale
 - [ ] Thumbnail GIF uploaded
-- [ ] `docs/evidence/pbt/` has results for all 5 trials and matches the PBT section of the write-up
+- [ ] `docs/evidence/pbt/` has results for all 6 trials and matches the PBT section of the write-up
 - [ ] Numbers in the write-up match `docs/evidence/metrics.md` right after `npm run metrics` (plus `environment.md` and `reviewer-log.md`); "What didn't work" cites at least 2 entries from `didnt-work.md`
 - [ ] Production is green in the nightly liveness check
 - [ ] Category = Costume Contest; the description explains what the spookiness does in each trial

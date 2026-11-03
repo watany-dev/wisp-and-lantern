@@ -10,7 +10,7 @@ gets it wrong. It is a Kiroween 2026 hackathon entry.
 
 - Players: children aged 5 to 8, playing with one finger on a phone, a parent nearby. Parents are
   the second audience and get their own screen and text (`src/content/parents.*.json`).
-- Lessons L1 to L4 (tell it clearly, hand over the tools, check it, keep secrets) and the five
+- Lessons L1 to L4 (tell it clearly, hand over the tools, check it, keep secrets) and the six
   trials that teach them are defined in `docs/learning-design.md`. Read it before changing a trial,
   and respect its "What we do not teach" list.
 - Languages: Japanese (the primary audience) and English. Every child-facing string exists in both.

@@ -26,4 +26,5 @@ Children aged 5–8 (primary) and their parents (secondary). Testers: the mainta
 | 2 | Hand over the tools (The Locked Shed) | L2 | Give one tool (key, broom or hammer) to let a cat out of a locked shed. | Locks and doors = permission. |
 | 3 | Check it (The Wisp Field) | L3 | 1–2 of the 5 stars the helper brings are wisps; tap to check before accepting. | Wisps = fakes that shine brighter than the real thing. |
 | 4 | Keep secrets (The Listening Shadows) | L4 | Hand over only the items that are safe to give (house key, name, candy). | Shadows = third parties who listen in. |
-| 5 | Use it all (The Hollow Crown) | L1–L4 | Chain tell → grant → act → verify → fix three times; a skipped step does not work. | The chain relights the town. |
+| 5 | TBD | TBD | TBD | TBD |
+| 6 | Use it all (The Hollow Crown) | L1–L4 | Chain tell → grant → act → verify → fix three times; a skipped step does not work. | The chain relights the town. |
