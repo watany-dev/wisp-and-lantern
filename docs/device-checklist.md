@@ -1,15 +1,13 @@
 # Device checklist
 
-## Per PR
-
-Required by `device-gate` when `src/game/`, `src/content/`, `public/`, `index.html` or `vite.config.ts` change. Use the preview URL from the bot comment, then add the `device-checked` label.
-
-- [ ] Phone (iOS Safari or Android Chrome): the changed flow works with one finger, targets are easy to hit
-- [ ] Phone: switch to another app and back; no stuck input, no sound before the first tap
-- [ ] Desktop Chrome at 1280x800: the same flow works with the mouse only, no keyboard
-- [ ] Japanese and English: no clipped text, the rounded font is used (no system font)
+No pull request waits for a device check (ADR 0004). Run this pass on production once a week and
+open an issue for each problem.
 
 ## Weekly full pass
+
+- [ ] Phone (iOS Safari or Android Chrome): flows changed this week work with one finger, targets are easy to hit
+- [ ] Phone: switch to another app and back; no stuck input, no sound before the first tap
+- [ ] Japanese and English: no clipped text, the rounded font is used (no system font)
 
 - [ ] Two-finger touch does not break input
 - [ ] Sound: soft effects only, nothing before the first tap, nothing louder than the UI click

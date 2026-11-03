@@ -33,7 +33,7 @@ Specific to this repository:
   rely on them and on their reasons.
 - Keep the header comment of each `scripts/check-*` gate; it documents what the
   gate enforces. Those files are protected paths, so leave them alone unless
-  the change already has `human-approved`.
+  the task is about that gate.
 - Keep JSDoc on exported types and functions in `src/domain/` and
   `src/domain/__tests__/support/` when it states intent or limits, for example
   what an option bounds or which temporal property a check stands for.

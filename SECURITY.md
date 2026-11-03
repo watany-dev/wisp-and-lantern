@@ -18,8 +18,7 @@ Pull request previews under `/pr-preview/` are temporary and removed when the pu
 Please report privately through GitHub: **Security → Report a vulnerability** on this repository.
 Do not open a public issue. Include the URL, the browser and device, and the steps to reproduce.
 
-Fixes ship through the normal pull request flow; after the submission deadline they need the
-`hotfix` label (see `docs/maintainer-setup.md`).
+Fixes ship through the normal pull request flow.
 
 ## How the repository guards itself
 
@@ -28,7 +27,8 @@ Fixes ship through the normal pull request flow; after the submission deadline t
 - Dependabot proposes updates weekly, at least 7 days after a release.
 - Workflows pin third-party actions to commit SHAs and are checked by zizmor and zghalint.
 - Semgrep scans every pull request; gitleaks scans for secrets.
-- Changes to workflows, checks and test configuration need the maintainer's `human-approved` label.
+- The `guard` check runs from the base branch, so a pull request cannot change its own convention
+  check.
 - Kiro agents run behind [ptuf](https://github.com/watany-dev/ptuf), a rule-based `PreToolUse`
   hook (`.kiro/hooks/ptuf.json`, policy in `.ptuf.yaml`). It blocks destructive deletes, remote
   scripts piped into a shell, force pushes, reads of credential files and edits to its own hook

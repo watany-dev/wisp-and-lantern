@@ -1,6 +1,6 @@
 # 0002. Static GitHub Pages site with a preview per pull request
 
-- Status: Accepted
+- Status: Accepted; the `device-checked` gate is superseded by [0004](0004-no-human-gates.md)
 - Date: 2026-11-02
 
 ## Context

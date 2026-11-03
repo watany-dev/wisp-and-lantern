@@ -35,11 +35,14 @@ property test in the same PR.
 - One task from `.kiro/specs/<spec>/tasks.md` per branch and per PR. Branch name `<spec>/<task>`,
   e.g. `02-trial-tell/3.2`.
 - PR title: English conventional commit, e.g. `feat(trial-tell): add color cards`.
-  Fill in every section of `.github/pull_request_template.md`, including Spec and Device check.
+  Fill in every section of `.github/pull_request_template.md`, including Spec and Decisions.
   For Reviewer, run the `reviewer` agent (`.kiro/agents/`), and `kid-reader` when strings change.
 - Protected paths (`.github/`, `.kiro/permissions.yaml`, `.kiro/settings/`, `scripts/check-*`,
-  test and lint configs (`vite.config.ts`, `.zghalint.yml`), `package.json`, `package-lock.json`, `docs/evidence/playtest-*`) need the
-  maintainer's `human-approved` label. Never change them to make a check pass; explain the problem in the PR.
+  test and lint configs (`vite.config.ts`, `.zghalint.yml`), `package.json`, `package-lock.json`,
+  `docs/evidence/playtest-*`): never change them to make a check pass. Any other change to them is
+  allowed; give the reason in the PR.
+- No step waits for a human. When something is unclear, choose the answer you would have
+  recommended, record the question and your choice under Decisions in the PR, and continue.
 - Never push to `main`, never force-push, never edit playtest records.
 - e2e tests navigate with relative URLs (`page.goto("./?judge=1")`) so they work under any base path,
   and read state through `window.__game`.
@@ -60,8 +63,11 @@ property test in the same PR.
 - When ptuf blocks a call, use the safer alternative it prints. Do not work around it. Only the
   maintainer changes `.kiro/hooks/`, `.ptuf.yaml` and `scripts/bootstrap-ptuf.sh`; ptuf itself
   denies edits to the first two.
-- Do exactly one task, run `npm run check`, commit, and open a PR. Do not start the next task.
+- One task per PR: run `npm run check`, commit, open the PR, and merge it yourself once every
+  required check is green (see `.kiro/skills/kick/SKILL.md`, step 7). Then you may start the next
+  task on a new branch.
 - The `Stop` hook appends to `docs/evidence/kiro-log/<session>.jsonl`. Commit that file with
   your change and never edit existing lines.
-- You cannot test on a real phone. The maintainer checks the PR preview URL on devices and applies
-  `device-checked`; that check is required for changes under `src/game/`, `src/content/` and `public/`.
+- You cannot test on a real phone. Verify device-facing changes with the Playwright smoke (mobile
+  and desktop) on the PR preview; real-device checks happen in the weekly pass in
+  `docs/device-checklist.md`, not per PR.

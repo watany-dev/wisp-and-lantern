@@ -61,12 +61,12 @@ quoted Japanese strings.
 
 | key | ja | en | how a 6-year-old reads it | verdict | suggestion |
 |---|---|---|---|---|---|
-| start | ... | ... | ... | ok / change / ask | ... |
+| start | ... | ... | ... | ok / change / playtest | ... |
 ```
 
 - `how a 6-year-old reads it`: what the child would understand or do, in a few English words.
-- `verdict`: `ok`, `change` (a concrete problem from the list above), or `ask` (it depends on the
-  scene or playtest; say what to ask the maintainer).
+- `verdict`: `ok`, `change` (a concrete problem from the list above), or `playtest` (it depends on the
+  scene or playtest; say what the next playtest should check).
 - `suggestion`: a replacement string that still passes `npm run kid`, or empty for `ok`.
 
 If no child-facing string changed, return `kid-reader: no child-facing strings changed.`

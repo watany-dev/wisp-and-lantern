@@ -71,7 +71,7 @@ same guarantees without a second model that can drift. So, in this order:
 Do not add Z3, TLA+ or any other solver as a dependency. If a property really
 needs one (for example, all inputs of a config with no finite abstraction),
 report it as a finding with the reason; adopting a solver means a new ADR that
-extends 0003 and the maintainer's approval.
+extends 0003, with the reason in the PR.
 
 ## Take-in criteria
 
@@ -94,11 +94,12 @@ Accept:
   interaction that needs more than one finger or a keyboard; unpinned
   dependencies
 
-Ask the user instead of deciding:
+Decide and record in the PR's Decisions section:
 
 - a formal QA counterexample that may be intended. Show the shortest event
-  trace, ask "is this intended?", and recommend an answer. If intended, it
-  becomes spec (`.kiro/specs/` or steering); if not, it is a bug to fix.
+  trace, decide whether it is intended using the spec and
+  `docs/learning-design.md`, and give the reason. If intended, it becomes spec
+  (`.kiro/specs/` or steering); if not, it is a bug to fix.
 
 Decline:
 

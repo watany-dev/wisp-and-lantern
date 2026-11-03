@@ -57,8 +57,8 @@ Align across all Markdown:
 
 Never edit `docs/evidence/playtest-*` or existing lines in
 `docs/evidence/kiro-log/`. Regenerate `docs/evidence/metrics.md` with
-`npm run metrics` instead of editing it. Changes to protected paths need the
-`human-approved` label.
+`npm run metrics` instead of editing it. Changes to protected paths need a
+reason in the PR.
 
 ## Phase 5: Report
 

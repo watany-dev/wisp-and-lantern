@@ -37,10 +37,11 @@ enumeration" branch of section 1 is the default, run against the real code:
 
 ADR 0003 decided against TLA+ and SMT solvers. Do not add them as
 dependencies; if a property truly needs one, say why and propose an ADR that
-extends 0003 for the maintainer to approve.
+extends 0003 and give the reason in the PR.
 
 The ledger (section 8) goes in the wrapup report or the PR body. Counterexamples
-that may be intended become questions for the user, with the event trace.
+that may be intended go in the PR's Decisions section with the event trace and
+the choice you made.
 
 ---
 
