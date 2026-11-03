@@ -6,8 +6,12 @@ Wisp & Lantern is a portrait mobile web game (Phaser 4 + TypeScript 7 + Vite+) t
 ## Commands
 - `npm ci` — install exact versions from the lockfile
 - `npm run dev` — dev server
-- `npm run check` — format, lint and typecheck (`vp check`), knip, unit and property tests, repository checks.
-  Must pass before every PR. `npm run fmt` fixes formatting.
+- `npm run check` — format, lint and typecheck (`vp check`), knip, unit and property tests, repository
+  checks, ShellCheck (`scripts/lint-shell.sh`; local binary or Docker, otherwise skipped with a notice),
+  mutation tests, production build and size budget. Must pass before every PR. `npm run fmt` fixes
+  formatting. It does **not** cover these CI jobs: `npm audit signatures` and
+  `npm audit --omit=dev --audit-level=high` (network), Semgrep and gitleaks (Docker or CI only), zizmor
+  and zghalint (workflows), `perf` (needs the base branch) and `smoke` (`npm run smoke`, needs browsers).
 - `npm run mutation` — Stryker over the unit-tested code; any surviving mutant fails CI. Kill it with a
   test, or for an equivalent mutant add `// Stryker disable next-line <mutator>: <why no test can tell>`
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
@@ -41,8 +45,12 @@ property test in the same PR.
   and read state through `window.__game`.
 
 ## Cloud sessions
-- The sandbox is a fresh clone every time. If `node_modules` is missing, run `npm ci` yourself.
-- The `SessionStart` hook runs `scripts/bootstrap-ptuf.sh`, which installs the pinned
+- The sandbox is a fresh clone every time. The `SessionStart` hook `.kiro/hooks/setup.json` runs
+  `scripts/setup-session.sh`: it checks that `node -v` matches `.nvmrc` and then runs `npm ci`.
+  `.npmrc` sets `engine-strict=true`, so `npm ci` also fails on the wrong Node. If the sandbox Node does
+  not match, switch (`nvm install 26 && nvm use 26`) or stop and say so; never report a check result from
+  another runtime. If the hook did not run, run `bash scripts/setup-session.sh` yourself.
+- A second `SessionStart` hook runs `scripts/bootstrap-ptuf.sh`, which installs the pinned
   [ptuf](https://github.com/watany-dev/ptuf) binary into `.cache/bin/`. The `PreToolUse` hook then
   sends every tool call to ptuf (policy in `.ptuf.yaml`). Some calls are denied (for example
   `rm -rf ~`, `curl … | sh`, `git push --force`, reading `.env`) and some need the user's approval

@@ -24,7 +24,7 @@ _To be written: what each lesson (L1–L4) means for real AI agents, in one sent
 
 ## How to test
 
-- `npm run check` — format, lint and typecheck (`vp check`: Oxfmt, Oxlint, TypeScript 7), unused code (knip), unit and property tests with coverage (95% minimum on `src/`, Phaser rendering code excluded), repository checks.
+- `npm run check` — format, lint and typecheck (`vp check`: Oxfmt, Oxlint, TypeScript 7), unused code (knip), unit and property tests with coverage (95% minimum on `src/`, Phaser rendering code excluded), repository checks, ShellCheck (when available), mutation tests, production build and size budget.
 - `npm run build && npm run smoke` — Playwright smoke on a phone (WebKit) and desktop (Chromium).
 - `npm run bench` — benchmarks in `src/**/__perf__/`. On pull requests CI fails if any is more than 5% slower than the base branch (`scripts/check-perf.mjs`).
 - `FC_RUNS=2000 FC_SEED=<n> npx vp test run pbt` — reproduce a nightly property-test failure.
