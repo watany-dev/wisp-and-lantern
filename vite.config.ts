@@ -104,7 +104,13 @@ export default defineConfig({
             "error",
             {
               paths: [{ name: "phaser", message: "src/domain must stay pure: no Phaser." }],
-              patterns: [{ group: ["phaser/*"], message: "src/domain must stay pure: no Phaser." }],
+              patterns: [
+                { group: ["phaser/*"], message: "src/domain must stay pure: no Phaser." },
+                {
+                  group: ["**/game/**", "../game", "../game/*"],
+                  message: "src/domain must not depend on src/game.",
+                },
+              ],
             },
           ],
           "no-restricted-properties": [
