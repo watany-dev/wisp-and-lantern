@@ -47,7 +47,7 @@ export class TitleScene extends Phaser.Scene {
     this.render(this.game_.state());
   }
 
-  update(_time: number, deltaMs: number): void {
+  override update(_time: number, deltaMs: number): void {
     const pointer = this.input.activePointer;
     if (this.game_.state().phase !== "trial" || !pointer.isDown) return;
     const { hero } = this.game_.state();

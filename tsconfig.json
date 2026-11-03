@@ -8,6 +8,8 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,

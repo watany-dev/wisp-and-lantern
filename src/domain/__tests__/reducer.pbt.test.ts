@@ -9,7 +9,7 @@ import { checkProperty, deepFreeze } from "./support/pbt";
 
 const lang = fc.constantFrom("ja" as const, "en" as const);
 const event: fc.Arbitrary<GameEvent> = fc.oneof(
-  fc.record({ type: fc.constant("Start" as const), lang: fc.option(lang, { nil: undefined }) }),
+  fc.record({ type: fc.constant("Start" as const), lang }, { requiredKeys: ["type"] }),
   fc.record({ type: fc.constant("SetLang" as const), lang }),
   fc.record({ type: fc.constant("MoveHeroTo" as const), x: fc.integer(), y: fc.integer() }),
 );

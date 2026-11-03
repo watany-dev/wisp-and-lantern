@@ -23,10 +23,10 @@ describe("checkModel", () => {
   });
 
   it("reports a broken invariant with the shortest trace", () => {
+    const { goal: _goal, ...withoutGoal } = counter;
     const r = checkModel({
-      ...counter,
+      ...withoutGoal,
       step: (n: number, e: Ev) => (e === "inc" ? Math.min(n + 1, 6) : n),
-      goal: undefined,
     });
     expect(r.violations).toHaveLength(1);
     expect(r.violations[0]).toEqual({

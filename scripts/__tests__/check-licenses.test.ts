@@ -2,11 +2,11 @@ import { describe, expect, it } from "vite-plus/test";
 import { fixture, runScript } from "./run";
 
 type Pkg = {
-  license?: string;
+  license?: string | undefined;
   dev?: boolean;
   link?: boolean;
   resolved?: string;
-  integrity?: string;
+  integrity?: string | undefined;
 };
 const pkg = (name: string, over: Pkg = {}): [string, Pkg] => [
   `node_modules/${name}`,

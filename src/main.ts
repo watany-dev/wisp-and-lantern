@@ -6,7 +6,7 @@ import { initialState } from "./domain/state";
 
 declare global {
   interface Window {
-    __game?: Parameters<typeof exposeGame>[0]["__game"];
+    __game?: NonNullable<Parameters<typeof exposeGame>[0]["__game"]>;
   }
 }
 

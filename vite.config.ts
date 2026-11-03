@@ -21,14 +21,17 @@ export default defineConfig({
     // Phaser alone is over 1 MB; scripts/check-size.mjs enforces the real budget.
     chunkSizeWarningLimit: 1600,
   },
-  plugins: lazyPlugins(() => [
-    {
-      name: "build-sha-meta",
-      transformIndexHtml: () => [
-        { tag: "meta", attrs: { name: "build", content: buildSha }, injectTo: "head" },
-      ],
-    },
-  ]),
+  // lazyPlugins returns undefined while vite-plus resolves config metadata; `?? []` means the same
+  // to Vite and satisfies exactOptionalPropertyTypes.
+  plugins:
+    lazyPlugins(() => [
+      {
+        name: "build-sha-meta",
+        transformIndexHtml: () => [
+          { tag: "meta", attrs: { name: "build", content: buildSha }, injectTo: "head" },
+        ],
+      },
+    ]) ?? [],
 
   // `vp test` (Vitest). Benchmarks use vitest.perf.config.ts instead.
   test: {
