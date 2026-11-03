@@ -23,16 +23,18 @@ function checkKidText(file, path, text) {
   }
 }
 
-function compareKeys(fileA, a, fileB, b, path = "") {
-  const isObj = (v) => v && typeof v === "object";
-  if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
-      report(fileB, path || "(root)", `does not match the shape of ${fileA}`);
-      return;
-    }
-    a.forEach((v, i) => compareKeys(fileA, v, fileB, b[i], `${path}[${i}]`));
+const isObj = (v) => v && typeof v === "object";
+
+function compareArrays(fileA, a, fileB, b, path) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+    report(fileB, path || "(root)", `does not match the shape of ${fileA}`);
     return;
   }
+  a.forEach((v, i) => compareKeys(fileA, v, fileB, b[i], `${path}[${i}]`));
+}
+
+function compareKeys(fileA, a, fileB, b, path = "") {
+  if (Array.isArray(a) || Array.isArray(b)) return compareArrays(fileA, a, fileB, b, path);
   if (!isObj(a) || !isObj(b)) return;
   for (const k of Object.keys(a)) {
     const p = path ? `${path}.${k}` : k;
@@ -50,23 +52,27 @@ for (const [path, text] of strings(readJson(ja))) {
 }
 
 const cardsFile = `${CONTENT_DIR}/cards.json`;
+
+function checkCard(card, at) {
+  for (const field of ["shape", "pattern"]) {
+    if (typeof card?.[field] !== "string" || !card[field].trim())
+      report(cardsFile, `${at}.${field}`, "must be a non-empty string");
+  }
+  for (const lang of ["ja", "en"]) {
+    const v = card?.label?.[lang];
+    if (typeof v !== "string" || !v.trim())
+      report(cardsFile, `${at}.label.${lang}`, "must be a non-empty string");
+  }
+  if (typeof card?.label?.ja === "string") checkKidText(cardsFile, `${at}.label.ja`, card.label.ja);
+}
+
 const cards = readJson(cardsFile);
 if (!Array.isArray(cards)) report(cardsFile, "(root)", "must be an array");
 else {
   const seen = new Map();
   cards.forEach((card, i) => {
     const at = `[${i}]`;
-    for (const field of ["shape", "pattern"]) {
-      if (typeof card?.[field] !== "string" || !card[field].trim())
-        report(cardsFile, `${at}.${field}`, "must be a non-empty string");
-    }
-    for (const lang of ["ja", "en"]) {
-      const v = card?.label?.[lang];
-      if (typeof v !== "string" || !v.trim())
-        report(cardsFile, `${at}.label.${lang}`, "must be a non-empty string");
-    }
-    if (typeof card?.label?.ja === "string")
-      checkKidText(cardsFile, `${at}.label.ja`, card.label.ja);
+    checkCard(card, at);
     const triple = JSON.stringify([card?.color, card?.shape, card?.pattern]);
     if (seen.has(triple))
       report(cardsFile, at, `same color, shape and pattern as [${seen.get(triple)}]`);
