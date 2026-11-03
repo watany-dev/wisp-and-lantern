@@ -2,7 +2,7 @@
 // - INV-n in .kiro/steering/domain-invariants.md must appear in src/domain/__tests__/*.pbt.test.ts.
 //   Warning before 2026-11-07T00:00+09:00, failure from then on. Skips if the steering file is absent.
 // - REQ-x.y in .kiro/specs/*/requirements.md that appear in neither tests nor tasks.md: warning only.
-import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const ENFORCE_FROM = Date.parse("2026-11-07T00:00:00+09:00");
@@ -10,7 +10,8 @@ const STEERING = ".kiro/steering/domain-invariants.md";
 const PBT_DIR = "src/domain/__tests__";
 const SPECS = ".kiro/specs";
 
-const read = (f) => (existsSync(f) ? readFileSync(f, "utf8") : "");
+// Directories (such as __tests__/support/) read as empty, like missing files.
+const read = (f) => (existsSync(f) && statSync(f).isFile() ? readFileSync(f, "utf8") : "");
 const ls = (d) => (existsSync(d) ? readdirSync(d) : []);
 // Fixed patterns only: an id never matches a longer one (INV-1 vs INV-10, REQ-1.1 vs REQ-1.10).
 const INV = /INV-\d+/g;
