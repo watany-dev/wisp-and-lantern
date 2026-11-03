@@ -32,7 +32,8 @@ export default defineConfig({
 
   // `vp test` (Vitest). Benchmarks use vitest.perf.config.ts instead.
   test: {
-    include: ["src/**/__tests__/**/*.test.ts"],
+    // scripts/__tests__ runs the repository checks against fixtures, so a broken gate cannot pass.
+    include: ["src/**/__tests__/**/*.test.ts", "scripts/__tests__/**/*.test.ts"],
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     coverage: {
@@ -86,7 +87,7 @@ export default defineConfig({
     overrides: [
       { files: ["src/**/*.ts"], env: { browser: true } },
       {
-        files: ["scripts/**/*.mjs", "*.ts", "e2e/**/*.ts", "perf/**/*.ts"],
+        files: ["scripts/**/*.mjs", "scripts/**/*.ts", "*.ts", "e2e/**/*.ts", "perf/**/*.ts"],
         env: { node: true },
       },
       {
