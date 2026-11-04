@@ -96,6 +96,26 @@ export default defineConfig({
         rules: { "typescript/no-unsafe-type-assertion": "off" },
       },
       {
+        // These paths are excluded from coverage and mutation testing (ADR 0003), so nothing
+        // checks their logic. Tighter limits push any logic into src/game/*.ts or src/domain/,
+        // where it is unit-tested. Keep this list equal to the `exclude` lists in `test.coverage`
+        // above and in stryker.config.json.
+        files: [
+          "src/main.ts",
+          "src/game/boot.ts",
+          "src/game/scenes/**/*.ts",
+          "src/game/fx/**/*.ts",
+          "src/game/ui/**/*.ts",
+        ],
+        rules: {
+          "max-lines-per-function": [
+            "error",
+            { max: 30, skipBlankLines: true, skipComments: true },
+          ],
+          complexity: ["error", { max: 5 }],
+        },
+      },
+      {
         // The reducer is pure: same state and event, same result. Time, randomness and the
         // browser come in through events or an injected RNG, never from globals.
         files: ["src/domain/**/*.ts"],

@@ -9,6 +9,9 @@ inclusion: always
 - `src/domain/` — pure reducer over `GameState` + `GameEvent`. No Phaser, no DOM, no `Date.now()`,
   no `Math.random()` without an injected RNG. Balance constants live in `balance.ts`.
 - `src/game/` — Phaser scenes, input, effects. Renders state and dispatches events; never mutates state.
+  `scenes/`, `fx/`, `ui/`, `boot.ts` and `main.ts` are excluded from coverage and mutation testing, so
+  lint holds them to 30 lines per function and complexity 5. Put math, hit tests and string selection
+  in a plain module next to them (for example `steer.ts`) and unit-test it.
 - `src/content/` — all player-facing text and cards (JSON). No player-facing literals in `src/game/`.
 - Property tests call `checkProperty(name, property)` from `src/domain/__tests__/support/pbt.ts`. When one
   fails, commit the reported `seed` and `path` to `support/pbt-regressions.json` together with the fix.

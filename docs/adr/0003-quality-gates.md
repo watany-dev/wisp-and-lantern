@@ -18,6 +18,10 @@ Required checks on every pull request (defined in `ci.yml` and `guard.yml`, list
 - **Static**: Oxfmt, Oxlint (correctness and suspicious rules, size limits, domain purity), the
   TypeScript 7 type check, knip, repository checks (`npm run verify`), license and source policy,
   `npm audit` for shipped dependencies, registry signatures, ShellCheck.
+- **Thin untested code**: coverage and mutation testing exclude `src/main.ts`, `src/game/boot.ts`
+  and `src/game/{scenes,fx,ui}/**` because they only run in a browser. Oxlint holds those paths to
+  30 lines per function and complexity 5 (the rest of `src/` allows 80 and 15), so logic such as
+  pointer math or hit tests moves into unit-tested modules like `src/game/steer.ts`.
 - **Tests**: unit, property (fast-check, with recorded counterexamples replayed), an exhaustive
   model check of the reducer (invariants and no soft-lock), and tests of the check scripts
   themselves. Coverage of unit-tested code at least 95% on every metric.
