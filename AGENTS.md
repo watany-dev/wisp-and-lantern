@@ -51,8 +51,10 @@ property test in the same PR.
 - The sandbox is a fresh clone every time. The `SessionStart` hook `.kiro/hooks/setup.json` runs
   `scripts/setup-session.sh`: it checks that `node -v` matches `.nvmrc` and then runs `npm ci`.
   `.npmrc` sets `engine-strict=true`, so `npm ci` also fails on the wrong Node. If the sandbox Node does
-  not match, switch (`nvm install 26 && nvm use 26`) or stop and say so; never report a check result from
-  another runtime. If the hook did not run, run `bash scripts/setup-session.sh` yourself.
+  not match, the script installs a pinned Node into `.cache/node` (`scripts/bootstrap-node.sh`; Kiro Web
+  cannot run `nvm install`) and prints the `export PATH=… LD_LIBRARY_PATH=…` line to run in each new
+  shell. Never report a check result from another runtime. If the hook did not run, run
+  `bash scripts/setup-session.sh` yourself.
 - A second `SessionStart` hook runs `scripts/bootstrap-ptuf.sh`, which installs the pinned
   [ptuf](https://github.com/watany-dev/ptuf) binary into `.cache/bin/`. The `PreToolUse` hook then
   sends every tool call to ptuf (policy in `.ptuf.yaml`). Some calls are denied (for example
