@@ -34,3 +34,6 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 - The `deploy` and `preview` jobs and the nightly `liveness` job check the Pages API first. When
   there is no Pages site (private repository on a plan without Pages, or no Source set), they skip
   the 15 minute wait and the live smoke with a warning instead of failing the run.
+- Code that coverage and mutation testing skip (`src/main.ts`, `src/game/boot.ts`,
+  `src/game/{scenes,fx,ui}/**`) is held to 30 lines per function and complexity 5 by lint, so
+  logic moves into unit-tested modules. The hero step calculation is now `src/game/steer.ts`.
