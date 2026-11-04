@@ -332,6 +332,7 @@ jobs:
     permissions:
       contents: write # push the preview to gh-pages
       pull-requests: write # sticky preview comment
+      pages: read # ask whether Pages serves this repository
 
   deploy:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/submitted'))
@@ -342,3 +343,4 @@ jobs:
     permissions:
       contents: write # push to gh-pages
       issues: write # report a failed production check
+      pages: read # ask whether Pages serves this repository
