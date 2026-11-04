@@ -31,3 +31,6 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 - No pull request waits for a human (ADR 0004): the `human-approved`, `device-checked` and `hotfix`
   label gates and the post-deadline freeze are removed, and agents merge their own pull request once
   every required check is green. Real devices are checked weekly instead of per pull request.
+- The `deploy` and `preview` jobs and the nightly `liveness` job check the Pages API first. When
+  there is no Pages site (private repository on a plan without Pages, or no Source set), they skip
+  the 15 minute wait and the live smoke with a warning instead of failing the run.

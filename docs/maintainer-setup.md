@@ -11,7 +11,7 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 5. Settings → Actions → General: default workflow permissions = "Read repository contents and packages". Leave "Allow GitHub Actions to create and approve pull requests" **off**.
 6. Labels: none to create. (`nightly`, `liveness` and `production` are created by `scripts/report-failure.sh`.)
 7. Secrets: `PII_DENYLIST` — children's real names and nicknames, one per line. Never commit this list.
-8. After the first deploy from `main` creates the `gh-pages` branch: Settings → Pages → Source = "Deploy from a branch", `gh-pages` / `/ (root)`.
+8. After the first deploy from `main` creates the `gh-pages` branch: Settings → Pages → Source = "Deploy from a branch", `gh-pages` / `/ (root)`. Until Pages serves the site (no Source yet, or a private repository on a plan without Pages), `scripts/pages-enabled.sh` gets a 404 from the Pages API; the `deploy` and `preview` jobs then still push to `gh-pages` but skip the wait and the live smoke with a `::warning::`, and the nightly `liveness` job is skipped. No change is needed afterwards: once the API answers, the live checks run again.
 9. Settings → Environments → **production** (created by the first deploy from `main`; create it by hand
    if you do this earlier). Turn on "Deployment branches and tags" → "Selected branches and tags" and add
    two rules: branch `main`, and tag `submitted*`. Add no required reviewers (ADR 0004). A deploy from any
