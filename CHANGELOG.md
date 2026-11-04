@@ -28,6 +28,7 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Changed
 
+- Hero movement step math moved from `TitleScene` into the unit-tested `src/game/heroStep.ts` (issue #16, option c). Options (a) lint limits and (b) a share gate touch protected paths and need human approval.
 - No pull request waits for a human (ADR 0004): the `human-approved`, `device-checked` and `hotfix`
   label gates and the post-deadline freeze are removed, and agents merge their own pull request once
   every required check is green. Real devices are checked weekly instead of per pull request.

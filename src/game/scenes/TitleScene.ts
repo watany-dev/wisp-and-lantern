@@ -5,6 +5,7 @@ import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import { balance } from "../../domain/balance";
 import type { GameState } from "../../domain/state";
+import { stepToward } from "../heroStep";
 import type { Game } from "../judge";
 
 const strings = { ja, en };
@@ -51,16 +52,13 @@ export class TitleScene extends Phaser.Scene {
     const pointer = this.input.activePointer;
     if (this.game_.state().phase !== "trial" || !pointer.isDown) return;
     const { hero } = this.game_.state();
-    const dx = pointer.worldX - hero.x;
-    const dy = pointer.worldY - hero.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance < 1) return;
-    const step = Math.min(distance, (balance.heroSpeed * deltaMs) / 1000);
-    this.game_.dispatch({
-      type: "MoveHeroTo",
-      x: hero.x + (dx / distance) * step,
-      y: hero.y + (dy / distance) * step,
-    });
+    const next = stepToward(
+      hero,
+      { x: pointer.worldX, y: pointer.worldY },
+      deltaMs,
+      balance.heroSpeed,
+    );
+    if (next) this.game_.dispatch({ type: "MoveHeroTo", ...next });
   }
 
   private render(state: GameState): void {
