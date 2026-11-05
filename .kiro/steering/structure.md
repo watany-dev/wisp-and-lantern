@@ -21,7 +21,11 @@ inclusion: always
 - Named domain invariants (`INV-n`) are listed in `.kiro/steering/domain-invariants.md`; each one is
   referenced by a test in `src/domain/__tests__/*.pbt.test.ts`.
 - `e2e/` — Playwright smoke. Tests navigate with relative URLs (`page.goto("./?judge=1")`) and read
-  state through `window.__game`.
+  state through `window.__game`. Scenes are excluded from coverage and mutation testing (ADR 0003), so
+  the smoke is the only automated check of input handling. The mobile smoke (iPhone 13 profile, touch)
+  drives the game with real taps and drags (`locator.tap()`, touch events), never by dispatching the
+  event the input would produce. Each trial that lands gets one mobile smoke that plays it through
+  taps and drags. Use `dispatch` from `e2e/helpers.ts` only to set up state that has no UI yet.
 - `scripts/` — repository gates (`check-*`), tools (`subset-font.mjs`, `metrics.mjs`) and hook
   scripts (`evidence-log.sh`, `bootstrap-ptuf.sh`). `scripts/__tests__/` runs every gate against fixtures.
 - `.kiro/` — specs (`specs/<spec>/requirements.md`, `design.md`, `tasks.md`), steering, hooks,
