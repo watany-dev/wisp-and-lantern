@@ -17,6 +17,12 @@ export async function gameState(page: Page): Promise<GameState> {
   return page.evaluate(() => (window as unknown as GameWindow).__game.state());
 }
 
+/**
+ * Sets up state that has no UI yet. Drive anything a player can reach with real taps and drags
+ * instead (see `.kiro/steering/structure.md`).
+ *
+ * @public Kept for future trial smokes, so knip does not report it as unused.
+ */
 export async function dispatch(page: Page, event: unknown): Promise<void> {
   await page.evaluate((e) => (window as unknown as GameWindow).__game.dispatch(e), event);
 }
