@@ -183,9 +183,9 @@ tool name (a digit, because the kid gate rejects Latin letters in Japanese). `�
 | key | ja | en | used |
 |---|---|---|---|
 | `shed.enter` | ねこを たすけよう | Free the cat | the title's shed button |
-| `shed.guide` | どうぐを わたして⏎ねこを たすけよう | Hand over a tool⏎to free the cat | the top line, always |
+| `shed.guide` | どうぐを わたして⏎ねこを たすけよう | Give the wisp a tool⏎to free the cat | the top line, always |
 | `shed.pick` | どうぐを ひとつ⏎えらんでね | Pick one tool | choosing, nothing picked |
-| `shed.ready` | ウィスプを タップして⏎{0}を わたそう | Tap the wisp to⏎hand over the {0} | choosing, a tool picked |
+| `shed.ready` | ウィスプを タップして⏎{0}を わたそう | Tap the wisp to⏎give it the {0} | choosing, a tool picked |
 | `shed.open` | ねこが でてきた！⏎{0}を つかったよ | The cat is out!⏎The wisp used the {0} | open result message |
 | `shed.shut` | {0}を つかったよ⏎とびらは あかなかった | The wisp used the {0}⏎The door stayed shut | shut result message |
 | `shed.lesson` | {0}を わたしたら⏎あけられたね | You gave a {0}⏎It opened the door | closing line, open only |
@@ -200,6 +200,10 @@ Why these words:
 - **Guide.** It states the whole task in one sentence and names one tool, so "one is enough" is true
   before the child touches anything. `ready` repeats the chosen tool's name, which confirms the pick in
   words as well as by the frame (hard rule 7).
+- **English says "give", not "hand over".** The learning goal and the code say hand over; a 6-year-old
+  says give. The kid-reader pass changed the English guide from `Hand over a tool` to `Give the wisp a
+  tool`, which also says who receives it, and `ready` to `give it the {0}`, which matches the closing
+  line's `You gave a {0}`. The Japanese `わたす` is everyday speech and stays.
 - **The message and the closing line are different texts.** The message says what happened and which
   tool the wisp used (`The cat is out! The wisp used the key`). The closing line says why it worked from
   the child's side (`You gave a key, so it opened`). They share no sentence, which is what REQ-5.8 asks for.
