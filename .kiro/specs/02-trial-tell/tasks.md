@@ -127,6 +127,32 @@ ran and what it saw.
     smoke, so `pickCards` now asserts that picking alone has not asked, and the hero check moved to
     a held mouse press (a tap is too short to walk the hero).
 
+## 9. Review fixes
+
+- [x] 9.1 Three findings from the review of tasks 1 to 8. (a) The evidence ledger was not updated:
+      fill `docs/evidence/timelog.md`, `surfaces.md`, `didnt-work.md`, add `docs/evidence/pbt/trial-1.md`,
+      and tell the instruction-to-decision chain in `docs/kiro-usage.md`. (b) REQ-2.5 asks for the
+      message to name the item, but the right-result message did not: add `{0}` to it in both
+      languages and test the name for all six pairs. (c) The offline smoke went offline after the
+      trial had started, while this spec says from the title: wait for network idle, go offline on
+      the title screen, then tap to start.
+  - Requirements: REQ-2.5, REQ-2.9, REQ-2.12, REQ-2.13
+  - Tests: `lane-view.test.ts` (the message names the item for every color and object pair, in ja and
+    en, with no placeholder left), `lane-content.test.ts` (`{0}` once in each result message; the
+    Japanese rules for every message with every item name), `smoke.mobile.spec.ts` (offline run).
+  - Done when: `npm run check` passes; the mobile smoke passes on a build; the new tests fail on the
+    old behavior.
+  - Result: `npm run check` passes (148 tests, mutation score 100%, `npm run kid` ok). With the old
+    right-result strings put back, 5 tests fail; with a `fetch` added to `LaneScene.create`, the
+    offline smoke fails; both were restored. The mobile smoke passed three runs in a row on
+    Chromium (iPhone 13 touch profile); WebKit runs in CI. The old tests passed the old behavior
+    because they compared the message with the same fixed string. Decision: fix the behavior, not
+    the requirement (a message that says which item was found shows the child that the helper
+    brought what was asked). `lane.right` is now `{0}が⏎ぴったり みつかった` and `Found the {0}!
+    Just right`; the longest Japanese line is 9 characters. The ledger rows are real events of this
+    work; times in `timelog.md` are UTC from git. The Stop hook did not run in this Web session, so
+    the one `kiro-log` record for it was written by `scripts/evidence-log.sh` by hand.
+
 ## Traceability
 
 Filled in as tasks land: each row names the test file that fails when the requirement breaks.
@@ -137,14 +163,14 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes; 6.1: picked and locked cards in `lane-view.test.ts` |
 | REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | 3.1: holds over random sequences of up to 40 events; fails when a pick searches by itself |
 | REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check; 8.1: wisp tap with only a color searches nothing |
-| REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
+| REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search; 9.1: right and different-result messages name the item, all six pairs, both languages |
 | REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass; 8.1: right pick finds the wish, play again moves to wish 1 |
 | REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: no blame word in either language; message says the wisp did as asked; 8.1: a different pick is answered, locked, then retried on the same wish |
 | REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts`, `smoke.mobile.spec.ts` | 4.1: 220 states, no violation; soft-lock found without Retry; 8.1: wrong, retry, right by taps |
 | REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages; 8.1: ja mobile run, en mobile and desktop runs |
 | REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern; 6.1: stripes, dots and plain marks and the item art |
 | REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | 6.1: every target at least 80 x 80, all inside 390 x 844, no overlap, hero start clear; 8.1: touch taps, mouse clicks, and a press on a card leaves the hero still |
-| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | 8.1: context offline after the title; wrong, retry, right, play again finish with no request and no error |
+| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | 8.1: context offline after the title; wrong, retry, right, play again finish with no request and no error; 9.1: offline from the title screen, before the start tap; a request made by the scene fails the test |
 | REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | 5.1: `npm run kid` ok; all item names fit 12 x 2 |
 | REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | PBT: INV-5 to INV-7 (3.1); model: 220 states (4.1); smoke: 6 tests on the build (8.1) |
 | REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | no change to `vite.config.ts`, `stryker.config.json`, `package.json`, `scripts/check-*` or the CI workflows in any of the eight pull requests; no existing test removed or loosened (the property and model arbitraries were widened) |
