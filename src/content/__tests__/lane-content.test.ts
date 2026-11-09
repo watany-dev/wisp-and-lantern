@@ -7,19 +7,7 @@ import ja from "../strings.ja.json";
 const patterns = ["stripes-v", "dots", "plain"];
 const colorCards = cards.filter((c) => c.kind === "color");
 const thingCards = cards.filter((c) => c.kind === "thing");
-const laneKeys = [
-  "wish",
-  "pickBoth",
-  "pickColor",
-  "pickThing",
-  "pickAny",
-  "ready",
-  "right",
-  "wrong",
-  "vague",
-  "lesson",
-  "again",
-];
+const laneKeys = ["wish", "pickAny", "ready", "right", "wrong", "vague", "lesson", "again"];
 // The messages that name the item the wisp brought (REQ-3.4.1, REQ-3.6.4).
 const itemKeys = ["right", "wrong", "vague"] as const;
 

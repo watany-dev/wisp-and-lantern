@@ -4,9 +4,6 @@
   "retry": "Let's tell it again",
   "lane": {
     "wish": "I want this one",
-    "pickBoth": "Pick a color and a thing",
-    "pickColor": "Pick a color",
-    "pickThing": "Pick a thing",
     "pickAny": "Pick a card",
     "ready": "Tap the wisp to ask it",
     "right": "Found the {0}! Just right",

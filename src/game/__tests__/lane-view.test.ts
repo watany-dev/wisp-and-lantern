@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../../domain/events";
-import { colors, things } from "../../domain/lane";
+import { balance } from "../../domain/balance";
+import { colors, isColor, things, type CardId, type Lane } from "../../domain/lane";
 import { reduce } from "../../domain/reducer";
 import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
@@ -25,10 +26,8 @@ describe.each(["ja", "en"] as const)(
   (lang) => {
     const s = strings[lang];
 
-    it("invites the child to pick, saying what is still missing", () => {
-      expect(view(lang).message).toBe(s.lane.pickBoth);
-      expect(view(lang, ...pick("blue")).message).toBe(s.lane.pickThing);
-      expect(view(lang, ...pick("pumpkin")).message).toBe(s.lane.pickColor);
+    it("invites the child to pick a card when none is picked, without saying which kind (REQ-3.2.2)", () => {
+      expect(view(lang).message).toBe(s.lane.pickAny);
     });
 
     it("asks the child to tap the wisp once both cards are picked", () => {
@@ -143,7 +142,7 @@ describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
     expect(again.button).toBeNull();
     expect(again.lit).toBeNull();
     expect(again.cards.some((c) => c.picked)).toBe(false);
-    expect(again.message).toBe(en.lane.pickBoth);
+    expect(again.message).toBe(en.lane.pickAny);
   });
 
   it("keeps the retry button where the layout puts it", () => {
@@ -186,5 +185,95 @@ describe("card text and art (REQ-2.10)", () => {
       badge: "triangle",
       silhouette: "lantern",
     });
+  });
+});
+
+// A one-card request cannot be reached through the reducer until the ask rule changes (task 5.1),
+// so these states are built directly. The view must read the brought item from the lane alone.
+const resultView = (lang: Lang, wishIndex: number, pickCards: Lane["pick"]) =>
+  laneView({
+    ...initialState,
+    lang,
+    phase: "trial",
+    trial: 1,
+    lane: { wish: wishIndex, pick: pickCards, asked: true },
+  });
+const only = (card: CardId): Lane["pick"] =>
+  isColor(card) ? { color: card, thing: null } : { color: null, thing: card };
+const singleCards: CardId[] = [...colors, ...things];
+
+describe("laneView shows the item that was brought, not the pick (REQ-3.3.6, REQ-3.4.1)", () => {
+  // Wish 1 is the red pumpkin: red only brings the red lantern; pumpkin only brings the blue pumpkin.
+  it.each([
+    ["red", { color: "red", thing: "lantern" }],
+    ["pumpkin", { color: "blue", thing: "pumpkin" }],
+  ] as const)("for the red pumpkin wish, %s only lights %o", (card, item) => {
+    const v = resultView("en", 1, only(card));
+    expect(v.lit).toEqual(item);
+    expect(v.wispTarget).toEqual(slotCenter(item.color, item.thing));
+    expect(v.message).toBe(en.lane.vague.replace("{0}", itemName(item, "en")));
+    expect(v.star).toBe(false);
+    expect(v.button).toEqual({ text: en.retry, event: { type: "Retry" } });
+  });
+
+  it("names the brought item for every wish and every single card, in both languages", () => {
+    for (const lang of ["ja", "en"] as const) {
+      for (const [index, goal] of balance.wishes.entries()) {
+        for (const card of singleCards) {
+          const v = resultView(lang, index, only(card));
+          const at = `${lang} / ${goal.color} ${goal.thing} / ${card}`;
+          expect(v.lit, at).not.toBeNull();
+          expect(v.lit, at).not.toEqual(goal);
+          expect(v.message, at).toBe(
+            strings[lang].lane.vague.replace("{0}", itemName(v.lit!, lang)),
+          );
+          expect(v.message, at).not.toContain("{0}");
+          expect(v.wispTarget, at).toEqual(slotCenter(v.lit!.color, v.lit!.thing));
+          expect(v.wish, at).toEqual(goal);
+        }
+      }
+    }
+  });
+
+  it("marks only the cards the child picked, never the card the wisp filled in (REQ-3.3.6)", () => {
+    const v = resultView("en", 1, only("red"));
+    expect(v.cards.filter((c) => c.picked).map((c) => c.id)).toEqual(["red"]);
+    expect(v.cards.find((c) => c.id === "lantern")).toMatchObject({ picked: false, alpha: 0.45 });
+    expect(v.locked).toBe(true);
+  });
+
+  it("says 'as you asked' only for a complete request", () => {
+    expect(resultView("en", 0, { color: "red", thing: "lantern" }).message).toBe(
+      en.lane.wrong.replace("{0}", "red lantern"),
+    );
+    expect(resultView("en", 0, only("red")).message).toBe(
+      en.lane.vague.replace("{0}", "red pumpkin"),
+    );
+  });
+
+  it("is the same whatever the language, apart from the words (REQ-3.3.7)", () => {
+    const a = resultView("ja", 2, only("yellow"));
+    const b = resultView("en", 2, only("yellow"));
+    expect([a.lit, a.wispTarget, a.star]).toEqual([b.lit, b.wispTarget, b.star]);
+  });
+});
+
+describe("laneView closing line (REQ-3.5.1, REQ-3.5.2)", () => {
+  it.each(["ja", "en"] as const)(
+    "in %s, shows only on the right result, as its own text",
+    (lang) => {
+      const found = view(lang, ...pick("yellow", "lantern"), ask);
+      expect(found.lesson).toBe(strings[lang].lane.lesson);
+      expect(found.message).not.toContain(strings[lang].lane.lesson);
+      expect(found.star).toBe(true);
+      expect(view(lang, ...pick("red", "lantern"), ask).lesson).toBeNull();
+      expect(resultView(lang, 0, only("yellow")).lesson).toBeNull();
+      expect(view(lang).lesson).toBeNull();
+      expect(view(lang, ...pick("yellow", "lantern")).lesson).toBeNull();
+    },
+  );
+
+  it("goes away with the retry, and the next wish starts without it", () => {
+    expect(view("en", ...right, { type: "Retry" }).lesson).toBeNull();
   });
 });

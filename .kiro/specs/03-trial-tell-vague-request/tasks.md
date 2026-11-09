@@ -82,17 +82,24 @@ behavior (the Result line of that task says how).
 
 ## 4. View: show the brought item
 
-- [ ] 4.1 `laneView` reads the brought item: `lit`, `wispTarget` and the name in the message come from
+- [x] 4.1 `laneView` reads the brought item: `lit`, `wispTarget` and the name in the message come from
       `delivered(lane)`. Choosing shows `ready` or `pickAny`; a result shows `right`, `wrong` or
-      `vague`. Add `lesson` (right result only) and `messageAt`. Remove `pickBoth`, `pickColor` and
-      `pickThing`. The ask rule is still the old one here, so the screen behaves as before.
+      `vague`. Add `lesson` (right result only). Remove `pickBoth`, `pickColor` and `pickThing`.
+      (`messageAt` moves to 6.1, where the layout it points into is added.) The ask rule is still the old one here, so the screen behaves as before.
   - Requirements: REQ-3.1 (7), REQ-3.2 (2), REQ-3.3 (6), REQ-3.4 (1, 2), REQ-3.5 (1, 2)
   - Tests: `lane-view.test.ts`: states built directly, since the old rule cannot reach a one-card
     result; for every wish and every single card the lit slot and the wisp target are the brought
     item, the message names it, and no unpicked card is marked; the key per stage; `lesson` only on
-    the right result, in both languages; `messageAt` per stage.
+    the right result, in both languages.
   - Done when: `npm run check` passes; `npm run kid` passes.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 203 tests (9 new), mutation score 100% (67 mutants in
+    `lane-view.ts`, none survived), `npm run kid` ok. `npm run font` left the font identical. Two
+    deliberate breaks, each restored: a view that lights the pick instead of the brought item fails 4
+    tests (the one-card cases and the "as you asked" case); a view that shows the closing line on
+    every result fails 2. With the old ask rule the screen behaves as before, except that one card
+    shows "Pick a card" instead of "Pick a thing"; 5.1 changes that to `ready`. Replaced test:
+    "invites the child to pick, saying what is still missing" is now "invites the child to pick a
+    card when none is picked".
 
 ## 5. Domain: one card is a request
 
@@ -111,10 +118,11 @@ behavior (the Result line of that task says how).
 ## 6. Scene: the closing line
 
 - [ ] 6.1 Add the result block to the layout (message position after a result, closing line panel and
-      text), and show them in `LaneScene`. Nothing shrinks, nothing is hidden.
+      text), add `messageAt` to the view, and show them in `LaneScene`. Nothing shrinks, nothing is
+      hidden.
   - Requirements: REQ-3.5 (1 to 4), REQ-3.7 (1)
   - Tests: `lane-layout.test.ts`: per stage, everything inside the canvas, no overlap, targets at
-    least 80 px, the hero strip free. The scene is excluded from unit tests (ADR 0003); 7.1 checks it.
+    least 80 px, the hero strip free. `lane-view.test.ts`: `messageAt` per stage. The scene is excluded from unit tests (ADR 0003); 7.1 checks it.
   - Done when: `npm run check` passes; `npm run build` passes; the built page was looked at in both
     languages.
   - Result:

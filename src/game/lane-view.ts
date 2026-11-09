@@ -5,6 +5,7 @@
 import {
   canAsk,
   colors,
+  delivered,
   isComplete,
   outcome,
   things,
@@ -37,9 +38,11 @@ export type LaneView = {
   /** The cards cannot be changed until the retry. */
   locked: boolean;
   cards: CardState[];
-  /** The slot the helper lit: exactly what was asked. */
+  /** The slot the helper lit: the item it brought, which is not always what the wish asked for. */
   lit: Wish | null;
   star: boolean;
+  /** The closing line, on the right result only. It is its own text, not part of `message`. */
+  lesson: string | null;
   /** The wisp is faded while it cannot be sent. */
   wispAlpha: number;
   wish: Wish;
@@ -56,16 +59,16 @@ export function itemName(item: Wish, lang: Lang): string {
   return `${cardLabel(item.color, lang)} ${cardLabel(item.thing, lang)}`;
 }
 
+/** A request with one card is `vague`; the wisp chose the rest, so it never says "as you asked". */
 function messageKey(state: GameState): MessageKey {
-  const { pick } = state.lane;
-  const result = outcome(state.lane);
-  if (result !== "choosing") return result;
-  if (canAsk(state.lane)) return "ready";
-  if (pick.color === null && pick.thing === null) return "pickBoth";
-  return pick.color === null ? "pickColor" : "pickThing";
+  const { lane } = state;
+  const result = outcome(lane);
+  if (result === "choosing") return canAsk(lane) ? "ready" : "pickAny";
+  if (result === "right") return "right";
+  return isComplete(lane.pick) ? "wrong" : "vague";
 }
 
-/** The message for the stage; the wrong-result message names the item the wisp brought. */
+/** The message for the stage; a result message names the item the wisp brought. */
 function messageText(state: GameState, lit: Wish | null): string {
   const text = strings[state.lang].lane[messageKey(state)];
   return lit ? text.replace("{0}", itemName(lit, state.lang)) : text;
@@ -88,7 +91,8 @@ function cardStates(lane: Lane, lang: Lang): CardState[] {
 
 export function laneView(state: GameState): LaneView {
   const { lane } = state;
-  const lit = lane.asked && isComplete(lane.pick) ? lane.pick : null;
+  const lit = delivered(lane);
+  const right = outcome(lane) === "right";
   return {
     message: messageText(state, lit),
     button: buttonFor(state),
@@ -96,7 +100,8 @@ export function laneView(state: GameState): LaneView {
     locked: lane.asked,
     cards: cardStates(lane, state.lang),
     lit,
-    star: outcome(lane) === "right",
+    star: right,
+    lesson: right ? strings[state.lang].lane.lesson : null,
     wispAlpha: canAsk(lane) || lane.asked ? 1 : 0.55,
     wish: wishAt(lane.wish),
     wishText: strings[state.lang].lane.wish,

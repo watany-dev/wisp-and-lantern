@@ -163,7 +163,7 @@ the gate rejects Latin letters in Japanese.
   English draft was `Color & item / Just right!`, but the found message already ends with "Just right",
   so the two would repeat each other on one screen. `You told it / color & item` says what the child
   did, matches the Japanese "tell", and fits in 12 characters a line.
-- kid-reader reading (the rubric in `.kiro/agents/kid-reader.md`, applied by hand in task 4.1; the
+- kid-reader reading (the rubric in `.kiro/agents/kid-reader.md`, applied by hand in task 3.1; the
   agent itself is not runnable from this session): `つたえて` is already on the retry button, `ぴったり`
   is in the found message, `カード` is the word for the objects the child is touching; the words are
   separated at phrase breaks and no line splits a word; one idea per line; no blame; no claim about AI.
