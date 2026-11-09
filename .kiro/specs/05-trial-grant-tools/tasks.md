@@ -90,7 +90,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 3. Model check
 
-- [ ] 3.1 Add `shed.model.test.ts`: the entrance from the title and the shed after it, with the alphabet,
+- [x] 3.1 Add `shed.model.test.ts`: the entrance from the title and the shed after it, with the alphabet,
       invariants, goals and witnesses in the design, and the deliberate breaks with their counterexamples.
       The trial 1 model checks are not changed.
   - Requirements: REQ-5.6, REQ-5.13
@@ -98,7 +98,29 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     `open`, a broom `shut` and a hammer `shut` are each reachable (shortest trace); a `shut` result leads
     back to a fresh choosing; each deliberate break fails with its counterexample.
   - Done when: `npm run check` passes; the Result lists the state count and the counterexamples.
-  - Result: filled in the task's pull request
+  - Result: `npm run check` passes on Node 26.13.0: 365 tests (14 new, all in `shed.model.test.ts`),
+    coverage 100%, mutation score 100% (485 mutants, none survived; this task changes no source), size
+    budget ok. **The model reaches 84 states**: the title (2 languages x 2 hero positions) and the shed
+    (2 x 2 x 20: choosing with nothing picked and with each of 3 tools picked, each with 0, 1 or 2
+    successes so far; a tried key with 1 or 2; a tried broom and a tried hammer with 0, 1 or 2). All six
+    invariants hold in all 84, and goals 1 (key `open` reachable), 2 (a fresh choosing reachable) and 3
+    (a second success reachable) hold from every one of them, from the title included. **Evidence of
+    reach** (shortest traces from the invariant "never this state"): a key `open`, a broom `shut` and a
+    hammer `shut` each in 3 events (`StartShed, PickTool <tool>, GiveTool`); a second success in 6
+    (`... RetryShed, PickTool key, GiveTool`); from a broom or a hammer result, `RetryShed` alone reaches
+    a fresh choosing and leaves language, hero and `trial` 2 as they were; from a success the replay
+    reaches `open` again in 3 events. **Deliberate breaks**, each a `step` around the real `reduce`: the
+    key's hand-over ignored leaves goal 1 stuck in every state (counterexample: the start, trace
+    empty); `RetryShed` ignored makes a broom result a soft-lock (trace `StartShed, PickTool broom,
+    GiveTool`); `RetryShed` ignored after a success keeps goal 1 green and makes goal 3 stuck from the
+    start (from the success itself: the tried key, empty trace); `GiveTool` that always hands over the key
+    breaks the tried-tool invariant (`StartShed, PickTool broom, GiveTool`); `PickTool` that keeps the
+    first pick breaks the pick invariant (`StartShed, PickTool key, PickTool broom`); `Tick` that runs the
+    clock in the shed breaks the run invariant (`StartShed, Tick 1000`). While writing it, the first
+    version of the "`RetryShed` ignored" test expected a stuck goal and got an invariant violation
+    instead: the bookkeeping (`expected`) assumes a retry works. A goal break is therefore checked
+    without the invariants, and an invariant break without a goal. The trial 1 model checks were not
+    touched and still pass.
 
 ## 4. Content
 

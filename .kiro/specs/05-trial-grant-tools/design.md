@@ -165,11 +165,12 @@ It must fail when the rules are broken on purpose, and the counterexamples are k
 
 | deliberate break | which check fails | counterexample |
 |---|---|---|
-| the key does not open | goal 1 is stuck in every state, and the key-open witness is not found | the start state, trace empty |
-| `RetryShed` is ignored | goal 1 is stuck | a tried broom or hammer; the trace ends with `GiveTool` |
-| `RetryShed` is ignored after a success | goal 3 is stuck | a tried key; the trace is `StartShed, PickTool key, GiveTool` or a variant with a language or hero move |
-| `GiveTool` hands over the key whatever was picked | the tried-tool invariant | `StartShed, PickTool broom, GiveTool` (or hammer) |
-| `PickTool` keeps the first pick | the pick invariant | `StartShed, PickTool key, PickTool broom` (or another pair) |
+| the key's hand-over is ignored (the key cannot open the door) | goal 1 is stuck in every state | the start state, trace empty |
+| `RetryShed` is ignored | goal 1 is stuck | a tried broom (the first found), trace `StartShed, PickTool broom, GiveTool` |
+| `RetryShed` is ignored after a success | goal 3 is stuck from the start, while goal 1 still passes | the start state; from a success itself, the tried key with an empty trace |
+| `GiveTool` hands over the key whatever was picked | the tried-tool invariant | `StartShed, PickTool broom, GiveTool` |
+| `PickTool` keeps the first pick | the pick invariant | `StartShed, PickTool key, PickTool broom` |
+| `Tick` runs the clock in the shed | the run invariant | `StartShed, Tick 1000` |
 
 The break is a wrapper `step` around the real `reduce`, as in the trial 1 check; no source is edited for it.
 The test asserts the real traces; the Result line of task 3.1 records them.
