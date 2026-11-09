@@ -111,6 +111,11 @@ function lessonFor(state: GameState): string | null {
   return strings[state.lang].shed.lesson.replace("{0}", name);
 }
 
+/** The wisp has just been handed a tool: this view has a tried tool and the one before did not. */
+export function justTried(before: ShedView | undefined, after: ShedView): boolean {
+  return after.picture.tool !== null && (before?.picture.tool ?? null) === null;
+}
+
 export function shedView(state: GameState): ShedView {
   const { shed } = state;
   const tried = shed.stage === "tried";

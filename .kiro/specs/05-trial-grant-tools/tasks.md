@@ -176,7 +176,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 6. Scene and entrance
 
-- [ ] 6.1 Draw the shed (`ui/shed-art.ts`, `ui/cat.ts`, `ui/tools.ts`, `ui/tool-card.ts`,
+- [x] 6.1 Draw the shed (`ui/shed-art.ts`, `ui/cat.ts`, `ui/tools.ts`, `ui/tool-card.ts`,
       `shed-palette.ts`), add `ShedScene`, register it, and add the title's shed button with the
       "press hit no object" guard and `sceneFor`.
   - Requirements: REQ-5.1, REQ-5.2, REQ-5.5, REQ-5.9, REQ-5.10, REQ-5.11; inherited REQ-4.9, REQ-4.11
@@ -184,7 +184,27 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     existing 11 smoke tests pass (trial 1 and the score attack are unchanged). The built page is driven
     by real taps and looked at in screenshots in both languages and all three tools.
   - Done when: the above, and the screenshots were read.
-  - Result: filled in the task's pull request
+  - Result: `npm run check` passes on Node 26.13.0: 473 tests (8 new: 6 in `shed-palette.test.ts` for the
+    colors the smoke will read, 2 in `shed-view.test.ts` for `justTried`, which keeps the scene's
+    branch count under the lint limit), coverage 100%, mutation score 100% (599 mutants, none survived),
+    size budget ok (gzip JS 369 KB of 1,024 KB). `npm run build` then the existing smoke: **11 passed**
+    on Chromium with the iPhone 13 touch profile (the 8 mobile and 3 desktop tests; WebKit cannot start
+    in this sandbox, so this is not the WebKit pass, which CI runs). Trial 1 and the score attack are
+    unchanged. **Looked at, not only tested:** a throwaway Playwright script (kept out of the repository)
+    entered the shed with a real tap on the title's button, then drove the broom, the hammer and the key
+    with real taps in `?lang=ja` and `?lang=en`, and I read the title and the choosing, picked, broom,
+    hammer and key screenshots. Seen: the title shows the key button below the wisp and the hero
+    with the rest unchanged; the shed has its locked door with a padlock and the cat's face in the
+    window; the wisp is dimmed until a tool is picked; the picked card has a thick frame and a tick, the
+    others fade after the hand-over; with the broom and the hammer the tool is on the lock, the door and
+    the padlock stay shut and the cat stays in the window, with the shut message and "try another tool"
+    button; with the key the door swings open, the padlock is open, the window is empty, the cat sits by
+    the shed under a star, and the message, the closing line and the play-again button show in order
+    without overlap. The Japanese and English texts fit their boxes (the longest English line,
+    `It opened the door`, takes about half of the closing-line panel, so the 20-character allowance is
+    safe). One thing I noticed and left: the button label sits a little high on its face, as in trial 1.
+    The state after the title tap was `trial` 2, the run untouched (60,000 ms, score 0), the lane
+    initial, so the button did not start trial 1.
 
 ## 7. Smoke
 

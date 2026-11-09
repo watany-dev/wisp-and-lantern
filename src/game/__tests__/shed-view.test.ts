@@ -7,7 +7,7 @@ import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import { messageText, resultText, wisp } from "../lane-layout";
 import { wispWork } from "../shed-layout";
-import { shedEnterLabel, shedView, toolName } from "../shed-view";
+import { justTried, shedEnterLabel, shedView, toolName } from "../shed-view";
 
 const strings = { ja, en };
 const enter: GameEvent = { type: "StartShed" };
@@ -200,5 +200,25 @@ describe("toolName and shedEnterLabel", () => {
     expect(toolName("hammer", "ja")).toBe(ja.shed.tools.hammer);
     expect(shedEnterLabel("en")).toBe("Free the cat");
     expect(shedEnterLabel("ja")).toBe(ja.shed.enter);
+  });
+});
+
+describe("justTried", () => {
+  it("is true only on the first view that has a tried tool", () => {
+    const choosing = view("en", pick("key"));
+    const tried = view("en", pick("key"), give);
+    expect(justTried(undefined, tried)).toBe(true);
+    expect(justTried(choosing, tried)).toBe(true);
+    for (const tool of tools) {
+      expect(justTried(tried, view("en", pick(tool), give))).toBe(false);
+    }
+    expect(justTried(undefined, view("en"))).toBe(false);
+    expect(justTried(tried, choosing)).toBe(false);
+    expect(justTried(choosing, view("en", pick("broom")))).toBe(false);
+  });
+
+  it("is false when only the language changes after the hand-over", () => {
+    const tried = view("en", pick("hammer"), give);
+    expect(justTried(tried, view("ja", pick("hammer"), give))).toBe(false);
   });
 });
