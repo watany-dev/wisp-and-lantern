@@ -19,7 +19,7 @@ import type { GameState, Lang } from "../domain/state";
 import cards from "../content/cards.json";
 import en from "../content/strings.en.json";
 import ja from "../content/strings.ja.json";
-import { slotCenter, wisp } from "./lane-layout";
+import { messageText as choosingText, resultText, slotCenter, wisp } from "./lane-layout";
 import type { Point } from "./steer";
 
 const strings = { ja, en };
@@ -48,7 +48,12 @@ export type LaneView = {
   wish: Wish;
   wishText: string;
   wispTarget: Point;
+  /** Where the message goes: in the wisp's spot after a result, below it while choosing. */
+  messageAt: Point;
 };
+
+/** The center of a text box as a plain point. */
+const spot = ({ x, y }: Point): Point => ({ x, y });
 
 export function cardLabel(card: CardId, lang: Lang): string {
   return cardOf(card).label[lang];
@@ -106,6 +111,7 @@ export function laneView(state: GameState): LaneView {
     wish: wishAt(lane.wish),
     wishText: strings[state.lang].lane.wish,
     wispTarget: lit ? slotCenter(lit.color, lit.thing) : wisp,
+    messageAt: lit ? spot(resultText) : spot(choosingText),
   };
 }
 

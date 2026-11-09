@@ -138,7 +138,7 @@ behavior (the Result line of that task says how).
 
 ## 6. Scene: the closing line
 
-- [ ] 6.1 Add the result block to the layout (message position after a result, closing line panel and
+- [x] 6.1 Add the result block to the layout (message position after a result, closing line panel and
       text), add `messageAt` to the view, and show them in `LaneScene`. Nothing shrinks, nothing is
       hidden.
   - Requirements: REQ-3.5 (1 to 4), REQ-3.7 (1)
@@ -146,7 +146,18 @@ behavior (the Result line of that task says how).
     least 80 px, the hero strip free. `lane-view.test.ts`: `messageAt` per stage. The scene is excluded from unit tests (ADR 0003); 7.1 checks it.
   - Done when: `npm run check` passes; `npm run build` passes; the built page was looked at in both
     languages.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 230 tests, mutation score 100%, build and size
+    budget ok (352.8 KB gzip of 1,024 KB). I looked at the built page, driven by real touch taps on
+    Chromium with the iPhone 13 profile (WebKit cannot start here), in `ja` and `en`, at these
+    steps: empty, one card picked, color-only result, object-only result, right result, next wish.
+    Seen: with one card the ring and the "tap the wisp" message show; a vague result lights the
+    brought item (red pumpkin for the yellow lantern wish with red only; red lantern with lantern
+    only), names it, and shows the retry button; the right result shows the star, the found message,
+    the closing line in its own bordered panel, and the button, with the wish row, the lane, the cards
+    and the button all visible and no text smaller than before; the closing line is absent on the
+    vague results. The English found message wraps with "right" alone on line 2; that is unchanged
+    from 02 and I left it. Screenshots are in the git-ignored `e2e/screenshots` and are not
+    attached.
 
 ## 7. Smoke
 

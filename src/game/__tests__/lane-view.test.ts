@@ -6,7 +6,7 @@ import { reduce } from "../../domain/reducer";
 import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
-import { buttonRect, slotCenter, wisp } from "../lane-layout";
+import { buttonRect, messageText, resultText, slotCenter, wisp } from "../lane-layout";
 import { cardLabel, colorArt, itemArt, itemName, laneView, thingArt } from "../lane-view";
 
 const strings = { ja, en };
@@ -299,5 +299,27 @@ describe("laneView closing line (REQ-3.5.1, REQ-3.5.2)", () => {
 
   it("goes away with the retry, and the next wish starts without it", () => {
     expect(view("en", ...right, { type: "Retry" }).lesson).toBeNull();
+  });
+});
+
+const at = (p: { x: number; y: number }) => ({ x: p.x, y: p.y });
+
+describe("laneView message position (REQ-3.5.4)", () => {
+  it("keeps the message below the wisp while choosing and moves it into the wisp's spot after a result", () => {
+    expect(view("en").messageAt).toEqual(at(messageText));
+    expect(view("en", ...pick("red")).messageAt).toEqual(at(messageText));
+    for (const events of [
+      [...wrong],
+      [...right],
+      [...pick("red"), ask],
+      [...pick("lantern"), ask],
+    ]) {
+      expect(view("en", ...events).messageAt).toEqual(at(resultText));
+    }
+    expect(view("en", ...right, { type: "Retry" }).messageAt).toEqual(at(messageText));
+  });
+
+  it("puts the result message where the retry button is not", () => {
+    expect(resultText.y + resultText.height / 2).toBeLessThan(buttonRect.y - buttonRect.height / 2);
   });
 });
