@@ -47,6 +47,9 @@ const emptyLane = { wish: 0, pick: { color: null, thing: null }, asked: false };
 test("REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4, REQ-3.5: a color alone brings another object, then both cards find the wish, in Japanese", async ({
   page,
 }) => {
+  // This test takes about 20 s alone. Next to another phone-sized test on a slow runner it can pass
+  // 30 s, so it gets the longer limit (spec 05, task 7.1); nothing it asserts is relaxed.
+  test.slow();
   const errors = collectErrors(page);
   const tap = tapper(page);
   await page.goto("./?lang=ja");
