@@ -32,13 +32,17 @@ ran and what it saw.
 
 ## 3. Property tests
 
-- [ ] 3.1 Add INV-5, INV-6 and INV-7 to `domain-invariants.md` with property tests in
+- [x] 3.1 Add INV-5, INV-6 and INV-7 to `domain-invariants.md` with property tests in
       `reducer.pbt.test.ts`; add the lane events to the event arbitrary so INV-1 to INV-4 cover them.
   - Requirements: REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.14
   - Tests: `reducer.pbt.test.ts` (INV-1 to INV-7). Each new property is shown to fail on a
     deliberately broken reducer before it is kept (recorded in the pull request).
   - Done when: `npm run check` passes and `check-trace` reports every INV as tested.
-  - Result:
+  - Result: `npm run check` passes: 95 tests, mutation score 100%, `check-trace: 7 invariants, 0
+    without tests`. Sabotage runs of `lane.ts`, each restored afterwards: Ask without the
+    completeness check fails INV-6 and INV-7; picking allowed after a search fails INV-7; the second
+    pick searching by itself fails INV-5. A Retry that keeps the pick passes all INV (it is not an
+    invariant) and fails two unit tests in `reducer.test.ts`.
 
 ## 4. Model check
 
@@ -103,9 +107,9 @@ Filled in as tasks land: each row names the test file that fails when the requir
 |---|---|---|---|
 | REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `reducer.test.ts` passes |
 | REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes |
-| REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | |
-| REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | |
-| REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | |
+| REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | 3.1: holds over random sequences of up to 40 events; fails when a pick searches by itself |
+| REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check |
+| REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
 | REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass |
 | REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
 | REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | |
