@@ -8,4 +8,5 @@
 
 ## Images
 
-- `placeholder/*.png` — solid-color placeholders made by the maintainer for this project. MIT, like the code.
+There are no image files. The wisp, the hero, the items, the cards and the background are drawn in code
+(`src/game/ui/`), so they are original and MIT, like the code.
