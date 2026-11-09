@@ -42,14 +42,16 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     checks green (`actions`, `static`, `test`, `mutation`, `sast`, `perf`, `build`, `smoke`, `secrets`,
     `guard`); merged. Nothing outside `.kiro/specs/` changed.
 
-- [ ] 1.2 Write `design.md` and this file, with the Japanese translation.
+- [x] 1.2 Write `design.md` and this file, with the Japanese translation.
   - Requirements: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-5.9, REQ-5.10, REQ-5.11, REQ-5.12, REQ-5.13, REQ-5.14, REQ-5.15
   - Tests: none (documents)
-  - Result: filled in this pull request
+  - Result: `npm run check` passes on Node 26.13.0 (`check-trace: 15 invariants, 0 without tests`; no
+    `REQ-5.n` is left out of this file, so its warnings are gone). Pull request #61: all required CI checks
+    green; merged. Nothing outside `.kiro/specs/` changed.
 
 ## 2. Domain: the shed rules
 
-- [ ] 2.1 Add `shed.ts` (tools, `Shed`, `reduceShed`, `opensDoor`, `shedOutcome`, `triedTool`,
+- [x] 2.1 Add `shed.ts` (tools, `Shed`, `reduceShed`, `opensDoor`, `shedOutcome`, `triedTool`,
       `canGive`), the events `StartShed`, `PickTool`, `GiveTool` and `RetryShed`, `GameState.shed` and
       `trials`, and the reducer cases with the `trial` guards. Add INV-18 to INV-24 to
       `domain-invariants.md` with their property tests, in the same pull request. Nothing in
@@ -69,7 +71,22 @@ need to change, it is named here with its new test and why trial 1's guarantee i
   - Done when: `npm run check` passes with no surviving mutant, `check-trace` reports 22 invariants with
     none untested, and each new property and unit case is shown to fail on a deliberately broken reducer
     (recorded below).
-  - Result: filled in the task's pull request
+  - Result: `npm run check` passes on Node 26.13.0: 351 tests (54 new on 297: 26 in `shed.test.ts`, 14 in
+    `shed.pbt.test.ts`, 14 in `reducer.test.ts`), coverage 100% on every metric, mutation score 100%
+    (485 mutants, none survived; the first run had none either), `check-trace: 22 invariants, 0 without
+    tests`, size budget ok. No existing test was edited: the change to `reducer.test.ts` is appended cases.
+    **Deliberate breaks** (each applied to `shed.ts` or `reducer.ts`, the four test files run, then
+    restored; the list is every break I made): the hammer opens the door too fails 4 tests (INV-20 and
+    3 unit); `GiveTool` always tries the key fails 8 (INV-19, the unit cases per tool, the coverage test);
+    `PickTool` also replaces after a try fails 4 (INV-21); `PickTool` changes the tried tool fails 3
+    (INV-21); `RetryShed` keeps the tool as the pick fails 7 (INV-21, INV-22); shed events act outside
+    trial 2 fails 2 (INV-23); `Tick` runs the clock in the shed fails 3 (INV-24); `PickCard` acts in the
+    shed fails 2 (INV-24); `GiveTool` with nothing picked tries the key fails 4 (INV-18, INV-19);
+    `StartShed` from any phase fails 1 (unit); `StartShed` that also starts the run fails 2 (unit). One
+    gap I noticed: `StartShed` that restarts the run leaves INV-24 green, because `restartRun` of the
+    initial run equals the initial run; the unit tests catch it. INV-3 and INV-4 were run over the new
+    events and pass. Nothing in `src/game/` changed, so no smoke was needed for this task (the existing 11
+    were not re-run here).
 
 ## 3. Model check
 
