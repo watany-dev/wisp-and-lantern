@@ -1,0 +1,117 @@
+# Tasks: Trial 1, The Dark Lane
+
+One task per branch and per pull request (`AGENTS.md`). Branch `02-trial-tell/<task>`; each branch is
+cut from the one before, and each pull request targets the previous task's branch until that one is
+merged. Every task passes `npm run check`; tasks 7 and 8 also pass `npm run build` and `npm run smoke`.
+Sized for review on a phone: aim for under 300 changed lines, tests included.
+
+Status: `[ ]` open, `[x]` done. A task fills its **Result** line in its own pull request, with what it
+ran and what it saw.
+
+## 1. Spec
+
+- [x] 1.1 Write `requirements.md`, `design.md` and this file.
+  - Requirements: all (REQ-2.1 to REQ-2.15)
+  - Tests: none (documents). `npm run check` includes `check-trace`, which reads these ids.
+  - Result: `npm run check` passes on Node 26.13.0 (see the pull request for the run).
+
+## 2. Domain rules
+
+- [ ] 2.1 Add `lane.ts` (types, `initialLane`, `isColor`, `isComplete`, `wishAt`, `outcome`), `lane` in
+      `GameState`, `wishes` in `balance.ts`, the events `PickCard`, `Ask`, `Retry`, and the reducer cases. `Start`
+      sets `trial` to 1 from the title. Update `reducer.test.ts`, `balance.test.ts`, the reducer perf
+      sequence and the existing property and model tests only so that they still compile and
+      still check what they checked.
+  - Requirements: REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.6, REQ-2.7
+  - Tests: `reducer.test.ts` (one case per event, branch and boundary: replace, same card twice,
+    ask with 0, 1 and 2 cards, ask twice, pick after ask, retry after wrong and after right, the
+    wish wraps, lane events in the title, `Start` twice).
+  - Done when: `npm run check` passes with no surviving mutant.
+  - Result:
+
+## 3. Property tests
+
+- [ ] 3.1 Add INV-5, INV-6 and INV-7 to `domain-invariants.md` with property tests in
+      `reducer.pbt.test.ts`; add the lane events to the event arbitrary so INV-1 to INV-4 cover them.
+  - Requirements: REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.14
+  - Tests: `reducer.pbt.test.ts` (INV-1 to INV-7). Each new property is shown to fail on a
+    deliberately broken reducer before it is kept (recorded in the pull request).
+  - Done when: `npm run check` passes and `check-trace` reports every INV as tested.
+  - Result:
+
+## 4. Model check
+
+- [ ] 4.1 Extend `reducer.model.test.ts` with the lane alphabet: state invariants, "right result
+      reachable from every state" and "choosing reachable from every state". Record the reached
+      state count in the test.
+  - Requirements: REQ-2.8, REQ-2.14
+  - Tests: `reducer.model.test.ts`. The new check is shown to report a soft-lock when `Retry` is
+    removed from the alphabet (a case in the test).
+  - Done when: `npm run check` passes.
+  - Result:
+
+## 5. Content
+
+- [ ] 5.1 Add the `kind` field and the two object cards to `cards.json`, the `lane` strings to both
+      string files, regenerate the subset font (`npm run font`) and add `src/content/__tests__/lane-content.test.ts`.
+  - Requirements: REQ-2.9, REQ-2.10, REQ-2.13
+  - Tests: card ids and kinds equal the domain's `colors` and `things`; every color has a distinct
+    shape and pattern; every message with every item name obeys the Japanese rules; ja and en have
+    the same keys. `npm run kid` and `check-font-coverage` pass.
+  - Done when: `npm run check` passes.
+  - Result:
+
+## 6. Game logic modules
+
+- [ ] 6.1 Add `lane-layout.ts`, `lane-view.ts` and `pattern.ts` with unit tests.
+  - Requirements: REQ-2.2, REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.6, REQ-2.7, REQ-2.10, REQ-2.11
+  - Tests: `src/game/__tests__/lane-layout.test.ts` (inside the canvas, no overlaps, at least 80 px,
+    hero start clear of every object), `lane-view.test.ts` (message, button, armed, lit slot and
+    result mark in both languages for every stage), `pattern.test.ts`.
+  - Done when: `npm run check` passes with no surviving mutant.
+  - Result:
+
+## 7. Scene
+
+- [ ] 7.1 Add `LaneScene.ts` and `ui/art.ts`; hand off from `TitleScene`; register in `boot.ts`. Keep
+      the hero drag for presses outside every object.
+  - Requirements: REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.5, REQ-2.6, REQ-2.7, REQ-2.10, REQ-2.11, REQ-2.12
+  - Tests: no new test file (scenes are excluded, ADR 0003); the existing mobile and desktop smoke
+    must still pass unchanged.
+  - Done when: `npm run check`, `npm run build` and `npm run smoke` pass; screenshots of the title
+    and the lane in both languages are attached to the pull request.
+  - Result:
+
+## 8. Smoke and docs
+
+- [ ] 8.1 Add the mobile smoke that plays trial 1 with real taps (ja: missing card does nothing,
+      wrong item, retry, right item; en: again, offline), and the desktop mouse smoke. Widen the
+      state type in `e2e/helpers.ts`. Update `CHANGELOG.md` and the trial 1 line of
+      `docs/learning-design.md` only if it now disagrees with the game.
+  - Requirements: REQ-2.1, REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.6, REQ-2.7, REQ-2.8, REQ-2.9, REQ-2.11,
+    REQ-2.12, REQ-2.14, REQ-2.15
+  - Tests: `e2e/smoke.mobile.spec.ts`, `e2e/smoke.desktop.spec.ts`.
+  - Done when: `npm run check`, `npm run build` and `npm run smoke` pass.
+  - Result:
+
+## Traceability
+
+Filled in as tasks land: each row names the test file that fails when the requirement breaks.
+
+| requirement | task | test | result |
+|---|---|---|---|
+| REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | |
+| REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | |
+| REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | |
+| REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | |
+| REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | |
+| REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | |
+| REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | |
+| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | |
+| REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | |
+| REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | |
+| REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | |
