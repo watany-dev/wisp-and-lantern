@@ -109,7 +109,7 @@ ran and what it saw.
 
 ## 8. Smoke and docs
 
-- [ ] 8.1 Add the mobile smoke that plays trial 1 with real taps (ja: missing card does nothing,
+- [x] 8.1 Add the mobile smoke that plays trial 1 with real taps (ja: missing card does nothing,
       wrong item, retry, right item; en: again, offline), and the desktop mouse smoke. Widen the
       state type in `e2e/helpers.ts`. Update `CHANGELOG.md` and the trial 1 line of
       `docs/learning-design.md` only if it now disagrees with the game.
@@ -117,7 +117,15 @@ ran and what it saw.
     REQ-2.12, REQ-2.14, REQ-2.15
   - Tests: `e2e/smoke.mobile.spec.ts`, `e2e/smoke.desktop.spec.ts`.
   - Done when: `npm run check`, `npm run build` and `npm run smoke` pass.
-  - Result:
+  - Result: `npm run check` passes. On the production build, desktop Chromium runs 3 tests and the
+    mobile tests (touch, iPhone 13 profile) run 3, all passing; the mobile ones ran on Chromium
+    because WebKit cannot start in this sandbox, so `npm run smoke` as written (mobile = WebKit)
+    has been run by CI only. Each new test was checked against a deliberately broken scene
+    (restored afterwards): a wisp tap that sends nothing fails both mobile trial tests; a picked
+    card that asks by itself fails all three trial tests; a press on a card that walks the hero
+    fails only the new desktop hero test. The last two were NOT caught by the first version of the
+    smoke, so `pickCards` now asserts that picking alone has not asked, and the hero check moved to
+    a held mouse press (a tap is too short to walk the hero).
 
 ## Traceability
 
@@ -125,18 +133,18 @@ Filled in as tasks land: each row names the test file that fails when the requir
 
 | requirement | task | test | result |
 |---|---|---|---|
-| REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `reducer.test.ts` passes |
+| REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `reducer.test.ts` passes; 8.1: title to right result by taps, ja |
 | REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes; 6.1: picked and locked cards in `lane-view.test.ts` |
 | REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | 3.1: holds over random sequences of up to 40 events; fails when a pick searches by itself |
-| REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check |
+| REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check; 8.1: wisp tap with only a color searches nothing |
 | REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
-| REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass |
-| REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: no blame word in either language; message says the wisp did as asked |
-| REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | 4.1: 220 states, no violation; soft-lock found without Retry |
-| REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages |
+| REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass; 8.1: right pick finds the wish, play again moves to wish 1 |
+| REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: no blame word in either language; message says the wisp did as asked; 8.1: a different pick is answered, locked, then retried on the same wish |
+| REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts`, `smoke.mobile.spec.ts` | 4.1: 220 states, no violation; soft-lock found without Retry; 8.1: wrong, retry, right by taps |
+| REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages; 8.1: ja mobile run, en mobile and desktop runs |
 | REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern; 6.1: stripes, dots and plain marks and the item art |
-| REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | 6.1: every target at least 80 x 80, all inside 390 x 844, no overlap, hero start clear |
-| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | 7.1: no request in the scripted run after boot (offline smoke lands in 8.1) |
+| REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | 6.1: every target at least 80 x 80, all inside 390 x 844, no overlap, hero start clear; 8.1: touch taps, mouse clicks, and a press on a card leaves the hero still |
+| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | 8.1: context offline after the title; wrong, retry, right, play again finish with no request and no error |
 | REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | 5.1: `npm run kid` ok; all item names fit 12 x 2 |
-| REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | |
-| REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | |
+| REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | PBT: INV-5 to INV-7 (3.1); model: 220 states (4.1); smoke: 6 tests on the build (8.1) |
+| REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | no change to `vite.config.ts`, `stryker.config.json`, `package.json`, `scripts/check-*` or the CI workflows in any of the eight pull requests; no existing test removed or loosened (the property and model arbitraries were widened) |
