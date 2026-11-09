@@ -7,7 +7,10 @@ import type { GameState } from "../../domain/state";
 import type { Game } from "../judge";
 import { buttonRect, overLockMs, overText } from "../lane-layout";
 import { overView } from "../over-view";
-import { drawPanel, palette } from "../ui/art";
+import { drawButton } from "../ui/art";
+import { drawBackground } from "../ui/background";
+import { fitCamera } from "../ui/camera";
+import { createWispArt } from "../ui/wisp-actor";
 import { goldStyle, inkStyle, textStyle } from "../ui/text";
 
 export class OverScene extends Phaser.Scene {
@@ -18,6 +21,9 @@ export class OverScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
+    drawBackground(this);
+    this.add.container(195, 690, [createWispArt(this)]).setScale(1.8);
     const view = overView(this.game_.state());
     this.locked = true;
     this.time.delayedCall(overLockMs, () => (this.locked = false));
@@ -38,7 +44,7 @@ export class OverScene extends Phaser.Scene {
   private createButton(text: string): void {
     const { x, y, width, height } = buttonRect;
     const panel = this.add.graphics();
-    drawPanel(panel, width, height, palette.gold);
+    drawButton(panel, width, height);
     const label = this.add.text(0, 0, text, { ...inkStyle, fontSize: "24px" }).setOrigin(0.5);
     const button = this.add.container(x, y, [panel, label]).setSize(width, height);
     button.setInteractive().on("pointerdown", () => this.restart());

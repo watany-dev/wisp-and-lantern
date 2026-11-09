@@ -26,7 +26,20 @@ import {
 } from "../lane-layout";
 import { hudView, itemArt, laneView, type LaneView } from "../lane-view";
 import { stepToward } from "../steer";
-import { drawBar, drawItem, drawPanel, drawStar, palette } from "../ui/art";
+import {
+  drawBar,
+  drawButton,
+  drawItem,
+  drawLitSlot,
+  drawPanel,
+  drawSlot,
+  drawStar,
+  palette,
+} from "../ui/art";
+import { drawBackground } from "../ui/background";
+import { fitCamera } from "../ui/camera";
+import { burst, ripple } from "../fx/sparks";
+import { createHero, createWispArt } from "../ui/wisp-actor";
 import { createCard, type CardWidget } from "../ui/cards";
 import { goldStyle, inkStyle, textStyle } from "../ui/text";
 
@@ -37,7 +50,7 @@ export class LaneScene extends Phaser.Scene {
   private view!: LaneView;
   private shown: { lane?: GameState["lane"]; lang?: Lang } = {};
   private walks = true;
-  private hero!: Phaser.GameObjects.Image;
+  private hero!: Phaser.GameObjects.Container;
   private wispBox!: Phaser.GameObjects.Container;
   private ring!: Graphics;
   private wishArt!: Graphics;
@@ -65,7 +78,9 @@ export class LaneScene extends Phaser.Scene {
     this.cards = new Map();
     this.walks = true;
     this.lastScore = 0;
-    this.hero = this.add.image(0, 0, "hero");
+    fitCamera(this);
+    drawBackground(this, false);
+    this.hero = createHero(this);
     this.createHud();
     this.createSlots();
     this.createWish();
@@ -117,7 +132,7 @@ export class LaneScene extends Phaser.Scene {
     for (const color of colors) {
       for (const thing of things) {
         const { x, y } = slotCenter(color, thing);
-        drawPanel(this.add.graphics({ x, y }), slotSize, slotSize, palette.dark);
+        drawSlot(this.add.graphics({ x, y }), slotSize);
       }
     }
     // Above the wisp, which flies to the slot: the asked item stays in view.
@@ -133,9 +148,9 @@ export class LaneScene extends Phaser.Scene {
 
   private createWisp(): void {
     this.ring = this.add.graphics();
-    this.ring.lineStyle(5, palette.gold, 1).strokeCircle(0, 0, 44);
-    const image = this.add.image(0, 0, "wisp");
-    this.wispBox = this.add.container(wisp.x, wisp.y, [this.ring, image]);
+    this.ring.lineStyle(5, palette.gold, 1).strokeCircle(0, 0, 48);
+    this.tweens.add({ targets: this.ring, scale: 1.1, duration: 700, yoyo: true, repeat: -1 });
+    this.wispBox = this.add.container(wisp.x, wisp.y, [this.ring, createWispArt(this)]);
     this.wispBox.setSize(wispRect.width, wispRect.height).setInteractive();
     this.wispBox.on("pointerdown", () => this.game_.dispatch({ type: "Ask" }));
   }
@@ -170,7 +185,7 @@ export class LaneScene extends Phaser.Scene {
   private createButton(): void {
     const { x, y, width, height } = buttonRect;
     const panel = this.add.graphics();
-    drawPanel(panel, width, height, palette.gold);
+    drawButton(panel, width, height);
     this.buttonLabel = this.add.text(0, 0, "", { ...inkStyle, fontSize: "24px" }).setOrigin(0.5);
     this.button = this.add.container(x, y, [panel, this.buttonLabel]).setSize(width, height);
     this.button.setInteractive().on("pointerdown", () => this.tapButton());
@@ -253,10 +268,19 @@ export class LaneScene extends Phaser.Scene {
     if (!lit) return;
     const { x, y } = slotCenter(lit.color, lit.thing);
     this.slotLight.setPosition(x, y);
-    drawPanel(this.slotLight, slotSize, slotSize, palette.lit);
+    drawLitSlot(this.slotLight, slotSize);
     drawItem(this.slotLight, itemArt(lit), slotSize - 20);
     this.star.setPosition(x + 32, y - 32);
-    if (this.view.star) drawStar(this.star, 18);
+    if (this.view.star) this.celebrate(x, y);
+  }
+
+  /** A find: the star pops in, gold sparks fly and a ring opens at the slot. */
+  private celebrate(x: number, y: number): void {
+    drawStar(this.star, 18);
+    this.star.setScale(0.2);
+    this.tweens.add({ targets: this.star, scale: 1, duration: 420, ease: "Back.easeOut" });
+    burst(this, x, y);
+    ripple(this, x, y);
   }
 
   private renderControls(): void {

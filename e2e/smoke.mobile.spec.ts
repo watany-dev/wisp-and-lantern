@@ -157,8 +157,8 @@ for (const lang of ["ja", "en"] as const) {
     await page.goto(`./?lang=${lang}`);
     await expect(page.locator("canvas")).toBeVisible();
     await expectBundledFont(page);
-    // Phaser fetches the two placeholder PNGs at boot; wait until nothing is in flight, so the first
-    // load is complete before the network goes away.
+    // Wait until nothing is in flight (the font), so the first load is complete before the
+    // network goes away.
     await page.waitForLoadState("networkidle");
 
     // Offline from the title screen on: the start tap, the scene change and the whole trial run
