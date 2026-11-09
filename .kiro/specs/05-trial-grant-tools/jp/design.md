@@ -136,11 +136,12 @@ export type GameEvent = /* as before */ | { type: "StartShed" } | ShedEvent;
 
 | 意図的な破壊 | 失敗する検査 | 反例 |
 |---|---|---|
-| 鍵が開けない | ゴール1がすべての状態で行き詰まる。鍵の open の到達の証拠が見つからない | 開始状態、トレースは空 |
-| `RetryShed` を無視する | ゴール1が行き詰まる | 試したほうきかハンマー。トレースは `GiveTool` で終わる |
-| 成功のあとの `RetryShed` を無視する | ゴール3が行き詰まる | 試した鍵。トレースは `StartShed, PickTool key, GiveTool`、または言語やヒーローの移動が入った変形 |
-| 何を選んでいても `GiveTool` が鍵を渡す | 試した道具の不変条件 | `StartShed, PickTool broom, GiveTool`（またはハンマー） |
-| `PickTool` が最初の選択を保つ | 選択の不変条件 | `StartShed, PickTool key, PickTool broom`（または別の組） |
+| 鍵の受け渡しが無視される（鍵が扉を開けられない） | ゴール1がすべての状態で行き詰まる | 開始状態、トレースは空 |
+| `RetryShed` を無視する | ゴール1が行き詰まる | 試したほうき（最初に見つかるもの）、トレース `StartShed, PickTool broom, GiveTool` |
+| 成功のあとの `RetryShed` を無視する | ゴール3が開始から行き詰まる。ゴール1は通る | 開始状態。成功そのものからは、トレースが空の、試した鍵 |
+| 何を選んでいても `GiveTool` が鍵を渡す | 試した道具の不変条件 | `StartShed, PickTool broom, GiveTool` |
+| `PickTool` が最初の選択を保つ | 選択の不変条件 | `StartShed, PickTool key, PickTool broom` |
+| 小屋で `Tick` が時計を進める | run の不変条件 | `StartShed, Tick 1000` |
 
 破壊は、試練1の検査と同じく実際の `reduce` を包む `step` のラッパーで、そのためにソースは編集しません。テストは実際のトレースを検証し、タスク3.1の Result に記録します。
 
