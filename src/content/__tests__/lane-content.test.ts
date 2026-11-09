@@ -75,7 +75,8 @@ describe("lane strings (REQ-2.9, REQ-2.13)", () => {
   });
 
   it("name the item in the child's language", () => {
-    expect(itemNames("ja")).toContain("あかい かぼちゃ");
+    expect(itemNames("ja")).toContain(`${colorCards[0]?.label.ja} ${thingCards[0]?.label.ja}`);
+    expect(new Set(itemNames("ja")).size).toBe(colors.length * things.length);
     expect(itemNames("en")).toContain("red pumpkin");
     expect(itemNames("en")).toHaveLength(colors.length * things.length);
   });
@@ -83,7 +84,9 @@ describe("lane strings (REQ-2.9, REQ-2.13)", () => {
 
 describe("no blame (REQ-2.4, REQ-2.7)", () => {
   const blameEn = /\b(wrong|bad|no|not|fail\w*|mistake|oops|error)\b/i;
-  const blameJa = /ちがう|ちがい|だめ|ざんねん|まちがい|しっぱい|ダメ/;
+  // Japanese for: chigau, chigai, dame, zannen, machigai, shippai (escaped: the repo is English-only).
+  const blameJa =
+    /\u3061\u304c\u3046|\u3061\u304c\u3044|\u3060\u3081|\u3056\u3093\u306d\u3093|\u307e\u3061\u304c\u3044|\u3057\u3063\u3071\u3044|\u30c0\u30e1/;
 
   it("keeps blame words out of every lane message and the retry button", () => {
     for (const text of [...Object.values(en.lane), en.retry]) expect(text).not.toMatch(blameEn);
