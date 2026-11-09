@@ -4,8 +4,10 @@
 
 import {
   canAsk,
+  colors,
   isComplete,
   outcome,
+  things,
   wishAt,
   type CardId,
   type Lane,
@@ -23,6 +25,9 @@ const strings = { ja, en };
 
 type MessageKey = keyof typeof ja.lane;
 
+/** How one picture card looks: its label, whether it is marked, and how faded it is. */
+type CardState = { id: CardId; label: string; picked: boolean; alpha: number };
+
 export type LaneView = {
   message: string;
   /** Shown after a search. Both results retry; the right one moves on to the next wish. */
@@ -31,10 +36,12 @@ export type LaneView = {
   armed: boolean;
   /** The cards cannot be changed until the retry. */
   locked: boolean;
-  picked: Lane["pick"];
+  cards: CardState[];
   /** The slot the helper lit: exactly what was asked. */
   lit: Wish | null;
   star: boolean;
+  /** The wisp is faded while it cannot be sent. */
+  wispAlpha: number;
   wish: Wish;
   wishText: string;
   wispTarget: Point;
@@ -71,6 +78,14 @@ function buttonFor(state: GameState): LaneView["button"] {
   return { text: result === "right" ? s.lane.again : s.retry, event: { type: "Retry" } };
 }
 
+/** After the search the cards that were not picked fade, so the asked pair stands out. */
+function cardStates(lane: Lane, lang: Lang): CardState[] {
+  return [...colors, ...things].map((id) => {
+    const picked = lane.pick.color === id || lane.pick.thing === id;
+    return { id, label: cardLabel(id, lang), picked, alpha: lane.asked && !picked ? 0.45 : 1 };
+  });
+}
+
 export function laneView(state: GameState): LaneView {
   const { lane } = state;
   const lit = lane.asked && isComplete(lane.pick) ? lane.pick : null;
@@ -79,9 +94,10 @@ export function laneView(state: GameState): LaneView {
     button: buttonFor(state),
     armed: canAsk(lane),
     locked: lane.asked,
-    picked: lane.pick,
+    cards: cardStates(lane, state.lang),
     lit,
     star: outcome(lane) === "right",
+    wispAlpha: canAsk(lane) || lane.asked ? 1 : 0.55,
     wish: wishAt(lane.wish),
     wishText: strings[state.lang].lane.wish,
     wispTarget: lit ? slotCenter(lit.color, lit.thing) : wisp,

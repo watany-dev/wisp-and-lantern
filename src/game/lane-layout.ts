@@ -15,9 +15,10 @@ export const heroSize = 64;
 export const slotSize = 88;
 export const wishPictureSize = 64;
 const wispHit = 96;
-const cardSize = { width: 96, height: 92 } as const;
+export const cardSize = { width: 96, height: 92 } as const;
 
 export const wisp: Point = { x: 195, y: 370 };
+export const wishText: Rect = { x: 130, y: 62, width: 200, height: 40 };
 export const wishPicture: Point = { x: 265, y: 62 };
 export const messageText = { x: 195, y: 454, wrap: 340, height: 60 } as const;
 export const buttonRect: Rect = { x: 195, y: 528, width: 300, height: 80 };
