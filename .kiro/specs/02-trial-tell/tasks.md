@@ -17,17 +17,18 @@ ran and what it saw.
 
 ## 2. Domain rules
 
-- [ ] 2.1 Add `lane.ts` (types, `initialLane`, `isColor`, `isComplete`, `wishAt`, `outcome`), `lane` in
+- [x] 2.1 Add `lane.ts` (types, `initialLane`, `isColor`, `isComplete`, `wishAt`, `outcome`), `lane` in
       `GameState`, `wishes` in `balance.ts`, the events `PickCard`, `Ask`, `Retry`, and the reducer cases. `Start`
-      sets `trial` to 1 from the title. Update `reducer.test.ts`, `balance.test.ts`, the reducer perf
-      sequence and the existing property and model tests only so that they still compile and
-      still check what they checked.
+      sets `trial` to 1. Update `reducer.test.ts` and `balance.test.ts`; the existing property, model and
+      perf files are not touched in this task and still pass unchanged.
   - Requirements: REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.6, REQ-2.7
   - Tests: `reducer.test.ts` (one case per event, branch and boundary: replace, same card twice,
     ask with 0, 1 and 2 cards, ask twice, pick after ask, retry after wrong and after right, the
     wish wraps, lane events in the title, `Start` twice).
   - Done when: `npm run check` passes with no surviving mutant.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 92 tests, 100% coverage on `src/domain`, mutation
+    score 100%. A first run left one mutant alive (`Start` in a trial); `Start` is now one expression
+    with no branch, because `trial` is already 1 there.
 
 ## 3. Property tests
 
@@ -100,12 +101,12 @@ Filled in as tasks land: each row names the test file that fails when the requir
 
 | requirement | task | test | result |
 |---|---|---|---|
-| REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | |
-| REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | |
+| REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `reducer.test.ts` passes |
+| REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes |
 | REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | |
 | REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | |
 | REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | |
-| REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass |
 | REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
 | REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | |
 | REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
