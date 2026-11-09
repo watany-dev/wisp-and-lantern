@@ -192,7 +192,13 @@ behavior (the Result line of that task says how).
     results (the same state after `SetLang` draws different words in the closing line panel, checked
     by fingerprint), vague color-only, vague object-only, desktop vague and right. The old step "a
     color alone is not a request" is replaced; the no-card wisp tap is kept, after a retry, so the
-    scene is known to be ready.
+    scene is known to be ready. **Follow-up after the merge to `main`:** the `main` smoke failed on
+    WebKit in one test (the English offline run, a single-line message: 43.6 text pixels against my
+    threshold of 60). The threshold was calibrated on Chromium only. On the pull requests the same
+    test had passed because the wisp's white square, flying through the message box just after the
+    ask, was counted as text, which the `main` run happened not to sample. The fix: the threshold is
+    10 (an empty box counts 0), and pixels as blue as the wisp (blue 245 or more) are not text. The
+    two breaks (closing line never drawn, drawn on every result) still fail 5 and 4 tests.
 
 ## 8. Documents
 

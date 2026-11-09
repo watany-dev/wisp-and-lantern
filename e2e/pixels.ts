@@ -79,12 +79,11 @@ export function hexToRgb(hex: string): Rgb {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/** How many pixels of the image are within `tolerance` of `color` on every channel. */
-export function countNear(image: Image, color: Rgb, tolerance: number): number {
+/** How many pixels of the image satisfy `test`. */
+export function countMatching(image: Image, test: (pixel: Rgb) => boolean): number {
   let count = 0;
   for (let i = 0; i < image.data.length; i += 4) {
-    if (near([image.data[i]!, image.data[i + 1]!, image.data[i + 2]!], color, tolerance))
-      count += 1;
+    if (test([image.data[i]!, image.data[i + 1]!, image.data[i + 2]!])) count += 1;
   }
   return count;
 }
