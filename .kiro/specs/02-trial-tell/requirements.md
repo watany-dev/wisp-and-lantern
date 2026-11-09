@@ -7,6 +7,11 @@
 > are retired. Everything else below still holds. The new spec has the full table. The text below is
 > left as it was written.
 
+> **Scope note: a second trial now exists ([`05-trial-grant-tools`](../05-trial-grant-tools/requirements.md)).**
+> "Out: trials 2 to 6" below was true of this spec's scope; trial 2 (The Locked Shed) is specified in `05`. The title
+> tap of REQ-2.1.1 still starts this trial, except a tap on trial 2's own button on the title. Nothing in the
+> text below is changed.
+
 Spec `02-trial-tell`. Teaches learning goal L1 (`docs/learning-design.md`): a helper does exactly what
 you ask, so ask clearly. Requirement ids are `REQ-2.n`; `REQ-1.n` belongs to the missing
 `01-core-loop` spec (for example `REQ-1.11` in `e2e/helpers.ts`) and is not reused.

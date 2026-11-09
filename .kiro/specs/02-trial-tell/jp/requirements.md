@@ -4,6 +4,10 @@
 
 > 和訳です。**正本は英語版** [`../requirements.md`](../requirements.md) です。英語版を変えたら、同じPRでこのファイルも直します。識別子・パス・コマンド・要件ID（`REQ-2.n`）・不変条件ID（`INV-n`）は原文のままです。
 
+> **範囲の注記: 2つ目の試練ができました（[`05-trial-grant-tools`](../../05-trial-grant-tools/jp/requirements.md)）。**
+> 下の「対象外: 試練2〜6」はこのspecの範囲についての記述でした。試練2（The Locked Shed）は `05` で定めます。REQ-2.1.1 のタイトルの
+> タップは今もこの試練を始めますが、タイトルにある試練2専用のボタンへのタップは除きます。以下の本文は変えていません。
+
 spec `02-trial-tell`。学習目標 L1（`docs/learning-design.md`）を教えます。助手は頼まれたとおりにやるので、はっきり頼もう、という内容です。要件IDは `REQ-2.n` です。`REQ-1.n` は存在しない `01-core-loop` spec のもの（例: `e2e/helpers.ts` の `REQ-1.11`）で、再利用しません。
 
 ## 範囲
