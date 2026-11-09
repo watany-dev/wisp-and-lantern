@@ -153,7 +153,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 5. View and layout
 
-- [ ] 5.1 Add `shed-layout.ts`, `shed-view.ts` and `route.ts`, with unit tests. Nothing in a scene calls
+- [x] 5.1 Add `shed-layout.ts`, `shed-view.ts` and `route.ts`, with unit tests. Nothing in a scene calls
       them yet.
   - Requirements: REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.8, REQ-5.9, REQ-5.10; inherited REQ-2.10
   - Tests: `shed-view.test.ts` (per stage and language: message, button, armed, tools, marks, picture,
@@ -161,7 +161,18 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     `shed-layout.test.ts` (inside the canvas, no overlap per stage, targets at least 80, the hero strip
     free, the probes inside the picture); `route.test.ts` (`sceneFor` for every phase and trial).
   - Done when: `npm run check` passes with no surviving mutant.
-  - Result: filled in the task's pull request
+  - Result: `npm run check` passes on Node 26.13.0: 465 tests (83 new: 61 in `shed-view.test.ts`, 17 in
+    `shed-layout.test.ts`, 5 in `route.test.ts`), coverage 100%, mutation score 100% (589 mutants, none
+    survived; 1 mutant, `strings = {}`, crashes the module and is reported as an error, not a survivor),
+    size budget ok. The first run failed knip on an unused exported type (`ShedPicture`), now not
+    exported. The diff is about 670 lines, of which 460 are tests; I did not split it because the view
+    imports the layout and the scene choice is 13 lines. **Ten deliberate breaks** (each applied, `src/game`
+    tests run, restored): the closing line on every result fails 6 tests; a door that opens for any
+    tool fails 6; an armed wisp with nothing picked fails 2; the message naming the key whatever was
+    tried fails 6; every tool marked after the hand-over fails 18; the unpicked tools not fading fails 6;
+    the wisp staying home after the hand-over fails 6; trial 2 showing the lane scene fails 2; the wisp
+    standing on the door fails 2; the tool row moved up into the button fails 5. Nothing in a scene
+    calls the new modules, so the game is unchanged; the smoke was not run for this task.
 
 ## 6. Scene and entrance
 
