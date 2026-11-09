@@ -7,7 +7,21 @@ import ja from "../strings.ja.json";
 const patterns = ["stripes-v", "dots", "plain"];
 const colorCards = cards.filter((c) => c.kind === "color");
 const thingCards = cards.filter((c) => c.kind === "thing");
-const laneKeys = ["wish", "pickBoth", "pickColor", "pickThing", "ready", "right", "wrong", "again"];
+const laneKeys = [
+  "wish",
+  "pickBoth",
+  "pickColor",
+  "pickThing",
+  "pickAny",
+  "ready",
+  "right",
+  "wrong",
+  "vague",
+  "lesson",
+  "again",
+];
+// The messages that name the item the wisp brought (REQ-3.4.1, REQ-3.6.4).
+const itemKeys = ["right", "wrong", "vague"] as const;
 
 /** Every name the wrong-result message can show: a color label and an object label. */
 function itemNames(lang: "ja" | "en"): string[] {
@@ -57,22 +71,28 @@ describe("lane strings (REQ-2.9, REQ-2.13)", () => {
     expect(Object.keys(en.lane)).toEqual(laneKeys);
   });
 
-  it("insert the item name in the right and the different-result messages exactly once", () => {
-    for (const text of [ja.lane.right, ja.lane.wrong, en.lane.right, en.lane.wrong]) {
-      expect(text.split("{0}")).toHaveLength(2);
+  it("insert the item name in every result message exactly once, and nowhere else (REQ-3.6.4)", () => {
+    for (const lane of [ja.lane, en.lane]) {
+      for (const [key, text] of Object.entries(lane)) {
+        const expected = (itemKeys as readonly string[]).includes(key) ? 2 : 1;
+        expect(text.split("{0}"), key).toHaveLength(expected);
+      }
     }
+    for (const text of [ja.retry, en.retry, ja.start, en.start]) expect(text).not.toContain("{");
   });
 
   it("obey the Japanese rules for every item name the result messages can show", () => {
     for (const name of itemNames("ja")) {
-      for (const template of [ja.lane.right, ja.lane.wrong]) {
-        expect(kidProblems(template.replace("{0}", name)), `${template} / ${name}`).toEqual([]);
+      for (const key of itemKeys) {
+        const message = ja.lane[key].replace("{0}", name);
+        expect(kidProblems(message), `${key} / ${name}`).toEqual([]);
+        expect(message).not.toContain("{0}");
       }
     }
   });
 
   it("obey the Japanese rules in every other message and the retry button", () => {
-    const { wrong: _wrong, right: _right, ...rest } = ja.lane;
+    const { right: _r, wrong: _w, vague: _v, ...rest } = ja.lane;
     for (const text of [...Object.values(rest), ja.retry])
       expect(kidProblems(text), text).toEqual([]);
   });
@@ -85,7 +105,57 @@ describe("lane strings (REQ-2.9, REQ-2.13)", () => {
   });
 });
 
-describe("no blame (REQ-2.4, REQ-2.7)", () => {
+describe("closing line (REQ-3.5, REQ-3.6)", () => {
+  it("is two short lines in both languages", () => {
+    for (const text of [ja.lane.lesson, en.lane.lesson]) {
+      const lines = text.split("\n");
+      expect(lines).toHaveLength(2);
+      for (const line of lines) expect(line.replace(/\s/gu, "").length).toBeLessThanOrEqual(12);
+    }
+    // The English lines count their spaces too: they must fit the same 12.
+    for (const line of en.lane.lesson.split("\n")) expect(line.length).toBeLessThanOrEqual(12);
+  });
+
+  it("names the colour and the object the child told, and takes no item name", () => {
+    expect(en.lane.lesson).toMatch(/told/);
+    expect(en.lane.lesson).toMatch(/color/);
+    expect(en.lane.lesson).toMatch(/item/);
+    expect(ja.lane.lesson).not.toContain("{0}");
+  });
+
+  it("does not repeat the found message's words, which share the screen with it", () => {
+    expect(en.lane.lesson).not.toMatch(/just right/i);
+    expect(en.lane.right).toMatch(/just right/i);
+  });
+
+  it("makes no claim about real AI (docs/learning-design.md, what we do not teach)", () => {
+    const claims = /\b(always|never|every|all|know|knows|friend|family|real|robot)\b/i;
+    for (const text of [en.lane.lesson, en.lane.vague, en.lane.right, en.lane.wrong]) {
+      expect(text).not.toMatch(claims);
+    }
+  });
+});
+
+describe("choosing messages (REQ-3.1.7, REQ-3.2.2)", () => {
+  // Japanese for: both, two (cards), one more; escaped because the repository is English-only.
+  const needsSecondJa =
+    /\u308a\u3087\u3046\u307b\u3046|\u3075\u305f\u3064|\u306b\u307e\u3044|\u3082\u3046\u3072\u3068\u3064/;
+  const needsSecondEn = /\b(both|two|second|another|more|and)\b/i;
+
+  it("never say or suggest that a second card is needed to send the wisp", () => {
+    expect(ja.lane.ready).not.toMatch(needsSecondJa);
+    expect(en.lane.ready).not.toMatch(needsSecondEn);
+    expect(ja.lane.pickAny).not.toMatch(needsSecondJa);
+    expect(en.lane.pickAny).not.toMatch(needsSecondEn);
+  });
+
+  it("invite the child to pick a card, and to tap the wisp once one is picked", () => {
+    expect(en.lane.pickAny).toBe("Pick a card");
+    expect(en.lane.ready).toMatch(/tap the wisp/i);
+  });
+});
+
+describe("no blame (REQ-2.4, REQ-2.7, REQ-3.4.2)", () => {
   const blameEn = /\b(wrong|bad|no|not|fail\w*|mistake|oops|error)\b/i;
   // Japanese for: chigau, chigai, dame, zannen, machigai, shippai (escaped: the repo is English-only).
   const blameJa =
@@ -96,7 +166,9 @@ describe("no blame (REQ-2.4, REQ-2.7)", () => {
     for (const text of [...Object.values(ja.lane), ja.retry]) expect(text).not.toMatch(blameJa);
   });
 
-  it("says the wisp did what was asked", () => {
+  it("says the wisp did what was asked only when the request was complete", () => {
     expect(en.lane.wrong).toContain("just as you asked");
+    // With one card the wisp chose the rest itself, so "as you asked" would not be true.
+    expect(en.lane.vague).not.toMatch(/as you asked/i);
   });
 });

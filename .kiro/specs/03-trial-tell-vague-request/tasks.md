@@ -61,7 +61,7 @@ behavior (the Result line of that task says how).
 
 ## 3. Content
 
-- [ ] 3.1 Add `lane.pickAny`, `lane.vague` and `lane.lesson` to both string files, regenerate the
+- [x] 3.1 Add `lane.pickAny`, `lane.vague` and `lane.lesson` to both string files, regenerate the
       subset font, extend `lane-content.test.ts`. The old keys stay until 4.1. Nothing reads the new
       keys yet.
   - Requirements: REQ-3.5 (5), REQ-3.6
@@ -71,7 +71,14 @@ behavior (the Result line of that task says how).
     `npm run kid` and `check-font-coverage` pass. The kid-reader table (applied by hand) goes in the
     pull request.
   - Done when: `npm run check` passes.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 194 tests (6 new), mutation score 100%,
+    `npm run kid` ok, `check-font-coverage` ok. `npm run font` was run and left the subset font
+    byte-identical (`cmp`), because the font already holds 350 code points including `カ`, `ー`, `ド`.
+    The new tests were checked against two deliberate breaks, each restored: the English closing line
+    from the draft (`Color & item / Just right!`) fails two tests (it does not say what the child
+    told, and it repeats "Just right" from the found message); `vague` with "just as you asked" fails
+    one. The kid-reader rubric was applied by hand (table in the pull request); the agent itself was
+    not run.
 
 ## 4. View: show the brought item
 

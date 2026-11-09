@@ -39,11 +39,11 @@
 
 ## 3. 内容
 
-- [ ] 3.1 両方の文言ファイルに `lane.pickAny`、`lane.vague`、`lane.lesson` を足し、サブセットフォントを再生成し、`lane-content.test.ts` を拡張する。旧キーは4.1まで残す。新しいキーはまだ誰も読まない。
+- [x] 3.1 両方の文言ファイルに `lane.pickAny`、`lane.vague`、`lane.lesson` を足し、サブセットフォントを再生成し、`lane-content.test.ts` を拡張する。旧キーは4.1まで残す。新しいキーはまだ誰も読まない。
   - 要件: REQ-3.5（5）、REQ-3.6
   - テスト: `lane-content.test.ts`: 両言語で同じキー。`{0}` は `right`、`wrong`、`vague` にちょうど1つで、他にはない。3つすべてで、すべての物名に日本語の規則。締めの一文は両言語とも2行以内で1行12文字以内。新しい文言に責める言葉がない。`npm run kid` と `check-font-coverage` が通る。kid-readerの表（手作業で当てはめたもの）はPRに載せる。
   - 完了条件: `npm run check` が通る。
-  - 結果:
+  - 結果: Node 26.13.0 で `npm run check` が通る。194テスト（6件追加）、変異スコア100%、`npm run kid` ok、`check-font-coverage` ok。`npm run font` を実行し、サブセットフォントはバイト単位で同一のまま（`cmp`）。フォントにはすでに `カ`、`ー`、`ド` を含む350の文字があるため。新しいテストは、2つのわざと壊した版で確かめ、どちらも元に戻した。英語の締めの一文を案のまま（`Color & item / Just right!`）にすると2件失敗する（子どもが「伝えた」ことを言っておらず、見つかったメッセージの「Just right」と重なる）。`vague` に「just as you asked」を入れると1件失敗する。kid-readerの観点は手作業で当てはめた（表はPRにある）。エージェントそのものは実行していない。
 
 ## 4. view: 届いた物を見せる
 
