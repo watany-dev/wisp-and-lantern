@@ -4,6 +4,7 @@ import Phaser from "phaser";
 import type { Game } from "./judge";
 import { LaneScene } from "./scenes/LaneScene";
 import { OverScene } from "./scenes/OverScene";
+import { ShedScene } from "./scenes/ShedScene";
 import { TitleScene } from "./scenes/TitleScene";
 import { canvas } from "./lane-layout";
 import { pixelRatio } from "./ui/pixel-ratio";
@@ -21,6 +22,6 @@ export function boot(parent: HTMLElement, game: Game): Phaser.Game {
       height: canvas.height * pixelRatio,
     },
     input: { activePointers: 2 },
-    scene: [new TitleScene(game), new LaneScene(game), new OverScene(game)],
+    scene: [new TitleScene(game), new LaneScene(game), new OverScene(game), new ShedScene(game)],
   });
 }
