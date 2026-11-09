@@ -1,7 +1,19 @@
+import { createHash } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
-import type { ColorId, ThingId } from "../src/domain/lane";
-import { buttonRect, canvas, cardCenter, wisp } from "../src/game/lane-layout";
+import { colors, things, type CardId, type ColorId, type ThingId } from "../src/domain/lane";
+import {
+  buttonRect,
+  canvas,
+  cardCenter,
+  lessonBox,
+  resultText,
+  slotCenter,
+  wisp,
+  type Rect,
+} from "../src/game/lane-layout";
 import type { Point } from "../src/game/steer";
+import { textStyle } from "../src/game/ui/text";
+import { countNear, decodePng, hexToRgb, near, pixelAt, type Image, type Rgb } from "./pixels";
 
 type Pick = { color: string | null; thing: string | null };
 export type GameState = {
@@ -82,7 +94,7 @@ export const clicker =
  * Presses `point` until `done` holds. A scene registers its input after its assets load, so an
  * early press is lost; presses here are repeatable, and a broken handler never gets there and fails.
  */
-export async function pressUntil(
+async function pressUntil(
   page: Page,
   press: Press,
   point: Point,
@@ -117,3 +129,107 @@ export const askWisp = (page: Page, press: Press) =>
 /** Taps the button that appears after a result (retry, or play again). */
 export const pressButton = (page: Page, press: Press) =>
   pressUntil(page, press, { x: buttonRect.x, y: buttonRect.y }, (s) => !s.lane.asked);
+
+/** Picks one card and checks that picking alone has not asked (REQ-3.1.3). */
+export async function pickOne(page: Page, press: Press, card: CardId) {
+  const key = card === "red" || card === "blue" || card === "yellow" ? "color" : "thing";
+  await pressUntil(page, press, cardCenter(card), (s) => s.lane.pick[key] === card);
+  expect((await gameState(page)).lane.asked).toBe(false);
+}
+
+// What is on the screen. The text is drawn on the canvas, so it is read from a screenshot.
+
+/** The message color from `ui/text.ts`, which imports Phaser only as a type. */
+const textColor: Rgb = hexToRgb(textStyle.color as string);
+/** The lit slot's panel color (`palette.lit` in `ui/art.ts`, which cannot be imported here). */
+const litPanel: Rgb = [0x2a, 0x2a, 0x4a];
+/** Light text pixels, in CSS pixels, that a line of the smallest message leaves in its box. */
+const minTextPixels = 60;
+
+/** A page area in CSS pixels, top-left corner and size. */
+type Clip = { x: number; y: number; width: number; height: number };
+
+async function look(page: Page, clip?: Clip): Promise<Image> {
+  return decodePng(await page.screenshot(clip ? { clip } : {}));
+}
+
+/** Where the canvas is on the page, and how much it is scaled. */
+async function canvasFrame(page: Page) {
+  const box = (await page.locator("canvas").boundingBox())!;
+  return { box, scale: box.width / canvas.width };
+}
+
+/** The page area (CSS pixels) where a game rectangle (center x, y and size) is drawn. */
+async function pageClip(page: Page, rect: Rect): Promise<Clip> {
+  const { box, scale } = await canvasFrame(page);
+  return {
+    x: box.x + (rect.x - rect.width / 2) * scale,
+    y: box.y + (rect.y - rect.height / 2) * scale,
+    width: rect.width * scale,
+    height: rect.height * scale,
+  };
+}
+
+/** Screenshot pixels per CSS pixel: 3 on the phone profile, 1 on the desktop. */
+const density = (image: Image, page: Page) => image.width / page.viewportSize()!.width;
+
+/** Light text pixels in a game rectangle, counted in CSS pixels so phone and desktop compare. */
+async function textPixels(page: Page, rect: Rect): Promise<number> {
+  const clip = await pageClip(page, rect);
+  const image = await look(page, clip);
+  const ratio = image.width / clip.width;
+  return countNear(image, textColor, 70) / (ratio * ratio);
+}
+
+/** A fingerprint of what is drawn in a game rectangle: different words, different fingerprint. */
+export async function fingerprint(page: Page, rect: Rect): Promise<string> {
+  const image = await look(page, await pageClip(page, rect));
+  return createHash("sha1").update(image.data).digest("hex");
+}
+
+const resultMessageBox: Rect = {
+  x: resultText.x,
+  y: resultText.y,
+  width: resultText.wrap,
+  height: resultText.height,
+};
+export const lessonArea: Rect = lessonBox;
+
+/** The lane slots whose panel is lit, as "red pumpkin". Samples a corner that no art covers. */
+async function litSlots(page: Page): Promise<string[]> {
+  const image = await look(page);
+  const ratio = density(image, page);
+  const { box, scale } = await canvasFrame(page);
+  const corner = 38;
+  return colors
+    .flatMap((color) => things.map((thing) => ({ color, thing })))
+    .filter(({ color, thing }) => {
+      const c = slotCenter(color, thing);
+      const x = (box.x + (c.x - corner) * scale) * ratio;
+      const y = (box.y + (c.y - corner) * scale) * ratio;
+      return near(pixelAt(image, x, y), litPanel, 6);
+    })
+    .map(({ color, thing }) => `${color} ${thing}`);
+}
+
+/**
+ * The result is on the screen: the result message has been drawn where the wisp used to be, and
+ * exactly the expected slot is lit (REQ-3.3.6). The lit slot shows what the wisp brought.
+ */
+export async function expectBrought(page: Page, item: string) {
+  await expect
+    .poll(() => textPixels(page, resultMessageBox), { timeout: 5_000 })
+    .toBeGreaterThan(minTextPixels);
+  await expect.poll(() => litSlots(page), { timeout: 5_000 }).toEqual([item]);
+}
+
+/** The closing line is on the screen (right result) or is not (REQ-3.5.2). Call after `expectBrought`. */
+export async function expectClosingLine(page: Page, shown: boolean) {
+  if (shown) {
+    await expect
+      .poll(() => textPixels(page, lessonArea), { timeout: 5_000 })
+      .toBeGreaterThan(minTextPixels);
+  } else {
+    await expect.poll(() => textPixels(page, lessonArea), { timeout: 2_000 }).toBe(0);
+  }
+}

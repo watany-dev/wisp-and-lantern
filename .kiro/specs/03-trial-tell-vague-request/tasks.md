@@ -161,7 +161,7 @@ behavior (the Result line of that task says how).
 
 ## 7. Smoke
 
-- [ ] 7.1 Mobile smoke: color only, ask, a different item with its name, retry, color and object,
+- [x] 7.1 Mobile smoke: color only, ask, a different item with its name, retry, color and object,
       found with the closing line; object only, the same. Replace the old "a color alone is not a
       request" step. Desktop smoke with the mouse. A PNG pixel check shows the closing line on screen.
       Offline run in both languages. Update `e2e/helpers.ts`.
@@ -170,7 +170,29 @@ behavior (the Result line of that task says how).
     a deliberately broken scene or rule: a scene that never draws the closing line, a rule that
     ignores one-card asks, a scene that draws the closing line on a different result.
   - Done when: `npm run check`, `npm run build` and the smoke pass; the screenshots were looked at.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0 (230 tests, mutation score 100%, knip clean after
+    I un-exported four helpers). **Smoke, what ran:** the 9 tests (6 mobile, 3 desktop) pass on the
+    production build with a local config that runs the `mobile` project on **Chromium with the iPhone
+    13 touch profile** (`.cache/playwright.local.config.ts`, git-ignored, same specs, same server);
+    the mobile run passed 3 times in a row. **Smoke, what did not run:** `npm run smoke` as configured
+    uses WebKit for `mobile`; here `playwright install webkit` fails on missing system libraries
+    ("Host system is missing dependencies"), so the 6 mobile tests failed to launch and only the 3
+    desktop tests ran under the real config (3 passed). **The real WebKit run is CI's, and this task
+    is not done until CI's smoke is green.** **What the tests see:** every press is a real tap or
+    click; what the wisp brought is read from a screenshot (the lit slot's panel color at a corner no
+    art covers, exactly one slot), and the text is read by counting light pixels (about 150 to 500
+    CSS px for a message or the closing line, 0 when there is none). The PNG decoder is in
+    `e2e/pixels.ts` (`node:zlib`, no dependency); it has no unit test of its own, because the unit
+    test include is fixed in `vite.config.ts`, a protected path. The breaks below show it reads
+    pixels correctly. **Breaks, each restored and the build redone:** a scene that never draws the
+    closing line fails 5 of 6 (the 6th is the complete-request test, which expects no line); a scene
+    that draws it on every result fails 4 (received 378 to 654 text pixels where 0 was expected);
+    `canAsk` back to both cards fails 5 (the complete-request test passes, as it should); a view that
+    lights the wish instead of what was brought fails all 6. **Seen in screenshots:** ja and en right
+    results (the same state after `SetLang` draws different words in the closing line panel, checked
+    by fingerprint), vague color-only, vague object-only, desktop vague and right. The old step "a
+    color alone is not a request" is replaced; the no-card wisp tap is kept, after a retry, so the
+    scene is known to be ready.
 
 ## 8. Documents
 

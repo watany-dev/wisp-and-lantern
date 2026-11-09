@@ -4,11 +4,16 @@ import { cardCenter, wisp } from "../src/game/lane-layout";
 import {
   askWisp,
   collectErrors,
+  dispatch,
+  expectBrought,
   expectBundledFont,
+  expectClosingLine,
+  fingerprint,
   gameState,
+  lessonArea,
   pickCards,
+  pickOne,
   pressButton,
-  pressUntil,
   startTrial,
   tapper,
 } from "./helpers";
@@ -30,12 +35,15 @@ test("boots on a phone and starts the game with a tap", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-// Trial 1 (.kiro/specs/02-trial-tell): every press below is a real touch tap on the canvas.
-// The first wish is the yellow lantern (`balance.wishes[0]`); red lantern is a different request.
+// Trial 1 (.kiro/specs/02-trial-tell and 03-trial-tell-vague-request): every press below is a real
+// touch tap on the canvas, and what the wisp brought is read from the pixels, not from the state.
+// The first wish is the yellow lantern (`balance.wishes[0]`). What one card brings for it, written
+// out by hand from the table in the design: yellow only brings the yellow pumpkin, lantern only
+// the red lantern.
 const wish = wishAt(0);
-const other = { color: wish.color === "red" ? "blue" : "red", thing: wish.thing } as const;
+const emptyLane = { wish: 0, pick: { color: null, thing: null }, asked: false };
 
-test("REQ-2.1, REQ-2.3, REQ-2.4, REQ-2.7, REQ-2.8: plays trial 1 with taps in Japanese", async ({
+test("REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4, REQ-3.5: a color alone brings another object, then both cards find the wish, in Japanese", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -46,67 +54,136 @@ test("REQ-2.1, REQ-2.3, REQ-2.4, REQ-2.7, REQ-2.8: plays trial 1 with taps in Ja
   await startTrial(page, tap);
   expect((await gameState(page)).lang).toBe("ja");
 
-  // A color alone is not a request: tapping the wisp searches nothing (the scene is ready, because
-  // the first pick above already landed).
-  await pressUntil(page, tap, cardCenter(other.color), (s) => s.lane.pick.color === other.color);
-  await tap(wisp);
-  await page.waitForTimeout(300);
-  expect((await gameState(page)).lane).toMatchObject({ asked: false, pick: { thing: null } });
-
-  // Both cards, then the explicit request: the helper searches exactly what was picked.
-  await pickCards(page, tap, other.color, other.thing);
+  // One card is a request: picking does not send the wisp, tapping the wisp does.
+  await pickOne(page, tap, "yellow");
   await askWisp(page, tap);
-  expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: other });
-  await page.screenshot({ path: "e2e/screenshots/mobile-lane-different.png" });
-
-  // The pick is locked until the retry; the retry starts over on the same wish, without blame.
-  await tap(cardCenter("yellow"));
-  await page.waitForTimeout(300);
-  expect((await gameState(page)).lane.pick).toEqual(other);
-  await pressButton(page, tap);
   expect((await gameState(page)).lane).toEqual({
     wish: 0,
-    pick: { color: null, thing: null },
-    asked: false,
+    pick: { color: "yellow", thing: null },
+    asked: true,
   });
+  // The wisp chose the object itself: the pumpkin is lit, the lantern slot is not, and there is
+  // no closing line on a result that is not the wish.
+  await expectBrought(page, "yellow pumpkin");
+  await expectClosingLine(page, false);
+  await page.screenshot({ path: "e2e/screenshots/mobile-ja-vague-color.png" });
 
-  // The right request finds the wish; "play again" moves to the next one.
+  // The cards are locked until the retry, which keeps the wish and clears the pick.
+  await tap(cardCenter("blue"));
+  await page.waitForTimeout(300);
+  expect((await gameState(page)).lane.pick).toEqual({ color: "yellow", thing: null });
+  await pressButton(page, tap);
+  expect((await gameState(page)).lane).toEqual(emptyLane);
+
+  // No card is not a request. The scene is ready here, since a result was just answered.
+  await tap(wisp);
+  await page.waitForTimeout(300);
+  expect((await gameState(page)).lane).toEqual(emptyLane);
+
+  // Both cards find the wish, and the closing line shows.
   await pickCards(page, tap, wish.color, wish.thing);
   await askWisp(page, tap);
   expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: wish });
-  await page.screenshot({ path: "e2e/screenshots/mobile-lane-right.png" });
+  await expectBrought(page, "yellow lantern");
+  await expectClosingLine(page, true);
+  await page.screenshot({ path: "e2e/screenshots/mobile-ja-right.png" });
+
+  // The same state in English draws different words in the same place.
+  const japanese = await fingerprint(page, lessonArea);
+  await dispatch(page, { type: "SetLang", lang: "en" });
+  await expect.poll(() => fingerprint(page, lessonArea)).not.toBe(japanese);
+  await expectClosingLine(page, true);
+  await page.screenshot({ path: "e2e/screenshots/mobile-en-right.png" });
+
   await pressButton(page, tap);
   expect((await gameState(page)).lane.wish).toBe(1);
-
   expect(errors).toEqual([]);
 });
 
-test("REQ-2.12: finishes offline after the first load, in English", async ({ page, context }) => {
+test("REQ-3.1, REQ-3.3, REQ-3.4, REQ-3.5: an object alone brings another color, then both cards find the wish, in English", async ({
+  page,
+}) => {
   const errors = collectErrors(page);
   const tap = tapper(page);
   await page.goto("./?lang=en");
   await expect(page.locator("canvas")).toBeVisible();
   await expectBundledFont(page);
-  // Phaser fetches the two placeholder PNGs at boot; wait until nothing is in flight, so the first
-  // load is complete before the network goes away.
-  await page.waitForLoadState("networkidle");
-
-  // Offline from the title screen on: the start tap, the scene change and the whole trial run
-  // without a network.
-  await context.setOffline(true);
-  const requests: string[] = [];
-  page.on("request", (r) => requests.push(r.url()));
-
   await startTrial(page, tap);
   expect((await gameState(page)).lang).toBe("en");
-  await pickCards(page, tap, other.color, other.thing);
+
+  await pickOne(page, tap, "lantern");
   await askWisp(page, tap);
+  expect((await gameState(page)).lane).toEqual({
+    wish: 0,
+    pick: { color: null, thing: "lantern" },
+    asked: true,
+  });
+  await expectBrought(page, "red lantern");
+  await expectClosingLine(page, false);
+  await page.screenshot({ path: "e2e/screenshots/mobile-en-vague-object.png" });
+
   await pressButton(page, tap);
+  expect((await gameState(page)).lane).toEqual(emptyLane);
   await pickCards(page, tap, wish.color, wish.thing);
   await askWisp(page, tap);
-  expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: wish });
-  await pressButton(page, tap);
+  await expectBrought(page, "yellow lantern");
+  await expectClosingLine(page, true);
 
-  expect(requests).toEqual([]);
+  await pressButton(page, tap);
+  expect((await gameState(page)).lane.wish).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test("REQ-3.4: a complete request for another item is answered as before, without the closing line", async ({
+  page,
+}) => {
+  const tap = tapper(page);
+  await page.goto("./?lang=en");
+  await expect(page.locator("canvas")).toBeVisible();
+  await startTrial(page, tap);
+  await pickCards(page, tap, "red", wish.thing);
+  await askWisp(page, tap);
+  await expectBrought(page, "red lantern");
+  await expectClosingLine(page, false);
+  await pressButton(page, tap);
+  expect((await gameState(page)).lane).toEqual(emptyLane);
+});
+
+for (const lang of ["ja", "en"] as const) {
+  test(`REQ-3.7: finishes offline after the first load, in ${lang}`, async ({ page, context }) => {
+    const errors = collectErrors(page);
+    const tap = tapper(page);
+    await page.goto(`./?lang=${lang}`);
+    await expect(page.locator("canvas")).toBeVisible();
+    await expectBundledFont(page);
+    // Phaser fetches the two placeholder PNGs at boot; wait until nothing is in flight, so the first
+    // load is complete before the network goes away.
+    await page.waitForLoadState("networkidle");
+
+    // Offline from the title screen on: the start tap, the scene change and the whole trial run
+    // without a network.
+    await context.setOffline(true);
+    const requests: string[] = [];
+    page.on("request", (r) => requests.push(r.url()));
+
+    await startTrial(page, tap);
+    expect((await gameState(page)).lang).toBe(lang);
+    await pickOne(page, tap, "yellow");
+    await askWisp(page, tap);
+    await expectBrought(page, "yellow pumpkin");
+    await pressButton(page, tap);
+    await pickOne(page, tap, "lantern");
+    await askWisp(page, tap);
+    await expectBrought(page, "red lantern");
+    await pressButton(page, tap);
+    await pickCards(page, tap, wish.color, wish.thing);
+    await askWisp(page, tap);
+    expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: wish });
+    await expectBrought(page, "yellow lantern");
+    await expectClosingLine(page, true);
+    await pressButton(page, tap);
+
+    expect(requests).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}
