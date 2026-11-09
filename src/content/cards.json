@@ -1,6 +1,7 @@
 [
   {
     "id": "red",
+    "kind": "color",
     "color": "#d33",
     "shape": "circle",
     "pattern": "stripes-v",
@@ -8,6 +9,7 @@
   },
   {
     "id": "blue",
+    "kind": "color",
     "color": "#36c",
     "shape": "square",
     "pattern": "dots",
@@ -15,9 +17,26 @@
   },
   {
     "id": "yellow",
+    "kind": "color",
     "color": "#ec3",
     "shape": "triangle",
     "pattern": "plain",
     "label": { "ja": "きいろい", "en": "yellow" }
+  },
+  {
+    "id": "pumpkin",
+    "kind": "thing",
+    "color": "#ccc",
+    "shape": "pumpkin",
+    "pattern": "plain",
+    "label": { "ja": "かぼちゃ", "en": "pumpkin" }
+  },
+  {
+    "id": "lantern",
+    "kind": "thing",
+    "color": "#ccc",
+    "shape": "lantern",
+    "pattern": "plain",
+    "label": { "ja": "ランタン", "en": "lantern" }
   }
 ]
