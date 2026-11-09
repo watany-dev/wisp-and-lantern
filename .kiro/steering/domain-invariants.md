@@ -31,3 +31,6 @@ INV-1 and INV-2 to match the real state.
 | INV-2 | `trial` is always an integer and never negative. | `reducer.pbt.test.ts` |
 | INV-3 | `reduce` never mutates the state it is given. | `reducer.pbt.test.ts` |
 | INV-4 | `reduce` is deterministic: the same events from the same state give an equal state. | `reducer.pbt.test.ts` |
+| INV-5 | The helper never searches unprompted: `lane.asked` turns true only on an `Ask` event, so it is false after any sequence that has none. | `reducer.pbt.test.ts` |
+| INV-6 | `Ask` with a card missing, or after a search, returns the same state: a missing card is not a search. | `reducer.pbt.test.ts` |
+| INV-7 | After a search the pick is complete and only `Retry` changes the lane: what was asked cannot change. | `reducer.pbt.test.ts` |
