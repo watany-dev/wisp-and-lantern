@@ -196,12 +196,16 @@ behavior (the Result line of that task says how).
 
 ## 8. Documents
 
-- [ ] 8.1 `CHANGELOG.md`; the trial 1 row of `docs/learning-design.md` if it now disagrees; the
+- [x] 8.1 `CHANGELOG.md`; the trial 1 row of `docs/learning-design.md` if it now disagrees; the
       traceability table below filled; a final run of everything.
   - Requirements: REQ-3.9
   - Tests: none (documents).
   - Done when: `npm run check` passes.
-  - Result:
+  - Result: see the pull request for the final `npm run check`. `docs/learning-design.md` trial 1 row
+    now says the helper brings what the cards say and chooses a card left out itself. The device
+    checklist already asked for "a missing card brings the wrong thing", which the game now does, so
+    it is not edited. No config, script, workflow, `package.json` or lockfile changed in any of the
+    eight pull requests.
 
 ## Traceability
 
@@ -209,12 +213,12 @@ Filled in as tasks land: each row names the test file that fails when the requir
 
 | requirement | task | test | result |
 |---|---|---|---|
-| REQ-3.1 one card is enough to ask | 4.1, 5.1, 7.1 | `reducer.test.ts`, `reducer.pbt.test.ts` INV-9, `smoke.mobile.spec.ts` | |
-| REQ-3.2 no card is not a request | 4.1, 5.1 | `reducer.pbt.test.ts` INV-8, `lane-view.test.ts` | |
-| REQ-3.3 what the wisp brings | 2.1, 4.1, 5.1 | `lane.test.ts`, `reducer.pbt.test.ts` INV-10 to INV-13 | |
-| REQ-3.4 compare, retry without blame | 3.1, 4.1, 5.1, 7.1 | `lane-content.test.ts`, `reducer.model.test.ts`, `smoke.mobile.spec.ts` | |
-| REQ-3.5 the right result closes the lesson | 3.1, 4.1, 6.1, 7.1 | `lane-content.test.ts`, `lane-view.test.ts`, `lane-layout.test.ts`, `smoke.mobile.spec.ts` | |
-| REQ-3.6 text lives in `src/content` | 3.1, 4.1 | `lane-content.test.ts`, `npm run kid`, `npm run font` | |
-| REQ-3.7 what must keep working | 6.1, 7.1 | `lane-layout.test.ts`, both smokes | |
-| REQ-3.8 pure rules, checked several ways | 5.1, 7.1 | PBT, model check, both smokes | |
-| REQ-3.9 no gate gets weaker | every task | `git diff` shows no config, script or workflow change | |
+| REQ-3.1 one card is enough to ask | 4.1, 5.1, 7.1 | `reducer.test.ts`, `reducer.pbt.test.ts` INV-9, `smoke.mobile.spec.ts` | 5.1: one-card asks search; fails with the old rule (19 tests). 7.1: color-only and object-only paths by real taps; 5 of 6 smoke tests fail on the old rule |
+| REQ-3.2 no card is not a request | 4.1, 5.1 | `reducer.pbt.test.ts` INV-8, `lane-view.test.ts` | 5.1: INV-8 holds, fails when Ask with no card searches; 7.1: the no-card wisp tap changes nothing |
+| REQ-3.3 what the wisp brings | 2.1, 4.1, 5.1, 7.1 | `lane.test.ts`, `reducer.pbt.test.ts` INV-10 to INV-13, `smoke.mobile.spec.ts` | 2.1: 30 hand-written rows; 5.1: INV-10 to INV-13 each fail on a matching break; 7.1: the lit slot read from pixels is the brought item |
+| REQ-3.4 compare, retry without blame | 3.1, 4.1, 5.1, 7.1 | `lane-content.test.ts`, `reducer.model.test.ts`, `smoke.mobile.spec.ts` | 3.1: no blame words, `vague` has no 'as you asked'; 5.1: from every one of 280 states the wish and choosing are reachable; 7.1: retry keeps the wish and the lock holds |
+| REQ-3.5 the right result closes the lesson | 3.1, 4.1, 6.1, 7.1 | `lane-content.test.ts`, `lane-view.test.ts`, `lane-layout.test.ts`, `smoke.mobile.spec.ts` | 4.1: only on the right result; 6.1: fits, nothing hidden; 7.1: on screen on the right result only, ja and en differ; a scene that never draws it and one that draws it everywhere both fail |
+| REQ-3.6 text lives in `src/content` | 3.1, 4.1 | `lane-content.test.ts`, `npm run kid`, `npm run font` | 3.1: `npm run kid` ok, font identical, every item name fits 12 x 2 |
+| REQ-3.7 what must keep working | 6.1, 7.1 | `lane-layout.test.ts`, both smokes | 6.1: targets at least 80 px, hero strip free; 7.1: offline run in ja and en with no request, held press on a card leaves the hero still |
+| REQ-3.8 pure rules, checked several ways | 5.1, 7.1 | PBT, model check, both smokes | 5.1: 12 invariants tested, 280 states, old rule `stuck` with an empty trace; 7.1: 9 smoke tests pass on Chromium (WebKit: CI only) |
+| REQ-3.9 no gate gets weaker | every task | `git diff` shows no config, script or workflow change | no change to `vite.config.ts`, `stryker.config.json`, `package.json`, `scripts/check-*` or `.github/`; the 10 tests of the old behavior were replaced as listed above |

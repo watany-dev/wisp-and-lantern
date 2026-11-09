@@ -5,6 +5,15 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ## [Unreleased]
 
+### Changed
+
+- Trial 1, The Dark Lane: one card is now enough to send the wisp. With only a color or only an
+  object, the wisp brings an item that keeps what the child said and differs from the wish where the
+  child said nothing, names it, and lets the child tell it again. Picking both cards finds the wish as
+  before, and the right result now shows a closing line ("You told it / color & item"). Spec in
+  `.kiro/specs/03-trial-tell-vague-request/`; invariants INV-6 and INV-7 are retired and INV-8 to
+  INV-14 added.
+
 ### Added
 
 - Trial 1, The Dark Lane: pick a color card and an object card, tap the wisp to ask, see what it

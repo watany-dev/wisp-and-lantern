@@ -79,11 +79,11 @@
 
 ## 8. 文書
 
-- [ ] 8.1 `CHANGELOG.md`。`docs/learning-design.md` の試練1の行が今と食い違うならそれを直す。下のトレーサビリティ表を埋める。すべてを最後にもう一度実行する。
+- [x] 8.1 `CHANGELOG.md`。`docs/learning-design.md` の試練1の行が今と食い違うならそれを直す。下のトレーサビリティ表を埋める。すべてを最後にもう一度実行する。
   - 要件: REQ-3.9
   - テスト: なし（文書）。
   - 完了条件: `npm run check` が通る。
-  - 結果:
+  - 結果: 最後の `npm run check` はPRを参照。`docs/learning-design.md` の試練1の行は、助手がカードの言うとおりに届け、選ばなかったカードは自分で決める、という内容になった。デバイスチェックリストはすでに「カードが足りないと違う物が届く」を求めており、ゲームがそのとおりになったので、編集していない。8つのPRのどれでも、設定、スクリプト、ワークフロー、`package.json`、ロックファイルは変えていない。
 
 ## トレーサビリティ
 
@@ -91,12 +91,12 @@
 
 | 要件 | タスク | テスト | 結果 |
 |---|---|---|---|
-| REQ-3.1 1枚でも頼める | 4.1, 5.1, 7.1 | `reducer.test.ts`、`reducer.pbt.test.ts` INV-9、`smoke.mobile.spec.ts` | |
-| REQ-3.2 カードなしは依頼ではない | 4.1, 5.1 | `reducer.pbt.test.ts` INV-8、`lane-view.test.ts` | |
-| REQ-3.3 ウィスプが届ける物 | 2.1, 4.1, 5.1 | `lane.test.ts`、`reducer.pbt.test.ts` INV-10〜INV-13 | |
-| REQ-3.4 見比べて、責められずにやり直す | 3.1, 4.1, 5.1, 7.1 | `lane-content.test.ts`、`reducer.model.test.ts`、`smoke.mobile.spec.ts` | |
-| REQ-3.5 正解がレッスンを締める | 3.1, 4.1, 6.1, 7.1 | `lane-content.test.ts`、`lane-view.test.ts`、`lane-layout.test.ts`、`smoke.mobile.spec.ts` | |
-| REQ-3.6 文言は `src/content` に置く | 3.1, 4.1 | `lane-content.test.ts`、`npm run kid`、`npm run font` | |
-| REQ-3.7 壊してはいけないこと | 6.1, 7.1 | `lane-layout.test.ts`、両方のスモーク | |
-| REQ-3.8 純粋なルールを、いくつもの方法で検査する | 5.1, 7.1 | PBT、モデル検査、両方のスモーク | |
-| REQ-3.9 どのゲートも弱めない | すべてのタスク | `git diff` に設定・スクリプト・ワークフローの変更がない | |
+| REQ-3.1 1枚でも頼める | 4.1, 5.1, 7.1 | `reducer.test.ts`、`reducer.pbt.test.ts` INV-9、`smoke.mobile.spec.ts` | 5.1: 1枚の依頼は探索する。旧ルールでは失敗する（19テスト）。7.1: 色だけ・物だけの道筋を実タップで。旧ルールではスモーク6件中5件が失敗 |
+| REQ-3.2 カードなしは依頼ではない | 4.1, 5.1 | `reducer.pbt.test.ts` INV-8、`lane-view.test.ts` | 5.1: INV-8 が成り立つ。カードなしの Ask が探索すると失敗する。7.1: カードなしでウィスプをタップしても何も変わらない |
+| REQ-3.3 ウィスプが届ける物 | 2.1, 4.1, 5.1, 7.1 | `lane.test.ts`、`reducer.pbt.test.ts` INV-10〜INV-13、`smoke.mobile.spec.ts` | 2.1: 手書きの30行。5.1: INV-10〜INV-13 は対応する壊しでそれぞれ失敗する。7.1: ピクセルから読んだ光るマスが届いた物 |
+| REQ-3.4 見比べて、責められずにやり直す | 3.1, 4.1, 5.1, 7.1 | `lane-content.test.ts`、`reducer.model.test.ts`、`smoke.mobile.spec.ts` | 3.1: 責める言葉なし。`vague` に「as you asked」なし。5.1: 280状態のどれからもねがいと「選ぶ」に到達できる。7.1: やり直しはねがいを保ち、ロックが効く |
+| REQ-3.5 正解がレッスンを締める | 3.1, 4.1, 6.1, 7.1 | `lane-content.test.ts`、`lane-view.test.ts`、`lane-layout.test.ts`、`smoke.mobile.spec.ts` | 4.1: 正解のときだけ。6.1: 収まり、何も隠れない。7.1: 正解のときだけ画面に出る。jaとenで違う。描かない版も、すべての結果で描く版も失敗する |
+| REQ-3.6 文言は `src/content` に置く | 3.1, 4.1 | `lane-content.test.ts`、`npm run kid`、`npm run font` | 3.1: `npm run kid` ok、フォントは同一、すべての物名が12 x 2に収まる |
+| REQ-3.7 壊してはいけないこと | 6.1, 7.1 | `lane-layout.test.ts`、両方のスモーク | 6.1: 目標は80 px以上、ヒーローの帯が空いている。7.1: jaとenのオフラインの通しで通信なし。カードの上の長押しでヒーローは動かない |
+| REQ-3.8 純粋なルールを、いくつもの方法で検査する | 5.1, 7.1 | PBT、モデル検査、両方のスモーク | 5.1: 12個の不変条件をテスト済み、280状態、旧ルールは空のtraceで `stuck`。7.1: 9つのスモークがChromiumで通る（WebKitはCIのみ） |
+| REQ-3.9 どのゲートも弱めない | すべてのタスク | `git diff` に設定・スクリプト・ワークフローの変更がない | `vite.config.ts`、`stryker.config.json`、`package.json`、`scripts/check-*`、`.github/` は変更なし。旧挙動の10件のテストは、上の一覧のとおり置き換えた |
