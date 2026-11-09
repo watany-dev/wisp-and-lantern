@@ -22,7 +22,7 @@ export const initialState: GameState = {
   phase: "title",
   lang: "en",
   trial: 0,
-  hero: { x: 195, y: 600 },
+  hero: { x: 195, y: 612 },
   charms: [],
   lane: initialLane,
   run: initialRun,

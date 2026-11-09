@@ -61,7 +61,7 @@ describe("reduce", () => {
   it("MoveHeroTo moves the hero and does not mutate the previous state", () => {
     const next = reduce(initialState, { type: "MoveHeroTo", x: 10, y: 20 });
     expect(next.hero).toEqual({ x: 10, y: 20 });
-    expect(initialState.hero).toEqual({ x: 195, y: 600 });
+    expect(initialState.hero).toEqual({ x: 195, y: 612 });
   });
 });
 
