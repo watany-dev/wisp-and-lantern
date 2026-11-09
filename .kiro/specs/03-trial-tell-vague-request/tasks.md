@@ -103,7 +103,7 @@ behavior (the Result line of that task says how).
 
 ## 5. Domain: one card is a request
 
-- [ ] 5.1 Flip the rule: `canAsk` uses `hasPick`, `outcome` uses `delivered`. Retire INV-6 and INV-7
+- [x] 5.1 Flip the rule: `canAsk` uses `hasPick`, `outcome` uses `delivered`. Retire INV-6 and INV-7
       (definition and test together), add INV-8 to INV-14 with their property tests, update the unit
       tests of the old behavior, and update the model check.
   - Requirements: REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4, REQ-3.8 (2, 3, 4)
@@ -113,7 +113,28 @@ behavior (the Result line of that task says how).
     to fail on the old behavior.
   - Done when: `npm run check` passes with no surviving mutant and `check-trace` reports every INV as
     tested.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 224 tests, mutation score 100% (313 mutants, none
+    survived), `check-trace: 12 invariants, 0 without tests`, `npm run bench` runs (21 µs per 1,000
+    events; CI compares it with the base branch). The model check reaches **280 states** (4 on the
+    title, then 2 x 2 x 3 x 23), with all four invariants holding and goals 1 to 4 reachable from
+    every state. Changing only `canAsk` and `outcome` first failed exactly the 10 tests of the old
+    behavior in the table above, before they were replaced. **Old rule against the new tests:** with
+    `canAsk` back to "both cards", 19 tests fail, among them INV-9, the one-card unit cases, the
+    model goals for a color-only and an object-only result, and the view's armed, fade and `ready`
+    cases. **Counterexample recorded in `reducer.model.test.ts`:** under the old rule, from the
+    state "Start, pick red" (and from the start state with the full alphabet) the goal "a result
+    for a color-only request" is `stuck` with an empty trace: no event leads to it; under the new
+    rule the same start reaches it in one `Ask` (2 states). **Each invariant against a break**
+    (lane.ts changed, then restored): `Ask` with no card allowed fails INV-8; the old ask rule
+    fails INV-9; `Ask` that fills in the missing card fails INV-10; a dropped picked color fails
+    INV-11 and INV-13; a missing card filled with the wish's own card fails INV-12; a complete
+    request corrected toward the wish fails INV-11, INV-12 and INV-13; picking allowed after the
+    search fails INV-14. One break made no test fail, and it is equivalent: `outcome` judging by the
+    pick instead of by the brought item, because a request is right exactly when it is complete and
+    equals the wish. It is written against the brought item to follow the requirement; no test can
+    tell, and mutation testing finds nothing to complain about. INV-6 and INV-7 were deleted with
+    their tests; the numbers are listed as retired in `domain-invariants.md` (without the `INV-`
+    prefix, so the trace check does not count them). Replaced tests: see the table above.
 
 ## 6. Scene: the closing line
 

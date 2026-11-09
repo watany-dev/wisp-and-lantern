@@ -3,7 +3,16 @@
 import { describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
-import { colors, initialLane, isComplete, outcome, things } from "../lane";
+import {
+  colors,
+  delivered,
+  hasPick,
+  initialLane,
+  isComplete,
+  outcome,
+  things,
+  wishAt,
+} from "../lane";
 import { reduce } from "../reducer";
 import { initialState, type GameState } from "../state";
 import { checkModel } from "./support/model-check";
@@ -57,7 +66,7 @@ const laneInvariants: Record<string, (s: GameState) => boolean> = {
   "a trial is trial 1": (s) => s.phase !== "trial" || s.trial === 1,
   "the wish is an index into the wishes": (s) =>
     Number.isInteger(s.lane.wish) && s.lane.wish >= 0 && s.lane.wish < balance.wishes.length,
-  "a search has a complete pick": (s) => !s.lane.asked || isComplete(s.lane.pick),
+  "a search has at least one card": (s) => !s.lane.asked || hasPick(s.lane.pick),
 };
 
 const lane = (events: readonly GameEvent[], goal: (s: GameState) => boolean) =>
@@ -69,12 +78,38 @@ const lane = (events: readonly GameEvent[], goal: (s: GameState) => boolean) =>
     goal,
   });
 
+/** A search for a request with exactly one card, and the wisp brought what the rule says. */
+const oneCardResult = (card: "color" | "thing") => (s: GameState) => {
+  const { pick } = s.lane;
+  const item = delivered(s.lane);
+  const keptOnly =
+    card === "color"
+      ? pick.color !== null && pick.thing === null
+      : pick.color === null && pick.thing !== null;
+  return (
+    item !== null &&
+    keptOnly &&
+    item[card] === pick[card] &&
+    outcome(s.lane) === "wrong" &&
+    item[card === "color" ? "thing" : "color"] !==
+      wishAt(s.lane.wish)[card === "color" ? "thing" : "color"]
+  );
+};
+
+/** The state after these events from the start. */
+const play = (...events: GameEvent[]) => events.reduce(reduce, initialState);
+
+/** The rule of 02-trial-tell: Ask is ignored unless both cards are picked. */
+const oldStep = (s: GameState, e: GameEvent) =>
+  e.type === "Ask" && !isComplete(s.lane.pick) ? s : reduce(s, e);
+
 describe("reduce, trial 1 (exhaustive model check)", () => {
   it("REQ-2.8: from every state the right result is still reachable", () => {
     const report = lane(laneAlphabet, (s) => outcome(s.lane) === "right");
     expect(report.violations).toEqual([]);
-    // Title (2 languages x 2 hero positions) plus the trial: 3 wishes x (12 picks + 6 searches).
-    expect(report.states).toBe(4 + 2 * 2 * 3 * 18);
+    // Title (2 languages x 2 hero positions) plus the trial: 3 wishes x (12 picks + 11 searches).
+    // A pick has a color or none (4) and an object or none (3); a search needs at least one card.
+    expect(report.states).toBe(4 + 2 * 2 * 3 * (12 + 11));
   });
 
   it("REQ-2.7, REQ-2.8: from every state, including after a different request, choosing is reachable", () => {
@@ -90,5 +125,70 @@ describe("reduce, trial 1 (exhaustive model check)", () => {
     expect(stuck?.kind).toBe("stuck");
     expect(outcome(stuck!.state.lane)).toBe("wrong");
     expect(stuck!.trace.at(-1)).toEqual({ type: "Ask" });
+  });
+});
+
+describe("reduce, a request with one card (exhaustive model check)", () => {
+  it.each(["color", "thing"] as const)(
+    "REQ-3.1, REQ-3.8: from every state a result for a request with only the %s is reachable",
+    (card) => {
+      const report = lane(laneAlphabet, oneCardResult(card));
+      expect(report.violations).toEqual([]);
+      expect(report.states).toBe(280);
+    },
+  );
+
+  it("REQ-3.4.3, REQ-3.4.5: from a color-only result the child can retry and then find the wish", () => {
+    const afterVague = play({ type: "Start" }, { type: "PickCard", card: "red" }, { type: "Ask" });
+    expect(oneCardResult("color")(afterVague)).toBe(true);
+    for (const goal of [
+      (s: GameState) => outcome(s.lane) === "right",
+      (s: GameState) => !s.lane.asked,
+    ]) {
+      const report = checkModel<GameState, GameEvent>({
+        initial: afterVague,
+        events: () => laneAlphabet,
+        step: reduce,
+        invariants: laneInvariants,
+        goal,
+      });
+      expect(report.violations).toEqual([]);
+    }
+  });
+});
+
+describe("the one-card goals are load-bearing (REQ-3.8.3)", () => {
+  it.each(["color", "thing"] as const)(
+    "with the old ask rule no result for only the %s is reachable",
+    (card) => {
+      const report = checkModel<GameState, GameEvent>({
+        initial: initialState,
+        events: () => laneAlphabet,
+        step: oldStep,
+        invariants: {},
+        goal: oneCardResult(card),
+      });
+      // Every state is stuck; the first one reported is the start, which no event leads out of.
+      expect(report.violations).toHaveLength(1);
+      expect(report.violations[0]).toMatchObject({ kind: "stuck", name: "goal", trace: [] });
+      expect(report.violations[0]!.state).toEqual(initialState);
+    },
+  );
+
+  it("the counterexample for the old rule: after a color is picked, no one-card result can follow", () => {
+    const redPicked = play({ type: "Start" }, { type: "PickCard", card: "red" });
+    const model = {
+      initial: redPicked,
+      events: () => [{ type: "Ask" } as const],
+      invariants: {},
+      goal: oneCardResult("color"),
+    };
+    const old = checkModel<GameState, GameEvent>({ ...model, step: oldStep });
+    expect(old.states).toBe(1);
+    expect(old.violations).toEqual([{ kind: "stuck", name: "goal", state: redPicked, trace: [] }]);
+    // The same start and the same single event under the new rule reach the result.
+    const fixed = checkModel<GameState, GameEvent>({ ...model, step: reduce });
+    expect(fixed.states).toBe(2);
+    expect(fixed.violations).toEqual([]);
   });
 });

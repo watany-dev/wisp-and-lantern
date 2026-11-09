@@ -1,5 +1,6 @@
 // Trial 1 (The Dark Lane): what the child has picked and whether the helper has searched.
-// Rules only: no text, no layout. See .kiro/specs/02-trial-tell/design.md.
+// Rules only: no text, no layout. See .kiro/specs/02-trial-tell/design.md and, for the ask rule and
+// the item the wisp brings, .kiro/specs/03-trial-tell-vague-request/design.md.
 
 import { balance } from "./balance";
 import type { LaneEvent } from "./events";
@@ -15,8 +16,9 @@ export type Pick = { color: ColorId | null; thing: ThingId | null };
 export type Wish = { color: ColorId; thing: ThingId };
 
 /**
- * `asked` is true once the child tapped the wisp with both cards picked. The helper then searched
- * exactly `pick`, so there is no separate "found item" that could differ from what was asked.
+ * `asked` is true once the child tapped the wisp with at least one card picked. The item the wisp
+ * brought is not stored: `delivered(lane)` derives it from `pick` and the wish, so it cannot drift
+ * from what was asked.
  */
 export type Lane = { wish: number; pick: Pick; asked: boolean };
 
@@ -37,9 +39,9 @@ export function hasPick(pick: Pick): boolean {
   return pick.color !== null || pick.thing !== null;
 }
 
-/** The wisp can be sent: both cards are picked and it has not searched yet. */
+/** The wisp can be sent: at least one card is picked and it has not searched yet. */
 export function canAsk(lane: Lane): boolean {
-  return !lane.asked && isComplete(lane.pick);
+  return !lane.asked && hasPick(lane.pick);
 }
 
 export function wishAt(index: number): Wish {
@@ -69,10 +71,12 @@ export function delivered(lane: Lane): Wish | null {
   return lane.asked ? deliver(lane.pick, wishAt(lane.wish)) : null;
 }
 
+/** Right when the item the wisp brought is the wish; a vague request never brings the wish. */
 export function outcome(lane: Lane): Outcome {
-  if (!lane.asked) return "choosing";
+  const item = delivered(lane);
+  if (item === null) return "choosing";
   const wish = wishAt(lane.wish);
-  return lane.pick.color === wish.color && lane.pick.thing === wish.thing ? "right" : "wrong";
+  return item.color === wish.color && item.thing === wish.thing ? "right" : "wrong";
 }
 
 /** Returns `lane` itself when the event changes nothing. */

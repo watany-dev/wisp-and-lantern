@@ -30,8 +30,18 @@ describe.each(["ja", "en"] as const)(
       expect(view(lang).message).toBe(s.lane.pickAny);
     });
 
-    it("asks the child to tap the wisp once both cards are picked", () => {
+    it("asks the child to tap the wisp once a card is picked, one or two (REQ-3.1.7)", () => {
+      expect(view(lang, ...pick("blue")).message).toBe(s.lane.ready);
+      expect(view(lang, ...pick("pumpkin")).message).toBe(s.lane.ready);
       expect(view(lang, ...pick("blue", "pumpkin")).message).toBe(s.lane.ready);
+    });
+
+    it("names what a one-card request brought, without saying it was as asked (REQ-3.4)", () => {
+      // The first wish is the yellow lantern: red only brings the red pumpkin.
+      const name = itemName({ color: "red", thing: "pumpkin" }, lang);
+      const { message } = view(lang, ...pick("red"), ask);
+      expect(message).toBe(s.lane.vague.replace("{0}", name));
+      expect(message).toContain(name);
     });
 
     it("says the item is found after the right request, naming it", () => {
@@ -75,11 +85,13 @@ describe("laneView names what was asked (REQ-2.5)", () => {
 });
 
 describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
-  it("arms the wisp only with both cards picked and no search yet", () => {
+  it("arms the wisp with one card or two, and not with none or after the search (REQ-3.1.5)", () => {
     expect(view("en").armed).toBe(false);
-    expect(view("en", ...pick("blue")).armed).toBe(false);
+    expect(view("en", ...pick("blue")).armed).toBe(true);
+    expect(view("en", ...pick("pumpkin")).armed).toBe(true);
     expect(view("en", ...pick("blue", "pumpkin")).armed).toBe(true);
     expect(view("en", ...wrong).armed).toBe(false);
+    expect(view("en", ...pick("red"), ask).armed).toBe(false);
   });
 
   it("lists every card with its label, marking the picked ones", () => {
@@ -104,11 +116,24 @@ describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
     ]);
   });
 
-  it("fades the wisp while it cannot be sent, and not once it has searched", () => {
+  it("fades the wisp only while no card is picked, and not once it can be sent or has searched (REQ-3.1.6)", () => {
     expect(view("en").wispAlpha).toBe(0.55);
-    expect(view("en", ...pick("red")).wispAlpha).toBe(0.55);
+    expect(view("en", ...pick("red")).wispAlpha).toBe(1);
+    expect(view("en", ...pick("lantern")).wispAlpha).toBe(1);
     expect(view("en", ...pick("red", "lantern")).wispAlpha).toBe(1);
     expect(view("en", ...wrong).wispAlpha).toBe(1);
+    expect(view("en", ...pick("red"), ask).wispAlpha).toBe(1);
+  });
+
+  it("lights the slot of what a one-card request brought, and flies the wisp there (REQ-3.3.6)", () => {
+    // The first wish is the yellow lantern: lantern only brings the red lantern.
+    const v = view("en", ...pick("lantern"), ask);
+    expect(v.lit).toEqual({ color: "red", thing: "lantern" });
+    expect(v.wispTarget).toEqual(slotCenter("red", "lantern"));
+    expect(v.cards.filter((c) => c.picked).map((c) => c.id)).toEqual(["lantern"]);
+    expect(v.star).toBe(false);
+    expect(v.lesson).toBeNull();
+    expect(v.button).toEqual({ text: en.retry, event: { type: "Retry" } });
   });
 
   it("lights exactly the asked slot and flies the wisp there; before that the wisp stays home", () => {
@@ -188,8 +213,7 @@ describe("card text and art (REQ-2.10)", () => {
   });
 });
 
-// A one-card request cannot be reached through the reducer until the ask rule changes (task 5.1),
-// so these states are built directly. The view must read the brought item from the lane alone.
+// These states are built directly, so the view is tested on the lane alone, for every wish.
 const resultView = (lang: Lang, wishIndex: number, pickCards: Lane["pick"]) =>
   laneView({
     ...initialState,

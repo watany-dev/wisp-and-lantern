@@ -100,28 +100,46 @@ describe("reduce: picking cards (REQ-2.2)", () => {
   });
 });
 
-describe("reduce: asking (REQ-2.3, REQ-2.4)", () => {
-  it("searches exactly the picked cards once both are picked", () => {
+describe("reduce: asking (REQ-2.3, REQ-3.1, REQ-3.2)", () => {
+  it("searches once both cards are picked, keeping the pick as it is", () => {
     const next = play([...wrong, ask], started);
     expect(next.lane).toEqual({ wish: 0, pick: { color: "red", thing: "lantern" }, asked: true });
   });
 
   it.each([
-    ["no card", []],
-    ["only a color", pick("red")],
-    ["only an object", pick("pumpkin")],
-  ])("with %s is not a search and returns the same state", (_name, cards) => {
-    const before = play(cards, started);
-    expect(reduce(before, ask)).toBe(before);
+    ["only a color", pick("red"), { color: "red", thing: null }],
+    ["only an object", pick("pumpkin"), { color: null, thing: "pumpkin" }],
+  ])(
+    "with %s is a request: it searches, and does not fill in the other card",
+    (_name, cards, kept) => {
+      const next = reduce(play(cards, started), ask);
+      expect(next.lane).toEqual({ wish: 0, pick: kept, asked: true });
+    },
+  );
+
+  it("with no card is not a search and returns the same state", () => {
+    expect(reduce(started, ask)).toBe(started);
   });
 
-  it("asking again changes nothing", () => {
-    const asked = play([...wish0, ask], started);
-    expect(reduce(asked, ask)).toBe(asked);
+  it("with no card left after a retry is not a search either", () => {
+    const cleared = play([...wrong, ask, retry], started);
+    expect(reduce(cleared, ask)).toBe(cleared);
+  });
+
+  it("asking again changes nothing, with two cards or with one", () => {
+    const twice = play([...wish0, ask], started);
+    expect(reduce(twice, ask)).toBe(twice);
+    const once = play([...pick("red"), ask], started);
+    expect(reduce(once, ask)).toBe(once);
   });
 
   it("does nothing on the title screen", () => {
     expect(reduce(initialState, ask)).toBe(initialState);
+  });
+
+  it("ignores a card picked after a one-card search, until the retry", () => {
+    const asked = play([...pick("red"), ask], started);
+    expect(play(pick("pumpkin", "blue"), asked)).toBe(asked);
   });
 });
 
@@ -157,6 +175,17 @@ describe("reduce: retry (REQ-2.7, REQ-2.8)", () => {
     expect(next.lane.asked).toBe(true);
     expect(next.lane.wish).toBe(0);
     expect(next.lane.pick).toEqual(balance.wishes[0]);
+  });
+
+  it("after a request with one card keeps the wish, clears the pick, and the wish can then be found (REQ-3.4)", () => {
+    for (const cards of [pick("red"), pick("lantern"), pick("yellow"), pick("pumpkin")]) {
+      const vague = play([...cards, ask], started);
+      expect(vague.lane.asked).toBe(true);
+      const again = reduce(vague, retry);
+      expect(again.lane).toEqual({ wish: 0, pick: { color: null, thing: null }, asked: false });
+      const found = play([...wish0, ask], again);
+      expect(found.lane).toEqual({ wish: 0, pick: balance.wishes[0], asked: true });
+    }
   });
 
   it("while choosing changes nothing", () => {

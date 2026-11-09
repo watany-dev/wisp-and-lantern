@@ -45,13 +45,18 @@ describe("isComplete", () => {
   });
 });
 
-describe("canAsk", () => {
-  it("is true only with both cards picked and no search yet", () => {
+describe("canAsk (REQ-3.1)", () => {
+  it("is true with one card or two picked and no search yet, and false with none", () => {
     expect(canAsk(initialLane)).toBe(false);
-    expect(canAsk(choosing("red", null))).toBe(false);
-    expect(canAsk(choosing(null, "lantern"))).toBe(false);
+    expect(canAsk(choosing("red", null))).toBe(true);
+    expect(canAsk(choosing(null, "lantern"))).toBe(true);
     expect(canAsk(choosing("red", "lantern"))).toBe(true);
+  });
+
+  it("is false once the wisp has searched, whatever was picked", () => {
     expect(canAsk(asked("red", "lantern"))).toBe(false);
+    expect(canAsk(asked("red", null))).toBe(false);
+    expect(canAsk(asked(null, "pumpkin"))).toBe(false);
   });
 });
 
@@ -67,12 +72,31 @@ describe("outcome", () => {
     expect(outcome({ ...asked("yellow", "lantern"), asked: false })).toBe("choosing");
   });
 
-  it("is right only when both the color and the object are the wish", () => {
+  it("is right only when the item the wisp brought is the wish", () => {
     // wish 0 is the yellow lantern.
     expect(outcome(asked("yellow", "lantern"))).toBe("right");
     expect(outcome(asked("red", "lantern"))).toBe("wrong");
     expect(outcome(asked("yellow", "pumpkin"))).toBe("wrong");
     expect(outcome(asked("red", "pumpkin"))).toBe("wrong");
+  });
+
+  it("is wrong for a request with one card, even one that matches half of the wish (REQ-3.3.5)", () => {
+    // wish 0 is the yellow lantern: yellow only brings the yellow pumpkin, lantern only the red lantern.
+    expect(outcome(asked("yellow", null))).toBe("wrong");
+    expect(outcome(asked(null, "lantern"))).toBe("wrong");
+    expect(outcome(asked("red", null))).toBe("wrong");
+    expect(outcome(asked(null, "pumpkin"))).toBe("wrong");
+  });
+
+  it("is wrong for a one-card request on every wish and never right", () => {
+    for (const [index] of balance.wishes.entries()) {
+      for (const pick of [...colors, ...things].map(single)) {
+        expect(
+          outcome({ wish: index, pick, asked: true }),
+          `${index} ${JSON.stringify(pick)}`,
+        ).toBe("wrong");
+      }
+    }
   });
 
   it("reads the wish the lane is on", () => {
