@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import {
+  canAsk,
   colors,
   initialLane,
   isColor,
@@ -17,6 +18,11 @@ const asked = (color: Lane["pick"]["color"], thing: Lane["pick"]["thing"], wish 
   asked: true,
 });
 
+const choosing = (color: Lane["pick"]["color"], thing: Lane["pick"]["thing"]): Lane => ({
+  ...initialLane,
+  pick: { color, thing },
+});
+
 describe("isColor", () => {
   it("is true for every color card and false for every object card", () => {
     for (const c of colors) expect(isColor(c)).toBe(true);
@@ -30,6 +36,16 @@ describe("isComplete", () => {
     expect(isComplete({ color: "red", thing: null })).toBe(false);
     expect(isComplete({ color: null, thing: "pumpkin" })).toBe(false);
     expect(isComplete({ color: "red", thing: "pumpkin" })).toBe(true);
+  });
+});
+
+describe("canAsk", () => {
+  it("is true only with both cards picked and no search yet", () => {
+    expect(canAsk(initialLane)).toBe(false);
+    expect(canAsk(choosing("red", null))).toBe(false);
+    expect(canAsk(choosing(null, "lantern"))).toBe(false);
+    expect(canAsk(choosing("red", "lantern"))).toBe(true);
+    expect(canAsk(asked("red", "lantern"))).toBe(false);
   });
 });
 
