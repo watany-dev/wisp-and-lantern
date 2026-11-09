@@ -187,7 +187,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
   - Result: `npm run check` passes on Node 26.13.0: 473 tests (8 new: 6 in `shed-palette.test.ts` for the
     colors the smoke will read, 2 in `shed-view.test.ts` for `justTried`, which keeps the scene's
     branch count under the lint limit), coverage 100%, mutation score 100% (599 mutants, none survived),
-    size budget ok (gzip JS 369 KB of 1,024 KB). `npm run build` then the existing smoke: **11 passed**
+    size budget ok (359.0 KB gzip of 1,024 KB; 356.0 KB before this spec). `npm run build` then the existing smoke: **11 passed**
     on Chromium with the iPhone 13 touch profile (the 7 mobile and 4 desktop tests; WebKit cannot start
     in this sandbox, so this is not the WebKit pass, which CI runs). Trial 1 and the score attack are
     unchanged. **Looked at, not only tested:** a throwaway Playwright script (kept out of the repository)
@@ -221,7 +221,9 @@ need to change, it is named here with its new test and why trial 1's guarantee i
   - Result: `npm run check` passes on Node 26.13.0 (473 tests, coverage 100%, mutation 100%, size budget
     ok). `npm run build` then `npm run smoke` on **Chromium with the iPhone 13 touch profile** (WebKit
     cannot start here): **19 passed** (mobile 13: 7 existing, 6 new; desktop 6: 4 existing, 2 new),
-    twice in a row with the default workers and once with `--workers=1`; CI runs the real WebKit pass.
+    twice in a row with the default workers and once with `--workers=1`. **CI's `smoke` job on pull
+    request #67 then ran the same 19 tests on real WebKit (mobile) and desktop Chromium: 19 passed in
+    1.3 minutes, no retry.**
     Mobile, real taps: the title's button opens the shed with `trial` 2, the run at 60,000 ms and not
     counting down, the lane initial; the wisp with nothing picked changes nothing; a pick is replaced and
     exactly one tool is marked (read from the pixels of the gold mark); picking uses nothing; the broom
@@ -248,11 +250,21 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 8. Final integration
 
-- [ ] 8.1 Record the change: `CHANGELOG.md`, the trial 2 row in `docs/learning-design.md`, and the
+- [x] 8.1 Record the change: `CHANGELOG.md`, the trial 2 row in `docs/learning-design.md`, and the
       Result lines of this file; run everything once more on the merged `main`.
   - Requirements: REQ-5.13, REQ-5.14, REQ-5.15; inherited REQ-2.15, REQ-3.9, REQ-4.8
   - Tests: `npm run check`, `npm run build`, `npm run smoke`, `npm run mutation`; the trial 1 smoke
     (including the score attack) unchanged and green.
   - Done when: CI's `smoke` (WebKit) is green on the final pull request. Until then the work is not
     called done.
-  - Result: filled in the task's pull request
+  - Result: on `main` at the merge of #67 plus this change: `npm run check` passes on Node 26.13.0 (473
+    tests, coverage 100%, mutation score 100% with 599 mutants and none survived, `check-trace: 22
+    invariants, 0 without tests`, size budget 359.0 KB of 1,024 KB); `npm run bench` runs; `npm run
+    build` then the smoke on Chromium with the iPhone 13 touch profile: 19 passed (trial 1 and the score
+    attack unchanged, 11 of them; the shed, 8). The CI of this last pull request is not
+    recorded here, since a record cannot contain its own result; it is in the pull request. `CHANGELOG.md` has the entry, `docs/learning-design.md`
+    row 2 says what the trial does and that the rule is a staging device, `docs/device-checklist.md`
+    gets two playtest lines for trial 2, and `docs/evidence/didnt-work.md` gets the three things that did
+    not work. **Still not verified:** no real phone, no real child (the weekly pass in
+    `docs/device-checklist.md` and the next playtest do that); the `reviewer` and `kid-reader` agents
+    were never run, only their rubrics applied by hand; the shed has no way back to the title (reload).
