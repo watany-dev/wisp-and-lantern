@@ -3,6 +3,7 @@
 
 import Phaser from "phaser";
 import { balance } from "../../domain/balance";
+import { tickMs } from "../clock";
 import { colors, things, type CardId } from "../../domain/lane";
 import type { GameState, Lang } from "../../domain/state";
 import type { Game } from "../judge";
@@ -12,6 +13,9 @@ import {
   lessonBox,
   lessonWrap,
   messageText,
+  hudBar,
+  hudScore,
+  hudTime,
   slotCenter,
   slotSize,
   wisp,
@@ -20,11 +24,11 @@ import {
   wishText,
   wispRect,
 } from "../lane-layout";
-import { itemArt, laneView, type LaneView } from "../lane-view";
+import { hudView, itemArt, laneView, type LaneView } from "../lane-view";
 import { stepToward } from "../steer";
-import { drawItem, drawPanel, drawStar, palette } from "../ui/art";
+import { drawBar, drawItem, drawPanel, drawStar, palette } from "../ui/art";
 import { createCard, type CardWidget } from "../ui/cards";
-import { inkStyle, textStyle } from "../ui/text";
+import { goldStyle, inkStyle, textStyle } from "../ui/text";
 
 type Graphics = Phaser.GameObjects.Graphics;
 type Text = Phaser.GameObjects.Text;
@@ -46,13 +50,23 @@ export class LaneScene extends Phaser.Scene {
   private button!: Phaser.GameObjects.Container;
   private buttonLabel!: Text;
   private cards = new Map<CardId, CardWidget>();
+  private clock!: Text;
+  private score!: Text;
+  private bar!: Graphics;
+  private lastScore = 0;
 
   constructor(private readonly game_: Game) {
     super("lane");
   }
 
   create(): void {
+    // The scene object is reused for every run: forget what the last run drew.
+    this.shown = {};
+    this.cards = new Map();
+    this.walks = true;
+    this.lastScore = 0;
     this.hero = this.add.image(0, 0, "hero");
+    this.createHud();
     this.createSlots();
     this.createWish();
     this.createWisp();
@@ -69,13 +83,34 @@ export class LaneScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    const wispNext = stepToward(this.wispBox, this.view.wispTarget, balance.wispSpeed, deltaMs);
-    if (wispNext) this.wispBox.setPosition(wispNext.x, wispNext.y);
+    this.game_.dispatch({ type: "Tick", ms: tickMs(deltaMs) });
+    this.moveWisp(deltaMs);
+    this.walkHero(deltaMs);
+  }
+
+  private moveWisp(deltaMs: number): void {
+    const next = stepToward(this.wispBox, this.view.wispTarget, balance.wispSpeed, deltaMs);
+    if (next) this.wispBox.setPosition(next.x, next.y);
+  }
+
+  private walkHero(deltaMs: number): void {
     const pointer = this.input.activePointer;
     if (!this.walks || !pointer.isDown) return;
     const target = { x: pointer.worldX, y: pointer.worldY };
     const next = stepToward(this.game_.state().hero, target, balance.heroSpeed, deltaMs);
     if (next) this.game_.dispatch({ type: "MoveHeroTo", ...next });
+  }
+
+  private createHud(): void {
+    const style = { ...textStyle, fontSize: "26px" };
+    this.clock = this.add.text(hudTime.x, hudTime.y, "", style).setOrigin(0.5);
+    this.score = this.add
+      .text(hudScore.x + hudScore.width / 2, hudScore.y, "", { ...goldStyle, fontSize: "22px" })
+      .setOrigin(1, 0.5);
+    this.bar = this.add.graphics({
+      x: hudBar.x - hudBar.width / 2,
+      y: hudBar.y - hudBar.height / 2,
+    });
   }
 
   private createSlots(): void {
@@ -153,6 +188,11 @@ export class LaneScene extends Phaser.Scene {
 
   private render(state: GameState): void {
     this.hero.setPosition(state.hero.x, state.hero.y);
+    this.renderRun(state);
+    if (state.phase === "over") {
+      this.scene.start("over");
+      return;
+    }
     if (state.lane === this.shown.lane && state.lang === this.shown.lang) return;
     this.shown = { lane: state.lane, lang: state.lang };
     this.view = laneView(state);
@@ -164,6 +204,35 @@ export class LaneScene extends Phaser.Scene {
     this.renderWish();
     this.renderResult();
     this.renderControls();
+  }
+
+  /** The clock, the bar and the score change every frame; a find also pops its points. */
+  private renderRun(state: GameState): void {
+    const hud = hudView(state);
+    this.clock.setText(String(hud.seconds));
+    this.score.setText(hud.score);
+    this.bar.clear();
+    drawBar(this.bar, hudBar.width, hudBar.height, hud.fraction);
+    const gained = state.run.score - this.lastScore;
+    this.lastScore = state.run.score;
+    if (gained > 0) this.popPoints(state, gained);
+  }
+
+  /** "+150" rises from the slot the wisp brought the wish to, then fades. */
+  private popPoints(state: GameState, points: number): void {
+    const { color, thing } = laneView(state).lit!;
+    const at = slotCenter(color, thing);
+    const text = this.add
+      .text(at.x, at.y, `+${points}`, { ...goldStyle, fontSize: "34px" })
+      .setOrigin(0.5)
+      .setDepth(10);
+    this.tweens.add({
+      targets: text,
+      y: at.y - 70,
+      alpha: 0,
+      duration: 1100,
+      onComplete: () => text.destroy(),
+    });
   }
 
   private renderLesson(): void {

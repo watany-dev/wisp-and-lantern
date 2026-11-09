@@ -10,7 +10,9 @@ import {
   expectClosingLine,
   gameState,
   pickCards,
+  dispatch,
   pickOne,
+  playAgain,
   pressButton,
   startTrial,
 } from "./helpers";
@@ -95,4 +97,21 @@ test("REQ-2.11: a press that starts on a card does not walk the hero", async ({ 
   await page.waitForTimeout(500);
   expect((await gameState(page)).hero).toEqual(before);
   await page.mouse.up();
+});
+
+test("REQ-4.5, REQ-4.6: time up shows the end screen, and a mouse click starts a new run", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const click = clicker(page);
+  await page.goto("./?judge=1&lang=en");
+  await expect(page.locator("canvas")).toBeVisible();
+  await startTrial(page, click);
+  await dispatch(page, { type: "Tick", ms: 60_000 });
+  await expect.poll(async () => (await gameState(page)).phase).toBe("over");
+  await page.waitForTimeout(1_000);
+  await page.screenshot({ path: "e2e/screenshots/desktop-over.png" });
+  await playAgain(page, click);
+  expect((await gameState(page)).run.remainingMs).toBeGreaterThan(59_000);
+  expect(errors).toEqual([]);
 });

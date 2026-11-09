@@ -9,8 +9,13 @@ import {
   fontSize,
   heroSize,
   heroStart,
+  hudBar,
+  hudScore,
+  hudTime,
   lessonBox,
   messageText,
+  overLockMs,
+  overText,
   resultText,
   slotCenter,
   slotSize,
@@ -44,6 +49,9 @@ const shown: Record<string, Rect> = {
   message,
   "wish text": wishText,
   "wish picture": square(wishPicture, wishPictureSize),
+  "clock number": hudTime,
+  "clock bar": hudBar,
+  score: hudScore,
 };
 const interactive = [...cardIds.map(cardRect), wispRect, buttonRect];
 
@@ -65,6 +73,9 @@ const resultStage: Record<string, Rect> = {
   "closing line": lessonBox,
   "wish text": wishText,
   "wish picture": square(wishPicture, wishPictureSize),
+  "clock number": hudTime,
+  "clock bar": hudBar,
+  score: hudScore,
 };
 
 const left = (r: Rect) => r.x - r.width / 2;
@@ -155,5 +166,33 @@ describe("lane layout (REQ-2.11)", () => {
     expect(heroStart).toEqual(initialState.hero);
     for (const r of interactive) expect(overlap(hero, r)).toBe(false);
     for (const [name, r] of Object.entries(resultStage)) expect(overlap(hero, r), name).toBe(false);
+  });
+});
+
+describe("run layout (REQ-4.7)", () => {
+  it("keeps the clock and the score in the top row, above the wish and the slots", () => {
+    const row = [hudTime, hudBar, hudScore];
+    const topOfSlots = Math.min(...slots.map(top));
+    for (const r of row) {
+      expect(bottom(r)).toBeLessThan(top(wishText));
+      expect(bottom(r)).toBeLessThan(top(square(wishPicture, wishPictureSize)));
+      expect(bottom(r)).toBeLessThan(topOfSlots);
+    }
+  });
+
+  it("puts the clock number, the bar and the score side by side, in that order", () => {
+    expect(right(hudTime)).toBeLessThanOrEqual(left(hudBar));
+    expect(right(hudBar)).toBeLessThanOrEqual(left(hudScore));
+    expect(right(hudScore)).toBeLessThanOrEqual(canvas.width);
+  });
+
+  it("lays the end screen out from the top to the button without overlap", () => {
+    const lines = [overText.title, overText.record, overText.score, overText.best];
+    const ys = lines.map((l) => l.y);
+    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    expect(Math.min(...ys.slice(1).map((y, i) => y - ys[i]!))).toBeGreaterThanOrEqual(50);
+    expect(ys.at(-1)!).toBeLessThan(top(buttonRect));
+    expect(overText.wrap).toBeLessThanOrEqual(canvas.width);
+    expect(overLockMs).toBeGreaterThan(0);
   });
 });

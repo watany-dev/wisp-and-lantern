@@ -7,7 +7,7 @@ import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import { buttonRect, messageText, resultText, slotCenter, wisp } from "../lane-layout";
-import { cardLabel, colorArt, itemArt, itemName, laneView, thingArt } from "../lane-view";
+import { cardLabel, colorArt, hudView, itemArt, itemName, laneView, thingArt } from "../lane-view";
 
 const strings = { ja, en };
 const pick = (...cards: Extract<GameEvent, { type: "PickCard" }>["card"][]): GameEvent[] =>
@@ -321,5 +321,36 @@ describe("laneView message position (REQ-3.5.4)", () => {
 
   it("puts the result message where the retry button is not", () => {
     expect(resultText.y + resultText.height / 2).toBeLessThan(buttonRect.y - buttonRect.height / 2);
+  });
+});
+
+const tick = (ms: number): GameEvent => ({ type: "Tick", ms });
+
+describe.each(["ja", "en"] as const)("hudView in %s (REQ-4.2, REQ-4.7)", (lang) => {
+  const hud = (...events: GameEvent[]) =>
+    hudView(events.reduce(reduce, { ...initialState, lang, phase: "trial" as const, trial: 1 }));
+
+  it("starts at 60 seconds with a full bar and no score", () => {
+    expect(hud()).toEqual({
+      seconds: 60,
+      fraction: 1,
+      score: strings[lang].run.score.replace("{0}", "0"),
+    });
+  });
+
+  it("shows whole seconds, rounded up, so the last second reads 1 and not 0", () => {
+    expect(hud(tick(1)).seconds).toBe(60);
+    expect(hud(tick(1_000)).seconds).toBe(59);
+    expect(hud(tick(58_999)).seconds).toBe(2);
+    expect(hud(tick(59_999)).seconds).toBe(1);
+  });
+
+  it("empties the bar in proportion to the time used", () => {
+    expect(hud(tick(15_000)).fraction).toBe(0.75);
+    expect(hud(tick(30_000)).fraction).toBe(0.5);
+  });
+
+  it("shows the score after a find", () => {
+    expect(hud(...right).score).toBe(strings[lang].run.score.replace("{0}", "100"));
   });
 });
