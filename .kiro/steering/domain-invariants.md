@@ -19,6 +19,7 @@ from `initialState`.
   together, and say why in the PR.
 - A soft-lock check (the goal is always still reachable) belongs in the trial's `*.model.test.ts`;
   give it an id here only if a property test also covers it.
+- Spec `04-score-attack` adds 15 to 17 (the 60-second run) and widens INV-1 to the end screen.
 - Retired numbers, never reused: 6 and 7. Spec `03-trial-tell-vague-request` retired them (one card
   is now a valid request) and added 8 to 14. They are written without the `INV-` prefix here so the
   trace check does not count them as live.
@@ -30,7 +31,7 @@ INV-1 and INV-2 to match the real state.
 
 | id | invariant | test |
 |---|---|---|
-| INV-1 | `phase` is always `"title"` or `"trial"`. | `reducer.pbt.test.ts` |
+| INV-1 | `phase` is always `"title"`, `"trial"` or `"over"`. | `reducer.pbt.test.ts` |
 | INV-2 | `trial` is always an integer and never negative. | `reducer.pbt.test.ts` |
 | INV-3 | `reduce` never mutates the state it is given. | `reducer.pbt.test.ts` |
 | INV-4 | `reduce` is deterministic: the same events from the same state give an equal state. | `reducer.pbt.test.ts` |
@@ -41,4 +42,7 @@ INV-1 and INV-2 to match the real state.
 | INV-11 | What the wisp brings keeps every card the child picked: the picked color is the color brought, and the picked object is the object brought. | `reducer.pbt.test.ts` |
 | INV-12 | A request with only one card never brings the wish. | `reducer.pbt.test.ts` |
 | INV-13 | A request with both cards brings exactly that pair, the wish or not. | `reducer.pbt.test.ts` |
-| INV-14 | After a search the pick has at least one card, and only `Retry` changes the lane: what was asked cannot change. | `reducer.pbt.test.ts` |
+| INV-14 | After a search the pick has at least one card, and inside a run only `Retry` changes the lane: what was asked cannot change. A new run starts from a clean lane. | `reducer.pbt.test.ts` |
+| INV-15 | Inside a run the clock only runs down and stays between 0 and 60 seconds. Only a `Start` from the title or the end screen sets it back to 60 seconds. | `reducer.pbt.test.ts` |
+| INV-16 | Inside a run the score never goes down, and it goes up only on an `Ask` that brings the wish. A `Start` from the title or the end screen sets it to 0. | `reducer.pbt.test.ts` |
+| INV-17 | In a trial the clock is above zero and on the end screen it is zero. The end screen changes only on `Start`, `SetLang` and `MoveHeroTo`, and the last two leave the run and the lane alone. | `reducer.pbt.test.ts` |
