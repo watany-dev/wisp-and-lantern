@@ -7,6 +7,10 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 1, The Dark Lane: pick a color card and an object card, tap the wisp to ask, see what it
+  brings, and try again. The helper searches only when asked and only with both cards picked. Plays
+  in Japanese and English, in portrait with one finger or a mouse, and needs no network after the
+  first load. Spec in `.kiro/specs/02-trial-tell/`; invariants INV-5 to INV-7.
 - Project scaffold: Phaser 3, TypeScript 7 and Vite+, with a pure domain reducer and a title scene.
 - CI: format, lint and type check, unit and property tests with 95% coverage, size budget,
   Playwright smoke, secret scanning, per-pull-request previews and production deploys with a
