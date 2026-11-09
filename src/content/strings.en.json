@@ -1,5 +1,15 @@
 {
   "title": "Wisp & Lantern",
   "start": "Tap to start",
-  "retry": "Let's tell it again"
+  "retry": "Let's tell it again",
+  "lane": {
+    "wish": "I want this one",
+    "pickBoth": "Pick a color and a thing",
+    "pickColor": "Pick a color",
+    "pickThing": "Pick a thing",
+    "ready": "Tap the wisp to ask it",
+    "right": "Found it! Just right",
+    "wrong": "The wisp brought the {0}, just as you asked",
+    "again": "Play again"
+  }
 }

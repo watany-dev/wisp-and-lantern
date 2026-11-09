@@ -60,14 +60,17 @@ ran and what it saw.
 
 ## 5. Content
 
-- [ ] 5.1 Add the `kind` field and the two object cards to `cards.json`, the `lane` strings to both
+- [x] 5.1 Add the `kind` field and the two object cards to `cards.json`, the `lane` strings to both
       string files, regenerate the subset font (`npm run font`) and add `src/content/__tests__/lane-content.test.ts`.
   - Requirements: REQ-2.9, REQ-2.10, REQ-2.13
   - Tests: card ids and kinds equal the domain's `colors` and `things`; every color has a distinct
     shape and pattern; every message with every item name obeys the Japanese rules; ja and en have
     the same keys. `npm run kid` and `check-font-coverage` pass.
   - Done when: `npm run check` passes.
-  - Result:
+  - Result: `npm run check` passes (`npm run kid` ok, `check-font-coverage` ok; `npm run font` left the
+    subset font byte-identical because every new character is kana or ASCII already in it). The
+    content test renders the wrong-result message with all 6 Japanese item names; the longest line
+    is 9 characters. kid-reader table in the pull request.
 
 ## 6. Game logic modules
 
@@ -114,12 +117,12 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check |
 | REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
 | REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass |
-| REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
+| REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: no blame word in either language; message says the wisp did as asked |
 | REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | 4.1: 220 states, no violation; soft-lock found without Retry |
-| REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
-| REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | |
+| REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages |
+| REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern |
 | REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | |
 | REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | |
-| REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | |
+| REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | 5.1: `npm run kid` ok; all item names fit 12 x 2 |
 | REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | |
 | REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | |
