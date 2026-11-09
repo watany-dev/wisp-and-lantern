@@ -22,5 +22,7 @@ open an issue for each problem.
 - [ ] Controls: 4 of 5 children (5–8) finish trial 1 without verbal help
 - [ ] Judges: an adult on desktop reaches trials 1, 3, 6 and the parent screen within 4 minutes using only the README
 - [ ] Color: trial 1 cards and targets are distinguishable in grayscale
+- [ ] Trial 2: children (5–8) finish The Locked Shed without verbal help, and say in their own words that the key was the one that worked (record verbatim); note whether they try the hammer again after the door stays shut, and how they read the closing line
+- [ ] Color: trial 2 tools are told apart by outline in grayscale, and the picked tool is told by its frame and tick
 - [ ] Stability: one full playthrough on iPhone Safari, Android Chrome and desktop Chrome
 - [ ] Performance: 60 fps target; if it stays under 30 fps, cut effects

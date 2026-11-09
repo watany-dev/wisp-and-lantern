@@ -27,6 +27,15 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 2, The Locked Shed ("hand over the tools", learning goal L2): a cat is shut in a shed. The child
+  picks one of three tools (key, broom, hammer), taps the wisp to hand it over, and the wisp tries exactly
+  that tool on the lock. Only the key opens the door; the broom and the hammer leave it shut, and the
+  child tries again, any number of times, with no clock or score. The open result names the key and shows
+  a closing line. The child opens it from a new key button on the title; a tap elsewhere on the title still
+  starts trial 1. Japanese and English, one finger or a mouse, drawn in code, no network after the first
+  load. Spec in `.kiro/specs/05-trial-grant-tools/`; invariants INV-18 to INV-24 added. Trial 1 events and
+  the clock now act only in trial 1 (`trial` is 1), and the shed's events only in trial 2.
+
 - Trial 1, The Dark Lane: pick a color card and an object card, tap the wisp to ask, see what it
   brings, and try again. The helper searches only when asked and only with both cards picked. Plays
   in Japanese and English, in portrait with one finger or a mouse, and needs no network after the
