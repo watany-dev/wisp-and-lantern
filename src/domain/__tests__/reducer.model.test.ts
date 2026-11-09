@@ -35,7 +35,7 @@ describe("reduce (exhaustive model check)", () => {
       events: () => alphabet,
       step: reduce,
       invariants: {
-        "phase is title or trial": (s) => s.phase === "title" || s.phase === "trial",
+        "phase is title, trial or over": (s) => ["title", "trial", "over"].includes(s.phase),
         "trial is not negative": (s) => s.trial >= 0,
       },
       goal: (s) => s.phase === "trial",
@@ -60,6 +60,12 @@ const laneAlphabet: readonly GameEvent[] = [
   { type: "Retry" },
 ];
 
+/**
+ * Trial 1 is checked without the run: the score and the streak grow with every find, so they would
+ * make the state space endless. The run has its own model check below.
+ */
+const laneKey = (s: GameState) => JSON.stringify({ ...s, run: null });
+
 const laneInvariants: Record<string, (s: GameState) => boolean> = {
   "the title has trial 0 and an untouched lane": (s) =>
     s.phase !== "title" || (s.trial === 0 && s.lane === initialLane),
@@ -76,6 +82,7 @@ const lane = (events: readonly GameEvent[], goal: (s: GameState) => boolean) =>
     step: reduce,
     invariants: laneInvariants,
     goal,
+    key: laneKey,
   });
 
 /** A search for a request with exactly one card, and the wisp brought what the rule says. */
@@ -107,9 +114,9 @@ describe("reduce, trial 1 (exhaustive model check)", () => {
   it("REQ-2.8: from every state the right result is still reachable", () => {
     const report = lane(laneAlphabet, (s) => outcome(s.lane) === "right");
     expect(report.violations).toEqual([]);
-    // Title (2 languages x 2 hero positions) plus the trial: 3 wishes x (12 picks + 11 searches).
+    // Title (2 languages x 2 hero positions) plus the trial: 6 wishes x (12 picks + 11 searches).
     // A pick has a color or none (4) and an object or none (3); a search needs at least one card.
-    expect(report.states).toBe(4 + 2 * 2 * 3 * (12 + 11));
+    expect(report.states).toBe(4 + 2 * 2 * 6 * (12 + 11));
   });
 
   it("REQ-2.7, REQ-2.8: from every state, including after a different request, choosing is reachable", () => {
@@ -134,7 +141,7 @@ describe("reduce, a request with one card (exhaustive model check)", () => {
     (card) => {
       const report = lane(laneAlphabet, oneCardResult(card));
       expect(report.violations).toEqual([]);
-      expect(report.states).toBe(280);
+      expect(report.states).toBe(556);
     },
   );
 
@@ -151,6 +158,7 @@ describe("reduce, a request with one card (exhaustive model check)", () => {
         step: reduce,
         invariants: laneInvariants,
         goal,
+        key: laneKey,
       });
       expect(report.violations).toEqual([]);
     }
@@ -167,6 +175,7 @@ describe("the one-card goals are load-bearing (REQ-3.8.3)", () => {
         step: oldStep,
         invariants: {},
         goal: oneCardResult(card),
+        key: laneKey,
       });
       // Every state is stuck; the first one reported is the start, which no event leads out of.
       expect(report.violations).toHaveLength(1);
@@ -182,6 +191,7 @@ describe("the one-card goals are load-bearing (REQ-3.8.3)", () => {
       events: () => [{ type: "Ask" } as const],
       invariants: {},
       goal: oneCardResult("color"),
+      key: laneKey,
     };
     const old = checkModel<GameState, GameEvent>({ ...model, step: oldStep });
     expect(old.states).toBe(1);
@@ -190,5 +200,58 @@ describe("the one-card goals are load-bearing (REQ-3.8.3)", () => {
     const fixed = checkModel<GameState, GameEvent>({ ...model, step: reduce });
     expect(fixed.states).toBe(2);
     expect(fixed.violations).toEqual([]);
+  });
+});
+
+// A 60-second run (spec 04-score-attack): every state through the lane events, the clock in steps of
+// a third of the run, and a restart. The score is left out of the key, as in the trial 1 checks.
+const runAlphabet: readonly GameEvent[] = [
+  ...laneAlphabet,
+  { type: "Start", lang: "ja" },
+  { type: "Tick", ms: balance.runMs / 3 },
+];
+const runKey = (s: GameState) => JSON.stringify({ ...s, run: { remainingMs: s.run.remainingMs } });
+const runModel = (goal: (s: GameState) => boolean) =>
+  checkModel<GameState, GameEvent>({
+    initial: initialState,
+    events: () => runAlphabet,
+    step: reduce,
+    invariants: {
+      "a trial has time left": (s) => s.phase !== "trial" || s.run.remainingMs > 0,
+      "the end screen has no time left": (s) => s.phase !== "over" || s.run.remainingMs === 0,
+      "the clock is within the run": (s) =>
+        s.run.remainingMs >= 0 && s.run.remainingMs <= balance.runMs,
+    },
+    goal,
+    key: runKey,
+  });
+
+describe("reduce, a 60-second run (exhaustive model check)", () => {
+  it("REQ-4.5: from every state the run can end, however the child played", () => {
+    const report = runModel((s) => s.phase === "over");
+    expect(report.violations).toEqual([]);
+    expect(report.states).toBeGreaterThan(1_000);
+  });
+
+  it("REQ-4.6: from every state, including the end screen, a new run with a full clock can begin", () => {
+    const report = runModel(
+      (s) => s.phase === "trial" && s.run.remainingMs === balance.runMs && !s.lane.asked,
+    );
+    expect(report.violations).toEqual([]);
+  });
+
+  it("the check is load-bearing: without Start the end screen is a soft-lock (the child could never play again)", () => {
+    const withoutStart = runAlphabet.filter((e) => e.type !== "Start");
+    const report = checkModel<GameState, GameEvent>({
+      initial: reduce(initialState, { type: "Start" }),
+      events: () => withoutStart,
+      step: reduce,
+      invariants: {},
+      goal: (s) => s.phase === "trial" && !s.lane.asked,
+      key: runKey,
+    });
+    const [stuck] = report.violations;
+    expect(stuck?.kind).toBe("stuck");
+    expect(stuck?.state.phase).toBe("over");
   });
 });

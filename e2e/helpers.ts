@@ -22,6 +22,7 @@ export type GameState = {
   trial: number;
   hero: { x: number; y: number };
   lane: { wish: number; pick: Pick; asked: boolean };
+  run: { remainingMs: number; score: number; streak: number; best: number; record: boolean };
 };
 type GameWindow = Window & { __game: { state: () => GameState; dispatch: (e: unknown) => void } };
 
@@ -243,3 +244,7 @@ export async function expectClosingLine(page: Page, shown: boolean) {
     await expect.poll(() => textPixels(page, lessonArea), { timeout: 2_000 }).toBe(0);
   }
 }
+
+/** Taps the end screen's button until a new run has begun. The screen ignores early taps on purpose. */
+export const playAgain = (page: Page, press: Press) =>
+  pressUntil(page, press, { x: buttonRect.x, y: buttonRect.y }, (s) => s.phase === "trial");

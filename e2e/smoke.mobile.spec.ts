@@ -13,6 +13,7 @@ import {
   lessonArea,
   pickCards,
   pickOne,
+  playAgain,
   pressButton,
   startTrial,
   tapper,
@@ -187,3 +188,46 @@ for (const lang of ["ja", "en"] as const) {
     expect(errors).toEqual([]);
   });
 }
+
+// Spec 04-score-attack: a run is 60 seconds. The clock is real here; only the jump to the end
+// uses `dispatch`, since waiting a minute in every smoke would make the suite slow.
+test("REQ-4.1 to REQ-4.6: the clock runs, finds add up, time up shows the score, and a new run starts", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const tap = tapper(page);
+  await page.goto("./?lang=en");
+  await expect(page.locator("canvas")).toBeVisible();
+  await startTrial(page, tap);
+
+  // The clock runs on real time and the score starts at zero.
+  await expect.poll(async () => (await gameState(page)).run.remainingMs).toBeLessThan(59_900);
+  expect((await gameState(page)).run).toMatchObject({ score: 0, streak: 0, best: 0 });
+
+  // Two wishes found in a row: 100, then 100 + 50.
+  await pickCards(page, tap, wish.color, wish.thing);
+  await askWisp(page, tap);
+  await expectBrought(page, "yellow lantern");
+  expect((await gameState(page)).run).toMatchObject({ score: 100, streak: 1 });
+  await pressButton(page, tap);
+  const second = wishAt(1);
+  await pickCards(page, tap, second.color, second.thing);
+  await askWisp(page, tap);
+  await expect.poll(async () => (await gameState(page)).run.score).toBe(250);
+  await page.screenshot({ path: "e2e/screenshots/mobile-en-score.png" });
+
+  // Time up: the end screen, with the score kept as the best.
+  await dispatch(page, { type: "Tick", ms: 60_000 });
+  await expect.poll(async () => (await gameState(page)).phase).toBe("over");
+  expect((await gameState(page)).run).toMatchObject({ score: 250, best: 250, record: true });
+  await page.waitForTimeout(1_000);
+  await page.screenshot({ path: "e2e/screenshots/mobile-en-over.png" });
+
+  // The button starts a new run: full clock, no score, the first wish, the best kept.
+  await playAgain(page, tap);
+  const again = await gameState(page);
+  expect(again.run).toMatchObject({ score: 0, streak: 0, best: 250, record: false });
+  expect(again.run.remainingMs).toBeGreaterThan(59_000);
+  expect(again.lane).toEqual(emptyLane);
+  expect(errors).toEqual([]);
+});

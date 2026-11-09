@@ -12,6 +12,7 @@ const strings = { ja, en };
 export class TitleScene extends Phaser.Scene {
   private title!: Phaser.GameObjects.Text;
   private prompt!: Phaser.GameObjects.Text;
+  private intro!: Phaser.GameObjects.Text;
 
   constructor(private readonly game_: Game) {
     super("title");
@@ -31,7 +32,10 @@ export class TitleScene extends Phaser.Scene {
     this.prompt = this.add
       .text(width / 2, 340, "", { ...textStyle, fontSize: "24px" })
       .setOrigin(0.5);
-    this.add.image(width / 2 + 60, 520, "wisp");
+    this.intro = this.add
+      .text(width / 2, 430, "", { ...textStyle, fontSize: "22px" })
+      .setOrigin(0.5);
+    this.add.image(width / 2 + 60, 560, "wisp");
     const { x, y } = this.game_.state().hero;
     this.add.image(x, y, "hero");
 
@@ -54,5 +58,6 @@ export class TitleScene extends Phaser.Scene {
     const s = strings[state.lang];
     this.title.setText(s.title);
     this.prompt.setText(s.start);
+    this.intro.setText(s.run.intro);
   }
 }

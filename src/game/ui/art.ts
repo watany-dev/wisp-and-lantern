@@ -108,4 +108,14 @@ export function drawPanel(
   g.fillRoundedRect(-width / 2, -height / 2, width, height, 14);
 }
 
+/** The clock bar: a dark track and a gold fill that shrinks as the time runs out. */
+export function drawBar(g: Graphics, width: number, height: number, fraction: number): void {
+  g.fillStyle(palette.dark, 1);
+  g.fillRoundedRect(0, 0, width, height, height / 2);
+  const fill = Math.max(0, Math.min(1, fraction)) * width;
+  if (fill < height) return;
+  g.fillStyle(gold, 1);
+  g.fillRoundedRect(0, 0, fill, height, height / 2);
+}
+
 export const palette = { ink, white, gold, dark: 0x15152a, lit: 0x2a2a4a };

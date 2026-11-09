@@ -2,6 +2,7 @@
 // Plain data in, plain data out, so the scene stays thin (ADR 0003). Child-facing text comes from
 // `src/content` only (REQ-2.13).
 
+import { balance } from "../domain/balance";
 import {
   canAsk,
   colors,
@@ -51,6 +52,19 @@ export type LaneView = {
   /** Where the message goes: in the wisp's spot after a result, below it while choosing. */
   messageAt: Point;
 };
+
+/** What the top row of a run shows: the whole seconds left, how full the bar is, and the score. */
+export type Hud = { seconds: number; fraction: number; score: string };
+
+/** Not part of `laneView`: it changes with every tick, while the lane view only with the lane. */
+export function hudView(state: GameState): Hud {
+  const { run } = state;
+  return {
+    seconds: Math.ceil(run.remainingMs / 1000),
+    fraction: run.remainingMs / balance.runMs,
+    score: strings[state.lang].run.score.replace("{0}", String(run.score)),
+  };
+}
 
 /** The center of a text box as a plain point. */
 const spot = ({ x, y }: Point): Point => ({ x, y });

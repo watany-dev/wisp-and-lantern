@@ -7,6 +7,12 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Changed
 
+- The game is now a 60-second score attack. The clock runs from the first tap, each wish found scores
+  100 (plus 50 for each find in a row, up to 4), a different or vague request scores nothing, and
+  when time is up an end screen shows the score and the best of the session with a button to play
+  again. The six lane items all come up as wishes, and the next-wish button says "Next". Spec in
+  `.kiro/specs/04-score-attack/`; INV-1 and INV-14 are widened and INV-15 to INV-17 added.
+
 - Trial 1, The Dark Lane: one card is now enough to send the wisp. With only a color or only an
   object, the wisp brings an item that keeps what the child said and differs from the wish where the
   child said nothing, names it, and lets the child tell it again. Picking both cards finds the wish as

@@ -10,6 +10,14 @@
     "wrong": "The wisp brought the {0}, just as you asked",
     "vague": "The wisp brought the {0}",
     "lesson": "You told it\ncolor & item",
+    "again": "Next"
+  },
+  "run": {
+    "intro": "How many can you\nfind in 60 seconds?",
+    "score": "Score {0}",
+    "over": "Time's up!",
+    "newBest": "New best!",
+    "best": "Best {0}",
     "again": "Play again"
   }
 }

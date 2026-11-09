@@ -18,8 +18,22 @@ const wispHit = 96;
 export const cardSize = { width: 96, height: 92 } as const;
 
 export const wisp: Point = { x: 195, y: 370 };
-export const wishText: Rect = { x: 130, y: 62, width: 200, height: 40 };
-export const wishPicture: Point = { x: 265, y: 62 };
+export const wishText: Rect = { x: 130, y: 76, width: 200, height: 40 };
+export const wishPicture: Point = { x: 265, y: 76 };
+/** The run's clock and score share the top row, above the wish. */
+export const hudTime: Rect = { x: 36, y: 24, width: 44, height: 32 };
+export const hudBar: Rect = { x: 150, y: 24, width: 170, height: 14 };
+export const hudScore: Rect = { x: 311, y: 24, width: 110, height: 32 };
+/** The end screen: its lines from the top, and the button where the lane's button is. */
+export const overText = {
+  title: { x: 195, y: 200 },
+  record: { x: 195, y: 258 },
+  score: { x: 195, y: 340 },
+  best: { x: 195, y: 420 },
+  wrap: 340,
+} as const;
+/** How long the end screen ignores taps, so a last quick tap does not restart the run. */
+export const overLockMs = 800;
 export const messageText = { x: 195, y: 454, wrap: 340, height: 60 } as const;
 /**
  * After a result the wisp has flown to a slot, so the area it left (y 322 to 418) is free. The

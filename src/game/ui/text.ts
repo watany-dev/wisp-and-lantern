@@ -7,3 +7,5 @@ export const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
 };
 
 export const inkStyle = { ...textStyle, color: "#1b1b2a" };
+
+export const goldStyle = { ...textStyle, color: "#ffd54a" };
