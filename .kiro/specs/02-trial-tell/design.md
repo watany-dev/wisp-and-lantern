@@ -109,13 +109,13 @@ Plain modules, unit-tested and mutation-tested:
   |---|---|---|
   | wish text / picture | (130, 62) / (265, 62) | picture 64 |
   | lane slot (color column x thing row) | x 75, 195, 315 for red, blue, yellow; y 170 pumpkin, 270 lantern | 88 |
-  | wisp | (195, 385) | tap area 96 |
-  | message | (195, 470), wrap width 340 | |
-  | button | (195, 522) | 300 x 56 |
+  | wisp | (195, 370) | tap area 96 |
+  | message | (195, 454), wrap width 340 | height 60 |
+  | button | (195, 528) | 300 x 80 |
   | color cards | x 75, 195, 315; y 690 | 96 x 92 |
   | object cards | x 135, 255; y 788 | 96 x 92 |
 
-  The hero starts at (195, 600), between the button and the color cards, so the floor drag from the
+  The hero starts at (195, 600), between the button (ends at y 568) and the color cards (start at y 644), so the floor drag from the
   scaffold keeps a free strip. All hit areas are at least 80 x 80 (REQ-2.11).
 - `lane-view.ts`: `laneView(state)` returns what the scene shows, with no Phaser type: the message
   text, the button (`{ text, event }` or none), whether the wisp is `armed`, which cards are picked,

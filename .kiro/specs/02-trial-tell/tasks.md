@@ -74,13 +74,18 @@ ran and what it saw.
 
 ## 6. Game logic modules
 
-- [ ] 6.1 Add `lane-layout.ts`, `lane-view.ts` and `pattern.ts` with unit tests.
+- [x] 6.1 Add `lane-layout.ts`, `lane-view.ts` and `pattern.ts` with unit tests.
   - Requirements: REQ-2.2, REQ-2.3, REQ-2.4, REQ-2.5, REQ-2.6, REQ-2.7, REQ-2.10, REQ-2.11
   - Tests: `src/game/__tests__/lane-layout.test.ts` (inside the canvas, no overlaps, at least 80 px,
     hero start clear of every object), `lane-view.test.ts` (message, button, armed, lit slot and
     result mark in both languages for every stage), `pattern.test.ts`.
   - Done when: `npm run check` passes with no surviving mutant.
-  - Result:
+  - Result: `npm run check` passes: 142 tests, 100% coverage, mutation score 100%. The layout test
+    caught a design error: the 56 px button broke the 80 px target rule, so the button is now
+    300 x 80 and the wisp, message and button moved up to keep the hero strip free (design table
+    updated). A first mutation run left one mutant in the message text (`asked && complete` vs
+    `||`); the item name is now inserted only when a lit item exists. `canAsk(lane)` moved into the
+    domain so the reducer and the view share one condition.
 
 ## 7. Scene
 
@@ -112,7 +117,7 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | requirement | task | test | result |
 |---|---|---|---|
 | REQ-2.1 play from start to retry | 2.1, 7.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `reducer.test.ts` passes |
-| REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes |
+| REQ-2.2 pick two cards | 2.1, 6.1 | `reducer.test.ts`, `lane-view.test.ts` | 2.1: `reducer.test.ts` passes; 6.1: picked and locked cards in `lane-view.test.ts` |
 | REQ-2.3 asked only when asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-5 | 3.1: holds over random sequences of up to 40 events; fails when a pick searches by itself |
 | REQ-2.4 missing card is not a search | 2.1, 3.1, 6.1, 8.1 | `reducer.pbt.test.ts` INV-6, `smoke.mobile.spec.ts` | 3.1: holds; fails when Ask skips the completeness check |
 | REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
@@ -120,8 +125,8 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: no blame word in either language; message says the wisp did as asked |
 | REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | 4.1: 220 states, no violation; soft-lock found without Retry |
 | REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages |
-| REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern |
-| REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | |
+| REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern; 6.1: stripes, dots and plain marks and the item art |
+| REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | 6.1: every target at least 80 x 80, all inside 390 x 844, no overlap, hero start clear |
 | REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | |
 | REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | 5.1: `npm run kid` ok; all item names fit 12 x 2 |
 | REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | |

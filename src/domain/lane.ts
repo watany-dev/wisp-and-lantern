@@ -8,7 +8,7 @@ export const colors = ["red", "blue", "yellow"] as const;
 export const things = ["pumpkin", "lantern"] as const;
 
 export type ColorId = (typeof colors)[number];
-type ThingId = (typeof things)[number];
+export type ThingId = (typeof things)[number];
 export type CardId = ColorId | ThingId;
 
 export type Pick = { color: ColorId | null; thing: ThingId | null };
@@ -32,6 +32,11 @@ export function isComplete(pick: Pick): pick is Wish {
   return pick.color !== null && pick.thing !== null;
 }
 
+/** The wisp can be sent: both cards are picked and it has not searched yet. */
+export function canAsk(lane: Lane): boolean {
+  return !lane.asked && isComplete(lane.pick);
+}
+
 export function wishAt(index: number): Wish {
   return balance.wishes[index]!;
 }
@@ -48,7 +53,7 @@ export function reduceLane(lane: Lane, event: LaneEvent): Lane {
     case "PickCard":
       return lane.asked ? lane : { ...lane, pick: pickCard(lane.pick, event.card) };
     case "Ask":
-      return lane.asked || !isComplete(lane.pick) ? lane : { ...lane, asked: true };
+      return canAsk(lane) ? { ...lane, asked: true } : lane;
     case "Retry":
       return lane.asked ? { wish: nextWish(lane), pick: initialLane.pick, asked: false } : lane;
   }
