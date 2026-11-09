@@ -89,14 +89,23 @@ ran and what it saw.
 
 ## 7. Scene
 
-- [ ] 7.1 Add `LaneScene.ts` and `ui/art.ts`; hand off from `TitleScene`; register in `boot.ts`. Keep
+- [x] 7.1 Add `LaneScene.ts` and `ui/art.ts`; hand off from `TitleScene`; register in `boot.ts`. Keep
       the hero drag for presses outside every object.
   - Requirements: REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.5, REQ-2.6, REQ-2.7, REQ-2.10, REQ-2.11, REQ-2.12
   - Tests: no new test file (scenes are excluded, ADR 0003); the existing mobile and desktop smoke
     must still pass unchanged.
-  - Done when: `npm run check`, `npm run build` and `npm run smoke` pass; screenshots of the title
-    and the lane in both languages are attached to the pull request.
-  - Result:
+  - Done when: `npm run check`, `npm run build` and `npm run smoke` pass; the lane in both languages
+    has been looked at on a build.
+  - Result: `npm run check` passes (146 tests, mutation score 100%, build and size budget ok). The
+    existing smokes pass unchanged on the production build: desktop Chromium, and the mobile test
+    on Chromium with the iPhone 13 touch profile (this sandbox cannot start WebKit; CI runs the
+    real WebKit project). A scripted tap-only run on the build, in ja and en, went title, pick red
+    and lantern, ask, different result, retry, pick yellow and lantern, ask, right result, with no
+    page or console errors. Looking at the screenshots found two defects, both fixed: the wisp's
+    placeholder square covered the lit item (the lit item and star are now drawn above it), and the
+    lantern's caps were invisible on the dark lane (mid-tone caps). I looked at the
+    screenshots in the session; they are not attached because this sandbox cannot upload images and
+    `e2e/screenshots` is git-ignored. The smoke in CI writes its own screenshots.
 
 ## 8. Smoke and docs
 
@@ -127,7 +136,7 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | 5.1: same keys in both languages |
 | REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | 5.1: each color has its own shape and pattern; 6.1: stripes, dots and plain marks and the item art |
 | REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | 6.1: every target at least 80 x 80, all inside 390 x 844, no overlap, hero start clear |
-| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | |
+| REQ-2.12 offline after first load | 7.1, 8.1 | `smoke.mobile.spec.ts` (offline run) | 7.1: no request in the scripted run after boot (offline smoke lands in 8.1) |
 | REQ-2.13 text in content | 5.1 | `lane-content.test.ts`, `npm run kid` | 5.1: `npm run kid` ok; all item names fit 12 x 2 |
 | REQ-2.14 pure rules, checked three ways | 3.1, 4.1, 8.1 | PBT, model check, mobile smoke | |
 | REQ-2.15 no gate gets weaker | every task | `npm run check` diff shows no config change | |

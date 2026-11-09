@@ -64,13 +64,33 @@ describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
     expect(view("en", ...wrong).armed).toBe(false);
   });
 
-  it("marks the picked cards, and locks them after the search", () => {
-    expect(view("en", ...pick("red", "lantern", "blue")).picked).toEqual({
-      color: "blue",
-      thing: "lantern",
-    });
+  it("lists every card with its label, marking the picked ones", () => {
+    const { cards } = view("en", ...pick("red", "lantern", "blue"));
+    expect(cards.map((c) => c.id)).toEqual(["red", "blue", "yellow", "pumpkin", "lantern"]);
+    expect(cards.map((c) => c.label)).toEqual(["red", "blue", "yellow", "pumpkin", "lantern"]);
+    expect(cards.filter((c) => c.picked).map((c) => c.id)).toEqual(["blue", "lantern"]);
+    expect(cards.every((c) => c.alpha === 1)).toBe(true);
+    expect(view("ja").cards[0]?.label).toBe("\u3042\u304b\u3044");
+  });
+
+  it("locks the cards after the search and fades the ones that were not picked", () => {
     expect(view("en", ...pick("red", "lantern")).locked).toBe(false);
-    expect(view("en", ...wrong).locked).toBe(true);
+    const asked = view("en", ...wrong);
+    expect(asked.locked).toBe(true);
+    expect(asked.cards.map((c) => [c.id, c.alpha])).toEqual([
+      ["red", 1],
+      ["blue", 0.45],
+      ["yellow", 0.45],
+      ["pumpkin", 0.45],
+      ["lantern", 1],
+    ]);
+  });
+
+  it("fades the wisp while it cannot be sent, and not once it has searched", () => {
+    expect(view("en").wispAlpha).toBe(0.55);
+    expect(view("en", ...pick("red")).wispAlpha).toBe(0.55);
+    expect(view("en", ...pick("red", "lantern")).wispAlpha).toBe(1);
+    expect(view("en", ...wrong).wispAlpha).toBe(1);
   });
 
   it("lights exactly the asked slot and flies the wisp there; before that the wisp stays home", () => {
@@ -103,7 +123,7 @@ describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
     const again = view("en", ...wrong, { type: "Retry" });
     expect(again.button).toBeNull();
     expect(again.lit).toBeNull();
-    expect(again.picked).toEqual({ color: null, thing: null });
+    expect(again.cards.some((c) => c.picked)).toBe(false);
     expect(again.message).toBe(en.lane.pickBoth);
   });
 

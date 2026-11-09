@@ -12,6 +12,7 @@ import {
   slotCenter,
   slotSize,
   wishPicture,
+  wishText,
   wishPictureSize,
   wispRect,
   type Rect,
@@ -38,6 +39,7 @@ const shown: Record<string, Rect> = {
   wisp: wispRect,
   button: buttonRect,
   message,
+  "wish text": wishText,
   "wish picture": square(wishPicture, wishPictureSize),
 };
 const interactive = [...cardIds.map(cardRect), wispRect, buttonRect];

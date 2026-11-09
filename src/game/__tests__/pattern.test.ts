@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { patternMarks } from "../pattern";
+import { patternMarks, starPoints } from "../pattern";
 
 describe("patternMarks (REQ-2.10)", () => {
   it("stripes-v draws four vertical lines across the square, centered", () => {
@@ -35,5 +35,32 @@ describe("patternMarks (REQ-2.10)", () => {
   it("plain and unknown patterns draw nothing", () => {
     expect(patternMarks("plain", 40)).toEqual([]);
     expect(patternMarks("zigzag", 40)).toEqual([]);
+  });
+});
+
+describe("starPoints (REQ-2.6)", () => {
+  it("alternates outer and inner corners, starting at the top and turning clockwise", () => {
+    const expected = [
+      [0, -10],
+      [2.9389, -4.0451],
+      [9.5106, -3.0902],
+      [4.7553, 1.5451],
+      [5.8779, 8.0902],
+      [0, 5],
+      [-5.8779, 8.0902],
+      [-4.7553, 1.5451],
+      [-9.5106, -3.0902],
+      [-2.9389, -4.0451],
+    ];
+    const points = starPoints(10);
+    expect(points).toHaveLength(10);
+    points.forEach((p, i) => {
+      expect(p.x).toBeCloseTo(expected[i]![0]!, 3);
+      expect(p.y).toBeCloseTo(expected[i]![1]!, 3);
+    });
+  });
+
+  it("scales with the radius", () => {
+    expect(starPoints(20)[2]!.x).toBeCloseTo(19.0211, 3);
   });
 });

@@ -34,3 +34,12 @@ export function patternMarks(pattern: string, size: number): Mark[] {
   if (pattern === "dots") return dots(size);
   return [];
 }
+
+/** The ten corner points of a five-point star of outer radius `r`, starting at the top. */
+export function starPoints(r: number): { x: number; y: number }[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    const radius = i % 2 === 0 ? r : r / 2;
+    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+  });
+}
