@@ -10,4 +10,6 @@ export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
   | { type: "MoveHeroTo"; x: number; y: number }
+  /** `ms` of play time passed. The only way time reaches the reducer (ADR 0001). */
+  | { type: "Tick"; ms: number }
   | LaneEvent;

@@ -4,6 +4,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../events";
 import { colors, delivered, hasPick, isComplete, outcome, things, wishAt } from "../lane";
+import { balance } from "../balance";
 import { reduce } from "../reducer";
 import { initialState } from "../state";
 import { checkProperty, deepFreeze } from "./support/pbt";
@@ -17,6 +18,15 @@ const event: fc.Arbitrary<GameEvent> = fc.oneof(
   { weight: 3, arbitrary: fc.record({ type: fc.constant("PickCard" as const), card }) },
   { weight: 2, arbitrary: fc.record({ type: fc.constant("Ask" as const) }) },
   fc.record({ type: fc.constant("Retry" as const) }),
+  // Mostly short ticks, and sometimes a long one that ends the run; a negative one is ignored.
+  fc.record({ type: fc.constant("Tick" as const), ms: fc.integer({ min: -100, max: 2_000 }) }),
+  {
+    weight: 1,
+    arbitrary: fc.record({
+      type: fc.constant("Tick" as const),
+      ms: fc.integer({ min: 0, max: 40_000 }),
+    }),
+  },
 );
 // Long enough to pick two cards, ask, retry and go around again.
 const events = fc.array(event, { maxLength: 40 });
@@ -34,12 +44,12 @@ function steps(list: GameEvent[]) {
 }
 
 describe("reduce (properties)", () => {
-  it("INV-1, INV-2: keeps phase in title|trial and trial a non-negative integer for any event sequence", () => {
+  it("INV-1, INV-2: keeps phase in title|trial|over and trial a non-negative integer for any event sequence", () => {
     checkProperty(
       "phase-and-trial-bounds",
       fc.property(events, (list) => {
         const end = list.reduce(reduce, initialState);
-        expect(["title", "trial"]).toContain(end.phase);
+        expect(["title", "trial", "over"]).toContain(end.phase);
         expect(Number.isInteger(end.trial)).toBe(true);
         expect(end.trial).toBeGreaterThanOrEqual(0);
       }),
@@ -78,6 +88,80 @@ describe("reduce (properties)", () => {
   });
 });
 
+/** A `Start` that begins a new run: from the title or the end screen. */
+const newRun = (before: { phase: string }, e: GameEvent) =>
+  e.type === "Start" && before.phase !== "trial";
+
+/** True when an end screen comes before a trial in the list of states. */
+const restartsAfterOver = (states: { phase: string }[]) => {
+  const firstOver = states.findIndex((s) => s.phase === "over");
+  return firstOver >= 0 && states.slice(firstOver).some((s) => s.phase === "trial");
+};
+
+describe("reduce, the run (properties)", () => {
+  it("INV-15: REQ-4.2: the clock only runs down inside a run, between 0 and 60 seconds", () => {
+    checkProperty(
+      "clock-only-runs-down",
+      fc.property(inTrial, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          expect(after.run.remainingMs).toBeGreaterThanOrEqual(0);
+          expect(after.run.remainingMs).toBeLessThanOrEqual(balance.runMs);
+          if (newRun(before, e)) expect(after.run.remainingMs).toBe(balance.runMs);
+          else expect(after.run.remainingMs).toBeLessThanOrEqual(before.run.remainingMs);
+        }
+      }),
+    );
+  });
+
+  it("INV-16: REQ-4.3: inside a run the score never goes down, and goes up only when an Ask brings the wish", () => {
+    checkProperty(
+      "score-only-goes-up-on-a-find",
+      fc.property(inTrial, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          if (newRun(before, e)) {
+            expect(after.run.score).toBe(0);
+            continue;
+          }
+          expect(after.run.score).toBeGreaterThanOrEqual(before.run.score);
+          if (after.run.score > before.run.score) {
+            expect(e.type).toBe("Ask");
+            expect(outcome(after.lane)).toBe("right");
+          }
+        }
+      }),
+    );
+  });
+
+  it("INV-17: REQ-4.5: the run is over exactly when the clock is at zero, and the end screen only takes Start, SetLang and MoveHeroTo", () => {
+    checkProperty(
+      "over-means-zero",
+      fc.property(inTrial, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          if (after.phase === "trial") expect(after.run.remainingMs).toBeGreaterThan(0);
+          if (after.phase === "over") expect(after.run.remainingMs).toBe(0);
+          if (before.phase !== "over" || e.type === "Start") continue;
+          if (e.type === "SetLang" || e.type === "MoveHeroTo") {
+            expect(after.run).toBe(before.run);
+            expect(after.lane).toBe(before.lane);
+          } else {
+            expect(after).toBe(before);
+          }
+        }
+      }),
+    );
+  });
+
+  it("the generator reaches a score, the end screen, and a new run after it", () => {
+    const ends = fc
+      .sample(inTrial, { numRuns: 4000, seed: 11 })
+      .map((l) => steps(l).map((x) => x.after));
+    expect(ends.some((states) => states.some((s) => s.phase === "over"))).toBe(true);
+    expect(ends.some((states) => states.some((s) => s.run.score > 0))).toBe(true);
+    const restarted = ends.some(restartsAfterOver);
+    expect(restarted).toBe(true);
+  });
+});
+
 describe("reduce, requests (properties)", () => {
   it("INV-8: REQ-3.2: Ask with no card picked, or after a search, returns the same state", () => {
     checkProperty(
@@ -96,7 +180,7 @@ describe("reduce, requests (properties)", () => {
       "one-card-is-a-request",
       fc.property(inTrial, (list) => {
         const end = list.reduce(reduce, initialState);
-        if (hasPick(end.lane.pick) && !end.lane.asked) {
+        if (end.phase === "trial" && hasPick(end.lane.pick) && !end.lane.asked) {
           expect(reduce(end, { type: "Ask" }).lane.asked).toBe(true);
         }
       }),
@@ -160,7 +244,8 @@ describe("reduce, what the wisp brings (properties)", () => {
         for (const { before, event: e, after } of steps(list)) {
           if (!before.lane.asked) continue;
           expect(hasPick(before.lane.pick)).toBe(true);
-          if (e.type !== "Retry") expect(after.lane).toEqual(before.lane);
+          // A new run starts from a clean lane; inside a run only Retry changes it.
+          if (e.type !== "Retry" && !newRun(before, e)) expect(after.lane).toEqual(before.lane);
         }
       }),
     );

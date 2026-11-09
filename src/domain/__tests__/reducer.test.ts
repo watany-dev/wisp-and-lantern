@@ -13,10 +13,8 @@ const pick = (...cards: Extract<GameEvent, { type: "PickCard" }>["card"][]): Gam
 const ask: GameEvent = { type: "Ask" };
 const retry: GameEvent = { type: "Retry" };
 
-// The first three wishes, as picks: yellow lantern, red pumpkin, blue lantern.
+// The first wish as a pick: the yellow lantern.
 const wish0 = pick("yellow", "lantern");
-const wish1 = pick("red", "pumpkin");
-const wish2 = pick("blue", "lantern");
 const wrong = pick("red", "lantern");
 
 describe("initialState", () => {
@@ -162,11 +160,14 @@ describe("reduce: retry (REQ-2.7, REQ-2.8)", () => {
     expect(next.lane).toEqual({ wish: 1, pick: { color: null, thing: null }, asked: false });
   });
 
-  it("cycles through the wishes and wraps to the first", () => {
-    const first = play([...wish0, ask, retry], started);
-    const second = play([...wish1, ask, retry], first);
-    const third = play([...wish2, ask, retry], second);
-    expect([first.lane.wish, second.lane.wish, third.lane.wish]).toEqual([1, 2, 0]);
+  it("cycles through all six wishes and wraps to the first", () => {
+    let state = started;
+    const seen: number[] = [];
+    for (const wish of balance.wishes) {
+      state = play([...pick(wish.color, wish.thing), ask, retry], state);
+      seen.push(state.lane.wish);
+    }
+    expect(seen).toEqual([1, 2, 3, 4, 5, 0]);
   });
 
   it("the new wish can be solved, however many different requests came before", () => {
@@ -210,5 +211,164 @@ describe("reduce: other events leave the lane alone", () => {
       asked,
     );
     expect(next.lane).toBe(asked.lane);
+  });
+});
+
+// A run of 60 seconds (spec 04-score-attack). `runOut` is the whole clock in one tick.
+const tick = (ms: number): GameEvent => ({ type: "Tick", ms });
+const runOut = tick(balance.runMs);
+const find = (index: number): GameEvent[] => {
+  const wish = balance.wishes[index]!;
+  return [...pick(wish.color, wish.thing), ask];
+};
+
+describe("reduce: the clock (REQ-4.2)", () => {
+  it("Start begins a run with a full clock, no score and no streak", () => {
+    expect(started.run).toEqual({
+      remainingMs: 60_000,
+      score: 0,
+      streak: 0,
+      best: 0,
+      record: false,
+    });
+  });
+
+  it("Tick takes the time off the clock and changes nothing else", () => {
+    const next = reduce(started, tick(1_500));
+    expect(next).toEqual({ ...started, run: { ...started.run, remainingMs: 58_500 } });
+    expect(next.phase).toBe("trial");
+  });
+
+  it("Tick counts while the helper is searching and after a different request", () => {
+    const searching = play(find(0), started);
+    expect(reduce(searching, tick(1_000)).run.remainingMs).toBe(59_000);
+    expect(reduce(searching, tick(1_000)).lane).toBe(searching.lane);
+  });
+
+  it("Tick does nothing on the title screen", () => {
+    expect(reduce(initialState, tick(1_000))).toBe(initialState);
+  });
+
+  it.each([0, -5, Number.NaN])("Tick with %s milliseconds changes nothing", (ms) => {
+    expect(reduce(started, tick(ms))).toBe(started);
+  });
+
+  it("the run is over when the clock reaches zero, exactly or past it", () => {
+    const almost = reduce(started, tick(59_999));
+    expect(almost.phase).toBe("trial");
+    expect(almost.run.remainingMs).toBe(1);
+    const exact = reduce(almost, tick(1));
+    expect(exact.phase).toBe("over");
+    expect(exact.run.remainingMs).toBe(0);
+    expect(reduce(started, tick(90_000)).phase).toBe("over");
+  });
+
+  it("an over run does not search, even when a card was picked as the time ran out", () => {
+    const over = play([...pick("yellow", "lantern"), runOut], started);
+    expect(over.phase).toBe("over");
+    expect(reduce(over, ask)).toBe(over);
+    expect(over.run.score).toBe(0);
+  });
+
+  it("an over run ignores time, cards, asks and retries, but still takes a language and a hero move", () => {
+    const over = reduce(started, runOut);
+    for (const event of [tick(1_000), ...pick("red"), ask, retry]) {
+      expect(reduce(over, event)).toBe(over);
+    }
+    expect(reduce(over, { type: "SetLang", lang: "ja" })).toEqual({ ...over, lang: "ja" });
+    expect(reduce(over, { type: "MoveHeroTo", x: 1, y: 2 }).hero).toEqual({ x: 1, y: 2 });
+  });
+});
+
+describe("reduce: the score (REQ-4.3)", () => {
+  it("a find scores 100 when the wisp is sent, not when the next wish comes", () => {
+    const found = play(find(0), started);
+    expect(found.run).toMatchObject({ score: 100, streak: 1 });
+    expect(reduce(found, retry).run).toEqual(found.run);
+  });
+
+  it("finds in a row score more each time, up to 300", () => {
+    let state = started;
+    const scores: number[] = [];
+    for (let i = 0; i < 7; i += 1) {
+      state = play([...find(i % balance.wishes.length), retry], state);
+      scores.push(state.run.score);
+    }
+    expect(scores).toEqual([100, 250, 450, 700, 1_000, 1_300, 1_600]);
+    expect(state.run.streak).toBe(7);
+  });
+
+  it("a different request scores nothing and ends the streak", () => {
+    const after = play([...find(0), retry, ...wrong, ask], started);
+    expect(after.run).toMatchObject({ score: 100, streak: 0 });
+  });
+
+  it("a request with one card scores nothing and ends the streak", () => {
+    const after = play([...find(0), retry, ...pick("red"), ask], started);
+    expect(after.run).toMatchObject({ score: 100, streak: 0 });
+  });
+
+  it("the streak starts again from 100 after a miss", () => {
+    const after = play([...find(0), retry, ...wrong, ask, retry, ...find(1)], started);
+    expect(after.run).toMatchObject({ score: 200, streak: 1 });
+  });
+
+  it("asking with no card, or twice, scores nothing", () => {
+    expect(reduce(started, ask).run).toBe(started.run);
+    const found = play(find(0), started);
+    expect(reduce(found, ask)).toBe(found);
+  });
+
+  it("picking a card or retrying never scores", () => {
+    const picked = play(pick("yellow", "lantern"), started);
+    expect(picked.run).toBe(started.run);
+    const missed = play([...wrong, ask], started);
+    expect(reduce(missed, retry).run).toBe(missed.run);
+  });
+});
+
+describe("reduce: the end of a run (REQ-4.5, REQ-4.6)", () => {
+  it("keeps the score, the lane and the language, and records the best", () => {
+    const playing = play([...find(0), retry, ...find(1)], started);
+    const over = reduce(playing, runOut);
+    expect(over.run).toMatchObject({ score: 250, best: 250, record: true, remainingMs: 0 });
+    expect(over.lane).toBe(playing.lane);
+    expect(over.lang).toBe(playing.lang);
+  });
+
+  it("Start on the end screen begins a fresh run: full clock, no score, the first wish", () => {
+    const over = play([...find(0), retry, ...find(1), runOut], started);
+    const again = reduce({ ...over, lang: "ja" }, { type: "Start" });
+    expect(again.phase).toBe("trial");
+    expect(again.trial).toBe(1);
+    expect(again.lang).toBe("ja");
+    expect(again.lane).toEqual(initialState.lane);
+    expect(again.run).toEqual({
+      remainingMs: 60_000,
+      score: 0,
+      streak: 0,
+      best: 250,
+      record: false,
+    });
+  });
+
+  it("Start on the end screen can set the language", () => {
+    const over = reduce(started, runOut);
+    expect(reduce(over, { type: "Start", lang: "ja" }).lang).toBe("ja");
+  });
+
+  it("the best is the highest of the runs, and only a higher score is a record", () => {
+    const first = play([...find(0), retry, ...find(1), runOut], started);
+    const second = play([{ type: "Start" }, ...find(0), runOut], first);
+    expect(second.run).toMatchObject({ score: 100, best: 250, record: false });
+    const third = play(
+      [{ type: "Start" }, ...find(0), retry, ...find(1), retry, ...find(2), runOut],
+      second,
+    );
+    expect(third.run).toMatchObject({ score: 450, best: 450, record: true });
+  });
+
+  it("a run that scored nothing is not a record", () => {
+    expect(reduce(started, runOut).run).toMatchObject({ score: 0, best: 0, record: false });
   });
 });
