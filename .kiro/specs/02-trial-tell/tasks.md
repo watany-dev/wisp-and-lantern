@@ -46,14 +46,17 @@ ran and what it saw.
 
 ## 4. Model check
 
-- [ ] 4.1 Extend `reducer.model.test.ts` with the lane alphabet: state invariants, "right result
+- [x] 4.1 Extend `reducer.model.test.ts` with the lane alphabet: state invariants, "right result
       reachable from every state" and "choosing reachable from every state". Record the reached
       state count in the test.
   - Requirements: REQ-2.8, REQ-2.14
   - Tests: `reducer.model.test.ts`. The new check is shown to report a soft-lock when `Retry` is
     removed from the alphabet (a case in the test).
   - Done when: `npm run check` passes.
-  - Result:
+  - Result: `npm run check` passes. The lane model reaches 220 states (4 title, 216 trial), holds
+    all four state invariants, and the right result and "choosing" are reachable from every one.
+    Without `Retry` in the alphabet the same check reports a soft-lock whose trace ends in `Ask`
+    on a wrong result.
 
 ## 5. Content
 
@@ -112,7 +115,7 @@ Filled in as tasks land: each row names the test file that fails when the requir
 | REQ-2.5 searches exactly what was asked | 2.1, 3.1 | `reducer.pbt.test.ts` INV-7, `lane-view.test.ts` | 3.1: holds; fails when a pick changes after a search |
 | REQ-2.6 right result | 2.1, 6.1, 8.1 | `reducer.test.ts`, `smoke.mobile.spec.ts` | 2.1: `lane.test.ts`, `reducer.test.ts` pass |
 | REQ-2.7 different request not blamed | 2.1, 5.1, 6.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
-| REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | |
+| REQ-2.8 can always finish | 4.1, 8.1 | `reducer.model.test.ts` | 4.1: 220 states, no violation; soft-lock found without Retry |
 | REQ-2.9 Japanese and English | 5.1, 8.1 | `lane-content.test.ts`, `smoke.mobile.spec.ts` | |
 | REQ-2.10 color is never the only signal | 5.1, 6.1 | `lane-content.test.ts`, `pattern.test.ts` | |
 | REQ-2.11 portrait, one finger, mouse | 6.1, 8.1 | `lane-layout.test.ts`, both smokes | |
