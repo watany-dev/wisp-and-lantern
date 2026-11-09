@@ -1,5 +1,10 @@
 # Requirements: A 60-second score attack, and a better-looking game
 
+> **Scope note: a second trial now exists ([`05-trial-grant-tools`](../05-trial-grant-tools/requirements.md)).**
+> "trial 1 as the only game" and REQ-4.6.2 ("from every state the child can reach a new run") below describe trial 1's
+> run. Trial 2 (The Locked Shed) has no run, clock or score; its table of what changes is in `05`. A tap on the title
+> still starts a run, except a tap on trial 2's button. Nothing in the text below is changed.
+
 Spec `04-score-attack`. Requirement ids are `REQ-4.n`. `REQ-3.n` belongs to
 `03-trial-tell-vague-request`, `REQ-2.n` to `02-trial-tell`; none is reused.
 
