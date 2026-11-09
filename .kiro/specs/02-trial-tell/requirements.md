@@ -77,7 +77,8 @@ by myself.
 1. A search covers exactly the picked color and object; the helper never substitutes another item.
 2. The wisp flies to the one slot for that pair, the slot lights up and shows the item with its color,
    pattern and shape.
-3. The message names the item by its labels (for example "red pumpkin") in the child's language.
+3. After a search, the message names the item by its labels (for example "red pumpkin") in the child's
+   language, for the right result and for a different one.
 
 ### REQ-2.6 The right result is clear
 

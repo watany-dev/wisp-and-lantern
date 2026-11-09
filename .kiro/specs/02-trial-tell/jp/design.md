@@ -66,7 +66,7 @@ export type Lane = { wish: number; pick: Pick; asked: boolean };
 ## コンテンツ（`src/content/`）
 
 - `cards.json` は、全カードに `kind`（`"color"` か `"thing"`）を持たせ、物カードを2枚追加します。既存のフィールド（`id`、`color`、`shape`、`pattern`、`label`）は残します。物カードでは `shape` がシルエット（`pumpkin`、`lantern`）、`pattern` は `plain`、`color` は無彩色のグレーです。これで既存のカードゲート（色・形・模様の重複禁止、空でないフィールド）が、`scripts/check-*` を変えずに通ります。
-- `strings.ja.json` と `strings.en.json` に `lane` グループを足します。`{0}` が物の名前を表します。ゲートは日本語にラテン文字を許さないので、プレースホルダは数字です。
+- `strings.ja.json` と `strings.en.json` に `lane` グループを足します。`{0}` が物の名前を表します（正解と違う物のメッセージ。REQ-2.5）。ゲートは日本語にラテン文字を許さないので、プレースホルダは数字です。
 
 | キー | ja | en |
 |---|---|---|
@@ -75,7 +75,7 @@ export type Lane = { wish: number; pick: Pick; asked: boolean };
 | `lane.pickColor` | いろを えらんでね | Pick a color |
 | `lane.pickThing` | ものを えらんでね | Pick a thing |
 | `lane.ready` | ウィスプを タップして⏎たのもう | Tap the wisp to ask it |
-| `lane.right` | みつかったよ⏎ぴったり | Found it! Just right |
+| `lane.right` | {0}が⏎ぴったり みつかった | Found the {0}! Just right |
 | `lane.wrong` | {0}を⏎もってきたよ | The wisp brought the {0}, just as you asked |
 | `lane.again` | もういちど あそぶ | Play again |
 | `retry`（既存） | もういちど つたえてみよう | Let's tell it again |
