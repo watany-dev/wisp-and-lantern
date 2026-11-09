@@ -30,6 +30,11 @@ inclusion: always
   scripts (`evidence-log.sh`, `bootstrap-ptuf.sh`). `scripts/__tests__/` runs every gate against fixtures.
 - `.kiro/` — specs (`specs/<spec>/requirements.md`, `design.md`, `tasks.md`), steering, hooks,
   agents, skills. See `.kiro/skills/README.md` for `/kick` and `/wrapup`.
+- `.kiro/specs/<spec>/jp/` — the Japanese translation of that spec (`requirements.md`, `design.md`,
+  `tasks.md`). The English files are the source of truth: change the translation in the same pull
+  request as the English file. Identifiers, paths, commands and ids (`REQ-n.m`, `INV-n`) stay as in the
+  original. Japanese is allowed there through `scripts/check-cjk-allowlist.txt`; `check-trace` reads
+  only the English files.
 - `.kiro/agents/` — `reviewer` (diff review for the PR's Reviewer section) and `kid-reader`
   (reads child-facing strings as a 6-year-old would).
 - `.kiro/hooks/` — `evidence-log.json` appends a record to `docs/evidence/kiro-log/` when the agent

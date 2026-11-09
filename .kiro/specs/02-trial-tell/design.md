@@ -51,7 +51,7 @@ and the model check stays finite. `wispSpeed` is the flight speed for the wisp's
 
 | event | effect |
 |---|---|
-| `Start` (existing) | In `title`: `phase` `trial`, `trial` 1, fresh lane, optional `lang`. In `trial`: only `lang` (a stray second start never resets a game). |
+| `Start` (existing) | Sets `phase` `trial`, `trial` 1 and the optional `lang`, with no branch and no lane change. From the title this enters the trial; a second `Start` changes only `lang`, because the rest is already set (a stray start never resets a game). |
 | `PickCard { card }` | In `trial`, not asked: sets the pick's color or object (by `isColor`). Otherwise no change. |
 | `Ask` | In `trial`, not asked, pick complete: `asked = true`. Otherwise returns the same state object (REQ-2.4). |
 | `Retry` | In `trial`, asked: pick cleared, `asked` false, `wish` advances only after a right result. Otherwise no change. |
@@ -118,8 +118,8 @@ Plain modules, unit-tested and mutation-tested:
   The hero starts at (195, 600), between the button (ends at y 568) and the color cards (start at y 644), so the floor drag from the
   scaffold keeps a free strip. All hit areas are at least 80 x 80 (REQ-2.11).
 - `lane-view.ts`: `laneView(state)` returns what the scene shows, with no Phaser type: the message
-  text, the button (`{ text, event }` or none), whether the wisp is `armed`, which cards are picked,
-  the lit slot, the result mark, the wish item and `wispTarget`. Text is chosen here from `src/content`.
+  text, the button (`{ text, event }` or none), whether the wisp is `armed`, each card's label,
+  picked mark and fade, the wisp's fade, the lit slot, the result mark, the wish item and `wispTarget`. Text is chosen here from `src/content`.
 - `pattern.ts`: `patternMarks(pattern, size)` returns plain marks (`line` or `dot`) for `stripes-v`,
   `dots` and `plain`. The drawing code only paints them.
 
@@ -150,7 +150,7 @@ pointers stay enabled in `boot.ts`; a second finger changes nothing in the trial
 
 The game makes no request after boot. Phaser loads the two PNGs and the CSS loads the font before the
 first frame. The smoke switches the browser context offline after the title is up and plays through,
-and fails on any failed request. A service worker is out of scope: "offline after the first load" is
+and fails on any request made after that. A service worker is out of scope: "offline after the first load" is
 met because nothing is fetched later.
 
 ## Test plan and traceability
@@ -164,7 +164,7 @@ met because nothing is fetched later.
 | unit (`src/game/__tests__`) | layout, `laneView`, `patternMarks` | REQ-2.2 to 2.7, 2.10, 2.11 |
 | mutation (`npm run mutation`) | any surviving mutant fails | REQ-2.14, 2.15 |
 | mobile smoke (`e2e/smoke.mobile.spec.ts`) | real taps: missing card, wrong item, retry, right item, in ja; the full run again offline | REQ-2.1 to 2.8, 2.11, 2.12 |
-| desktop smoke | mouse-only run; hero drag still works | REQ-2.9, 2.11 |
+| desktop smoke | mouse-only run; hero drag still works; a held press on a card leaves the hero still | REQ-2.9, 2.11 |
 
 `tasks.md` carries the requirement, test and result for each task.
 
@@ -188,4 +188,5 @@ met because nothing is fetched later.
 - WebKit does not start in the authoring sandbox (missing system libraries). The mobile smoke is
   run there on Chromium with the iPhone 13 touch profile, and on WebKit by CI only.
 - Hero drag and card taps share the canvas. The "press outside every object" rule is covered by the
-  existing desktop drag test and a new mobile case (a tap on a card leaves `hero` unchanged).
+  existing desktop drag test and a new desktop test (a held mouse press on a card leaves `hero`
+  unchanged). A touch tap is too short to walk the hero, so the mobile smoke cannot see this case.

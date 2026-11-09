@@ -53,7 +53,7 @@ by myself.
 1. The tray shows three color cards and two object cards. Each card is a picture with a short label.
 2. Tapping a color card sets the pick's color; tapping an object card sets its object. Tapping a card
    in the same row replaces the previous one. A different row is unaffected.
-3. The picked cards are marked by a raised frame and a tick shape, never by color alone.
+3. The picked cards are marked by a thick frame and a tick shape, never by color alone.
 4. After the helper has searched, the cards cannot be changed until the retry.
 5. Picking never starts a search.
 
@@ -62,8 +62,8 @@ by myself.
 1. The helper searches only after the child taps the wisp while both cards are picked.
 2. In any state reached by events that contain no ask, the helper has not searched, whatever else was
    done (picking, replacing, language change, hero movement, retry).
-3. While no search is allowed (a card is missing, or a result is showing), the wisp is dimmed and
-   shows no ask affordance.
+3. While a card is missing, the wisp is dimmed. While a card is missing or a result is showing, the
+   wisp shows no ask ring.
 
 ### REQ-2.4 A missing card is not a search
 
