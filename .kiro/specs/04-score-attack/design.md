@@ -72,7 +72,28 @@ a soft-lock, so the check is load-bearing.
 
 ## Graphics (task 2.1)
 
-Written when the task starts; this file is updated in that pull request.
+Everything is drawn in code with Phaser Graphics; no image file is loaded or shipped (the placeholder PNGs
+are removed), so hard rule 5 holds trivially.
+
+- **Sharpness.** The canvas is `390 x 844` times `pixelRatio` (`ui/pixel-ratio.ts`, between 1 and 2). Each scene
+  calls `fitCamera` (`ui/camera.ts`), which zooms the main camera by the same factor, so positions, sizes and
+  taps stay in game pixels. Text is created with `resolution: pixelRatio`. The cap of 2 is a cost choice: a
+  3x canvas has 2.25 times the pixels to fill each frame and looks the same on a phone.
+- **Sky.** A CSS gradient on `html`/`body` (`index.html`) with a transparent canvas. A full-screen gradient or
+  a full-screen texture in the canvas costs one full-screen pass per frame; measured in the sandbox's software
+  renderer (no GPU) at the iPhone profile, that was 22 fps against 36 fps with the CSS sky. What stays in the
+  canvas is small: moon (title and end screen only), 40 stars, two trees (`ui/background.ts`).
+- **Pictures.** `ui/items.ts` (pumpkin with ribs and a leaf, lantern with glass, frame and handle),
+  `ui/characters.ts` (the wisp with a glow and a face, the hero as a small witch with a lantern),
+  `ui/art.ts` (slots, lit slot with a halo, card faces, button, star, clock bar). Patterns and shape badges
+  are drawn over the items exactly as before, so a color is still told by more than color.
+- **Motion.** The wisp and the hero float (tweens on the drawing inside a container, so moving the container
+  does not fight them); the armed ring pulses; a find pops the star, bursts gold sparks and opens a ring
+  (`fx/sparks.ts`); the title prompt fades in and out. All cycles are 0.7 s or longer.
+- **What the smoke reads.** The smoke tells the wisp from words by blue, and a lit slot by its panel color at
+  a corner. The wisp keeps a blue body and edge, and the empty slot's rim is darker than the lit panel; the
+  corner sample moved from 38 to 34 game pixels from the center, farther from the rounded edge.
+- **Hero start** moves from y 600 to y 612, clear of the button's new lip.
 
 ## Tests
 

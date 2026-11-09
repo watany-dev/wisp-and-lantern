@@ -100,7 +100,7 @@ the color and the object finds the wish.
 
 ### REQ-4.9 Sharp rendering (task 2.1)
 
-1. The game is drawn at the device's pixel ratio (capped at 3), so shapes and text are sharp on a phone.
+1. The game is drawn at the device's pixel ratio (capped at 2, which keeps the canvas light), so shapes and text are sharp on a phone.
 2. The layout in game pixels (390 x 844) and every tap position stay the same.
 
 ### REQ-4.10 Characters and scenery (task 2.1)
