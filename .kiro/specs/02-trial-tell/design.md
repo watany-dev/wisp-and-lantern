@@ -80,7 +80,7 @@ goal, so a wrong result can always be left. Both cover the "no soft-lock" claim 
   silhouette (`pumpkin`, `lantern`), `pattern` is `plain` and `color` is a neutral grey, so the
   existing card gate (unique color, shape, pattern; non-empty fields) passes without a change to
   `scripts/check-*`.
-- `strings.ja.json` and `strings.en.json` get a `lane` group. `{0}` stands for the item name; the gate
+- `strings.ja.json` and `strings.en.json` get a `lane` group. `{0}` stands for the item name (in the right and the different-result messages, REQ-2.5); the gate
   rejects Latin letters in Japanese text, so the placeholder is a digit.
 
 | key | ja | en |
@@ -90,7 +90,7 @@ goal, so a wrong result can always be left. Both cover the "no soft-lock" claim 
 | `lane.pickColor` | いろを えらんでね | Pick a color |
 | `lane.pickThing` | ものを えらんでね | Pick a thing |
 | `lane.ready` | ウィスプを タップして⏎たのもう | Tap the wisp to ask it |
-| `lane.right` | みつかったよ⏎ぴったり | Found it! Just right |
+| `lane.right` | {0}が⏎ぴったり みつかった | Found the {0}! Just right |
 | `lane.wrong` | {0}を⏎もってきたよ | The wisp brought the {0}, just as you asked |
 | `lane.again` | もういちど あそぶ | Play again |
 | `retry` (existing) | もういちど つたえてみよう | Let's tell it again |

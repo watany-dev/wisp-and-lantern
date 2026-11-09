@@ -57,19 +57,22 @@ describe("lane strings (REQ-2.9, REQ-2.13)", () => {
     expect(Object.keys(en.lane)).toEqual(laneKeys);
   });
 
-  it("insert the item name in the wrong-result message exactly once", () => {
-    expect(ja.lane.wrong.split("{0}")).toHaveLength(2);
-    expect(en.lane.wrong.split("{0}")).toHaveLength(2);
+  it("insert the item name in the right and the different-result messages exactly once", () => {
+    for (const text of [ja.lane.right, ja.lane.wrong, en.lane.right, en.lane.wrong]) {
+      expect(text.split("{0}")).toHaveLength(2);
+    }
   });
 
-  it("obey the Japanese rules for every item name the message can show", () => {
+  it("obey the Japanese rules for every item name the result messages can show", () => {
     for (const name of itemNames("ja")) {
-      expect(kidProblems(ja.lane.wrong.replace("{0}", name)), name).toEqual([]);
+      for (const template of [ja.lane.right, ja.lane.wrong]) {
+        expect(kidProblems(template.replace("{0}", name)), `${template} / ${name}`).toEqual([]);
+      }
     }
   });
 
   it("obey the Japanese rules in every other message and the retry button", () => {
-    const { wrong: _wrong, ...rest } = ja.lane;
+    const { wrong: _wrong, right: _right, ...rest } = ja.lane;
     for (const text of [...Object.values(rest), ja.retry])
       expect(kidProblems(text), text).toEqual([]);
   });

@@ -8,7 +8,7 @@
     "pickColor": "Pick a color",
     "pickThing": "Pick a thing",
     "ready": "Tap the wisp to ask it",
-    "right": "Found it! Just right",
+    "right": "Found the {0}! Just right",
     "wrong": "The wisp brought the {0}, just as you asked",
     "again": "Play again"
   }

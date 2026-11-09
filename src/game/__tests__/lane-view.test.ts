@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../../domain/events";
+import { colors, things } from "../../domain/lane";
 import { reduce } from "../../domain/reducer";
 import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
@@ -17,6 +18,7 @@ const view = (lang: Lang, ...events: GameEvent[]) =>
 // The first wish is the yellow lantern; red lantern is a different request.
 const right = [...pick("yellow", "lantern"), ask];
 const wrong = [...pick("red", "lantern"), ask];
+const wish = { color: "yellow", thing: "lantern" } as const;
 
 describe.each(["ja", "en"] as const)(
   "laneView messages in %s (REQ-2.4, REQ-2.6, REQ-2.7)",
@@ -33,8 +35,10 @@ describe.each(["ja", "en"] as const)(
       expect(view(lang, ...pick("blue", "pumpkin")).message).toBe(s.lane.ready);
     });
 
-    it("says the item is found after the right request", () => {
-      expect(view(lang, ...right).message).toBe(s.lane.right);
+    it("says the item is found after the right request, naming it", () => {
+      const name = itemName(wish, lang);
+      expect(view(lang, ...right).message).toBe(s.lane.right.replace("{0}", name));
+      expect(view(lang, ...right).message).toContain(name);
     });
 
     it("names exactly what was asked after a different request", () => {
@@ -55,6 +59,21 @@ describe.each(["ja", "en"] as const)(
     });
   },
 );
+
+describe("laneView names what was asked (REQ-2.5)", () => {
+  it.each(["ja", "en"] as const)(
+    "in %s, whatever pair is asked, the message names exactly that item and leaves no placeholder",
+    (lang) => {
+      for (const color of colors) {
+        for (const thing of things) {
+          const { message } = view(lang, ...pick(color, thing), ask);
+          expect(message, `${color} ${thing}`).toContain(itemName({ color, thing }, lang));
+          expect(message).not.toContain("{0}");
+        }
+      }
+    },
+  );
+});
 
 describe("laneView state (REQ-2.2, REQ-2.3, REQ-2.5)", () => {
   it("arms the wisp only with both cards picked and no search yet", () => {
