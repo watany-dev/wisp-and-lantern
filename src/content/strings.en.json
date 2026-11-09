@@ -12,6 +12,22 @@
     "lesson": "You told it\ncolor & item",
     "again": "Next"
   },
+  "shed": {
+    "enter": "Free the cat",
+    "guide": "Give the wisp a tool\nto free the cat",
+    "pick": "Pick one tool",
+    "ready": "Tap the wisp to\ngive it the {0}",
+    "open": "The cat is out!\nThe wisp used the {0}",
+    "shut": "The wisp used the {0}\nThe door stayed shut",
+    "lesson": "You gave a {0}\nIt opened the door",
+    "again": "Play again",
+    "retry": "Try another tool",
+    "tools": {
+      "key": "key",
+      "broom": "broom",
+      "hammer": "hammer"
+    }
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",

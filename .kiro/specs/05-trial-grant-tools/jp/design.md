@@ -152,9 +152,9 @@ export type GameEvent = /* as before */ | { type: "StartShed" } | ShedEvent;
 | キー | ja | en | 使う場所 |
 |---|---|---|---|
 | `shed.enter` | ねこを たすけよう | Free the cat | タイトルの小屋ボタン |
-| `shed.guide` | どうぐを わたして⏎ねこを たすけよう | Hand over a tool⏎to free the cat | 上の行、常に |
+| `shed.guide` | どうぐを わたして⏎ねこを たすけよう | Give the wisp a tool⏎to free the cat | 上の行、常に |
 | `shed.pick` | どうぐを ひとつ⏎えらんでね | Pick one tool | 選択中、未選択 |
-| `shed.ready` | ウィスプを タップして⏎{0}を わたそう | Tap the wisp to⏎hand over the {0} | 選択中、道具を選んだ |
+| `shed.ready` | ウィスプを タップして⏎{0}を わたそう | Tap the wisp to⏎give it the {0} | 選択中、道具を選んだ |
 | `shed.open` | ねこが でてきた！⏎{0}を つかったよ | The cat is out!⏎The wisp used the {0} | open の結果のメッセージ |
 | `shed.shut` | {0}を つかったよ⏎とびらは あかなかった | The wisp used the {0}⏎The door stayed shut | shut の結果のメッセージ |
 | `shed.lesson` | {0}を わたしたら⏎あけられたね | You gave a {0}⏎It opened the door | 締めの文、open のみ |
@@ -167,6 +167,7 @@ export type GameEvent = /* as before */ | { type: "StartShed" } | ShedEvent;
 この言葉にした理由:
 
 - **案内。** 1文で課題全体を言い、道具を1つ言うので、子どもが何かに触れる前から「1つで足りる」が成り立ちます。`ready` は選んだ道具の名前を繰り返すので、枠だけでなく言葉でも選択を確認できます（ハードルール7）。
+- **英語は「hand over」ではなく「give」。** 学習目標とコードは hand over と言いますが、6歳の子どもは give と言います。kid-reader の確認で、英語の案内を `Hand over a tool` から `Give the wisp a tool`（誰が受け取るかも言える）に、`ready` を `give it the {0}`（締めの文の `You gave a {0}` と揃う）に変えました。日本語の `わたす` は日常の言葉なのでそのままです。
 - **メッセージと締めの文は別の文。** メッセージは何が起きて、ウィスプがどの道具を使ったかを言います（`The cat is out! The wisp used the key`）。締めの文は、子どもの側から見てなぜうまくいったかを言います（`You gave a key, so it opened`）。同じ文を共有しないので、REQ-5.8 の求めどおりです。どちらも道具名は試した道具から取るので、2つの違う道具を名指しすることはありません。
 - **`shut` は事実を言う。** 「The door stayed shut」/`とびらは あかなかった` はありのままの観察です。「wrong」「bad」「no」「fail」やその日本語の対応語はなく、隠してもいません。ボタンは何がいけなかったかではなく、次にすること（`Try another tool`）を言います。
 - **締めの文。** 依頼は方向性として `かぎを わたしたら` / `あけられたね` と `You gave a key` / `It opened the door` を示していました。kid-reader の手動確認（`kid-reader` エージェントはこのセッションでは実行できないため、`.kiro/agents/kid-reader.md` のルーブリックを手で当て、結果はタスク4.1のプルリクエストに書く）のあと: 日本語はそのまま。`あけられたね`（開けることができたね）は、できたのは渡したからだと言っていて、これがL2の要点であり、1行は最大10字です。英語もそのまま。子どもがした順（渡した、それから開いた）の短い2文で、「it」は直前のメッセージが名指ししたウィスプです。1行は18字なので、英語の締めの文は試練1（12字）より長くなります。試練1の12字は試練1自身のキー（`lane.lesson`）の制限で、このキーの制限はレイアウトです（22pxで折り返し320px。画面での確認はタスク7.1、テストは英語1行20字まで）。次のプレイテストで、子どもが「it」をウィスプと読むかを確認します。

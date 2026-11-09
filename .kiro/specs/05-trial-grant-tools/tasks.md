@@ -124,7 +124,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 4. Content
 
-- [ ] 4.1 Add the `shed` group to both string files, regenerate the subset font, and add
+- [x] 4.1 Add the `shed` group to both string files, regenerate the subset font, and add
       `shed-content.test.ts`. Nothing reads the new keys yet. The closing line's wording is decided here
       with the kid-reader rubric.
   - Requirements: REQ-5.1, REQ-5.6, REQ-5.8, REQ-5.12; inherited REQ-2.9, REQ-2.13, REQ-3.6
@@ -135,7 +135,21 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     suggest a second tool. `npm run kid` and `npm run font` pass.
   - Done when: `npm run check`, `npm run kid` and `npm run font` pass; the kid-reader table is in the pull
     request and says whether it is the agent or the manual rubric.
-  - Result: filled in the task's pull request
+  - Result: `npm run check`, `npm run kid` and `npm run font` pass on Node 26.13.0: 382 tests (17 new in
+    `shed-content.test.ts`), coverage 100%, mutation score 100% (no source changed), size budget ok.
+    `npm run font` left the subset font byte-identical (`git status` shows no change): the 352 code points
+    already cover the new strings. **The kid-reader pass was the manual rubric** of
+    `.kiro/agents/kid-reader.md`, not the agent (it cannot be run from this session); the table is in the
+    pull request. It changed two English strings (`guide` and `ready`: "hand over" became "give") and kept
+    the closing line as the request suggested; the Japanese closing line and the `retry` label are marked
+    "playtest". **The new tests against ten deliberate breaks** (each applied to a string file and
+    restored): "did not work" in `shut` fails 2 tests; `open` repeating the closing line fails 3; "two"
+    in `pick` fails 1; a kanji in `shut` fails 1 and `npm run kid` fails too; the closing line without a
+    tool name fails 3; `ready` without the wisp fails 1; "always" in the closing line fails 3; `retry`
+    without another tool fails 1; a 31-character English line fails 1. One break, a Japanese closing line
+    that is 13 characters once the hammer is inserted, fails 1 test while `npm run kid` passes, because
+    the gate counts the template's `{0}` as 3 characters: the content test is the only check of that
+    case. My first version of that break (11 characters) failed nothing, since it was not over the limit.
 
 ## 5. View and layout
 
