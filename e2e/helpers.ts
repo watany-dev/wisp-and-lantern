@@ -13,7 +13,7 @@ import {
 } from "../src/game/lane-layout";
 import type { Point } from "../src/game/steer";
 import { textStyle } from "../src/game/ui/text";
-import { countNear, decodePng, hexToRgb, near, pixelAt, type Image, type Rgb } from "./pixels";
+import { countMatching, decodePng, hexToRgb, near, pixelAt, type Image, type Rgb } from "./pixels";
 
 type Pick = { color: string | null; thing: string | null };
 export type GameState = {
@@ -143,8 +143,18 @@ export async function pickOne(page: Page, press: Press, card: CardId) {
 const textColor: Rgb = hexToRgb(textStyle.color as string);
 /** The lit slot's panel color (`palette.lit` in `ui/art.ts`, which cannot be imported here). */
 const litPanel: Rgb = [0x2a, 0x2a, 0x4a];
-/** Light text pixels, in CSS pixels, that a line of the smallest message leaves in its box. */
-const minTextPixels = 60;
+/**
+ * Light text pixels, in CSS pixels, that count as "there is text in this box". A single line of the
+ * smallest message leaves about 40 of them on WebKit; an empty box leaves none, so the threshold
+ * only has to be above noise.
+ */
+const minTextPixels = 10;
+/**
+ * The wisp's square (235, 240, 255) is bluer than the text (244, 239, 225) and flies through the
+ * message area just after the ask. Pixels at least this blue are not counted as text.
+ */
+const wispBlue = 245;
+const isText = (pixel: Rgb) => near(pixel, textColor, 70) && pixel[2] < wispBlue;
 
 /** A page area in CSS pixels, top-left corner and size. */
 type Clip = { x: number; y: number; width: number; height: number };
@@ -178,7 +188,7 @@ async function textPixels(page: Page, rect: Rect): Promise<number> {
   const clip = await pageClip(page, rect);
   const image = await look(page, clip);
   const ratio = image.width / clip.width;
-  return countNear(image, textColor, 70) / (ratio * ratio);
+  return countMatching(image, isText) / (ratio * ratio);
 }
 
 /** A fingerprint of what is drawn in a game rectangle: different words, different fingerprint. */
