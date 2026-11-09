@@ -55,7 +55,8 @@ export function shedPoint(local: Point): Point {
 /**
  * Four points the smoke reads from a screenshot to see the picture, not only the state: the door's
  * upper left corner (wood when shut, the dark doorway when open), the window's middle (the cat's face
- * when it is inside), the cat's body outside, and the star. Each is clear of the tool and the wisp.
+ * when it is inside), the cat's body outside (on the fur, beside its pale belly), and the star (bright
+ * only when it is drawn; the sky is dark). Each is clear of the tool and the wisp.
  */
 export const probes = {
   door: shedPoint({
@@ -63,6 +64,6 @@ export const probes = {
     y: shedParts.door.y - shedParts.door.height / 2 + 12,
   }),
   window: shedPoint(shedParts.window),
-  catOutside: shedPoint({ x: shedParts.catOutside.x, y: shedParts.catOutside.y + 8 }),
+  catOutside: shedPoint({ x: shedParts.catOutside.x + 8, y: shedParts.catOutside.y + 8 }),
   star: shedPoint(shedParts.star),
 } as const;

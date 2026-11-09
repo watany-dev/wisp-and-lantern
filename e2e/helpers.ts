@@ -23,6 +23,7 @@ export type GameState = {
   hero: { x: number; y: number };
   lane: { wish: number; pick: Pick; asked: boolean };
   run: { remainingMs: number; score: number; streak: number; best: number; record: boolean };
+  shed: { stage: "choosing"; pick: string | null } | { stage: "tried"; tool: string };
 };
 type GameWindow = Window & { __game: { state: () => GameState; dispatch: (e: unknown) => void } };
 
@@ -95,7 +96,7 @@ export const clicker =
  * Presses `point` until `done` holds. A scene registers its input after its assets load, so an
  * early press is lost; presses here are repeatable, and a broken handler never gets there and fails.
  */
-async function pressUntil(
+export async function pressUntil(
   page: Page,
   press: Press,
   point: Point,
@@ -149,7 +150,7 @@ const litPanel: Rgb = [0x2a, 0x2a, 0x4a];
  * smallest message leaves about 40 of them on WebKit; an empty box leaves none, so the threshold
  * only has to be above noise.
  */
-const minTextPixels = 10;
+export const minTextPixels = 10;
 /**
  * The wisp's square (235, 240, 255) is bluer than the text (244, 239, 225) and flies through the
  * message area just after the ask. Pixels at least this blue are not counted as text.
@@ -160,12 +161,12 @@ const isText = (pixel: Rgb) => near(pixel, textColor, 70) && pixel[2] < wispBlue
 /** A page area in CSS pixels, top-left corner and size. */
 type Clip = { x: number; y: number; width: number; height: number };
 
-async function look(page: Page, clip?: Clip): Promise<Image> {
+export async function look(page: Page, clip?: Clip): Promise<Image> {
   return decodePng(await page.screenshot(clip ? { clip } : {}));
 }
 
 /** Where the canvas is on the page, and how much it is scaled. */
-async function canvasFrame(page: Page) {
+export async function canvasFrame(page: Page) {
   const box = (await page.locator("canvas").boundingBox())!;
   return { box, scale: box.width / canvas.width };
 }
@@ -185,7 +186,7 @@ async function pageClip(page: Page, rect: Rect): Promise<Clip> {
 const density = (image: Image, page: Page) => image.width / page.viewportSize()!.width;
 
 /** Light text pixels in a game rectangle, counted in CSS pixels so phone and desktop compare. */
-async function textPixels(page: Page, rect: Rect): Promise<number> {
+export async function textPixels(page: Page, rect: Rect): Promise<number> {
   const clip = await pageClip(page, rect);
   const image = await look(page, clip);
   const ratio = image.width / clip.width;

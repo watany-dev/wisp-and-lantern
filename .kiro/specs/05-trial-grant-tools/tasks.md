@@ -188,7 +188,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     colors the smoke will read, 2 in `shed-view.test.ts` for `justTried`, which keeps the scene's
     branch count under the lint limit), coverage 100%, mutation score 100% (599 mutants, none survived),
     size budget ok (gzip JS 369 KB of 1,024 KB). `npm run build` then the existing smoke: **11 passed**
-    on Chromium with the iPhone 13 touch profile (the 8 mobile and 3 desktop tests; WebKit cannot start
+    on Chromium with the iPhone 13 touch profile (the 7 mobile and 4 desktop tests; WebKit cannot start
     in this sandbox, so this is not the WebKit pass, which CI runs). Trial 1 and the score attack are
     unchanged. **Looked at, not only tested:** a throwaway Playwright script (kept out of the repository)
     entered the shed with a real tap on the title's button, then drove the broom, the hammer and the key
@@ -208,7 +208,7 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 
 ## 7. Smoke
 
-- [ ] 7.1 Add the shed smoke: `e2e/shed-helpers.ts`, `smoke.mobile.shed.spec.ts`,
+- [x] 7.1 Add the shed smoke: `e2e/shed-helpers.ts`, `smoke.mobile.shed.spec.ts`,
       `smoke.desktop.shed.spec.ts`, and the `shed` field in the `GameState` type of `e2e/helpers.ts`.
   - Requirements: REQ-5.1, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-5.9, REQ-5.10, REQ-5.12, REQ-5.14; inherited REQ-2.12
   - Tests: mobile, real taps: no tool and a tap on the wisp; broom, hand over, shut, retry, key, open,
@@ -218,7 +218,33 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     path, and a held press on a tool does not move the hero.
   - Done when: `npm run check`, `npm run build` and `npm run smoke` pass (Chromium here; CI runs
     WebKit); the new tests are shown to fail when the scene is broken on purpose.
-  - Result: filled in the task's pull request
+  - Result: `npm run check` passes on Node 26.13.0 (473 tests, coverage 100%, mutation 100%, size budget
+    ok). `npm run build` then `npm run smoke` on **Chromium with the iPhone 13 touch profile** (WebKit
+    cannot start here): **19 passed** (mobile 13: 7 existing, 6 new; desktop 6: 4 existing, 2 new),
+    twice in a row with the default workers and once with `--workers=1`; CI runs the real WebKit pass.
+    Mobile, real taps: the title's button opens the shed with `trial` 2, the run at 60,000 ms and not
+    counting down, the lane initial; the wisp with nothing picked changes nothing; a pick is replaced and
+    exactly one tool is marked (read from the pixels of the gold mark); picking uses nothing; the broom
+    and the hammer leave the door shut with the cat in the window; a tap on the key and on the wisp while
+    the result shows, and a dispatched `Tick` of 60 s, change nothing; the retry restores a fresh shed;
+    the key opens the door (the doorway is dark, the window empty, the cat and the star by the shed), the
+    result message differs between the broom and the hammer, the closing line is drawn, it changes when
+    the language changes, and it is still there after 1 s; play again restores the shut door and the key
+    opens it again; a tap elsewhere on the title starts trial 1 (`trial` 1, shed fresh, the clock
+    running); the whole path works offline in ja and en with no request. Desktop, mouse: the same path,
+    a held press on a tool does not move the hero, and a held press on the floor does. Screenshots were
+    written for the Japanese and English choosing, shut and open screens. **The new tests against six
+    deliberate breaks** in the scene (each applied, built, the 8 new tests run, restored): the door
+    never drawn open fails 5; the cat left in the window fails 5; the closing line never shown fails 5;
+    picking that also hands over fails 7; the picked mark never shown fails 3; and the guard in the
+    title ("a press that hit no object starts trial 1") removed fails **0**. The last one is a gap I could
+    not close: Phaser runs the button's handler first, so the extra `Start` that follows reaches the
+    shed and only sets the language. The guard is defense in depth for the opposite order, not something
+    a smoke can observe. **One existing test changed**: the Japanese trial 1 test
+    "a color alone brings another object ..." gets `test.slow()`. It takes about 20 s alone and with two
+    workers it started to pass its 30 s limit next to a shed test (every full run with two workers failed
+    before the change, 5 of 5; the two after it passed); nothing it asserts is touched. The other additions to `e2e/helpers.ts` are
+    exports and the `shed` field of the `GameState` type.
 
 ## 8. Final integration
 

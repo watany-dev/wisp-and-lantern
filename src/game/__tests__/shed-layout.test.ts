@@ -213,7 +213,7 @@ describe("the shed picture (REQ-5.5.6)", () => {
   it("reads the picture at four points, each in its own part and clear of the tool", () => {
     expect(probes.door).toEqual({ x: 127, y: 210 });
     expect(probes.window).toEqual({ x: 250, y: 228 });
-    expect(probes.catOutside).toEqual({ x: 323, y: 268 });
+    expect(probes.catOutside).toEqual({ x: 331, y: 268 });
     expect(probes.star).toEqual({ x: 323, y: 212 });
     expect(probes.door.x).toBeGreaterThan(left(doorRect));
     expect(probes.door.y).toBeGreaterThan(top(doorRect));
