@@ -1,5 +1,12 @@
 # Requirements: Trial 1, The Dark Lane ("tell it clearly")
 
+> **Partly replaced by [`03-trial-tell-vague-request`](../03-trial-tell-vague-request/requirements.md)**
+> after the 2026-11-09 playtest of the published build. Replaced here: REQ-2.3.1 and REQ-2.3.3 (the
+> wisp needs both cards), REQ-2.4.1 and REQ-2.4.2 (a missing card is not a search), and REQ-2.5.1 (the
+> search covers exactly the picked pair, nothing substituted). INV-6 and INV-7, named in REQ-2.14.2,
+> are retired. Everything else below still holds. The new spec has the full table. The text below is
+> left as it was written.
+
 Spec `02-trial-tell`. Teaches learning goal L1 (`docs/learning-design.md`): a helper does exactly what
 you ask, so ask clearly. Requirement ids are `REQ-2.n`; `REQ-1.n` belongs to the missing
 `01-core-loop` spec (for example `REQ-1.11` in `e2e/helpers.ts`) and is not reused.

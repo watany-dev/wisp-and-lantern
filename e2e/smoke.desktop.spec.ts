@@ -5,9 +5,12 @@ import {
   askWisp,
   clicker,
   collectErrors,
+  expectBrought,
   expectBundledFont,
+  expectClosingLine,
   gameState,
   pickCards,
+  pickOne,
   pressButton,
   startTrial,
 } from "./helpers";
@@ -31,7 +34,9 @@ test("judge mode works with the mouse only", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("REQ-2.9, REQ-2.11: plays trial 1 with the mouse only, in English", async ({ page }) => {
+test("REQ-3.1, REQ-3.3, REQ-3.5, REQ-3.8: plays trial 1 with the mouse only, one card then both, in English", async ({
+  page,
+}) => {
   const errors = collectErrors(page);
   const click = clicker(page);
   const wish = wishAt(0);
@@ -40,9 +45,24 @@ test("REQ-2.9, REQ-2.11: plays trial 1 with the mouse only, in English", async (
   await startTrial(page, click);
   expect((await gameState(page)).lang).toBe("en");
 
+  // The first wish is the yellow lantern. A color alone is a request; the wisp picks the object.
+  await pickOne(page, click, wish.color);
+  await askWisp(page, click);
+  expect((await gameState(page)).lane).toEqual({
+    wish: 0,
+    pick: { color: wish.color, thing: null },
+    asked: true,
+  });
+  await expectBrought(page, "yellow pumpkin");
+  await expectClosingLine(page, false);
+  await page.screenshot({ path: "e2e/screenshots/desktop-lane-vague.png" });
+  await pressButton(page, click);
+
   await pickCards(page, click, wish.color, wish.thing);
   await askWisp(page, click);
   expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: wish });
+  await expectBrought(page, "yellow lantern");
+  await expectClosingLine(page, true);
   await page.screenshot({ path: "e2e/screenshots/desktop-lane-right.png" });
 
   // A different request on the next wish is answered too, and the retry keeps that wish.

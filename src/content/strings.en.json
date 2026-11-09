@@ -4,12 +4,12 @@
   "retry": "Let's tell it again",
   "lane": {
     "wish": "I want this one",
-    "pickBoth": "Pick a color and a thing",
-    "pickColor": "Pick a color",
-    "pickThing": "Pick a thing",
+    "pickAny": "Pick a card",
     "ready": "Tap the wisp to ask it",
     "right": "Found the {0}! Just right",
     "wrong": "The wisp brought the {0}, just as you asked",
+    "vague": "The wisp brought the {0}",
+    "lesson": "You told it\ncolor & item",
     "again": "Play again"
   }
 }

@@ -8,6 +8,9 @@ import type { GameState, Lang } from "../../domain/state";
 import type { Game } from "../judge";
 import {
   buttonRect,
+  fontSize,
+  lessonBox,
+  lessonWrap,
   messageText,
   slotCenter,
   slotSize,
@@ -36,6 +39,8 @@ export class LaneScene extends Phaser.Scene {
   private wishArt!: Graphics;
   private wishLabel!: Text;
   private message!: Text;
+  private lessonPanel!: Graphics;
+  private lesson!: Text;
   private slotLight!: Graphics;
   private star!: Graphics;
   private button!: Phaser.GameObjects.Container;
@@ -52,6 +57,7 @@ export class LaneScene extends Phaser.Scene {
     this.createWish();
     this.createWisp();
     this.createMessage();
+    this.createLesson();
     this.createButton();
     for (const id of [...colors, ...things]) this.addCard(id);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (_p: unknown, over: unknown[]) => {
@@ -100,8 +106,30 @@ export class LaneScene extends Phaser.Scene {
   }
 
   private createMessage(): void {
-    const style = { ...textStyle, fontSize: "22px", wordWrap: { width: messageText.wrap } };
+    const style = {
+      ...textStyle,
+      fontSize: `${fontSize.message}px`,
+      wordWrap: { width: messageText.wrap },
+    };
     this.message = this.add.text(messageText.x, messageText.y, "", style).setOrigin(0.5);
+  }
+
+  /** The closing line: its own panel and text, shown on the right result until the button. */
+  private createLesson(): void {
+    const { x, y, width, height } = lessonBox;
+    this.lessonPanel = this.add.graphics({ x, y });
+    drawPanel(this.lessonPanel, width, height, palette.lit);
+    this.lessonPanel
+      .lineStyle(3, palette.gold, 1)
+      .strokeRoundedRect(-width / 2, -height / 2, width, height, 14);
+    const style = {
+      ...textStyle,
+      fontSize: `${fontSize.lesson}px`,
+      wordWrap: { width: lessonWrap },
+    };
+    this.lesson = this.add.text(x, y, "", style).setOrigin(0.5);
+    this.lessonPanel.setVisible(false);
+    this.lesson.setVisible(false);
   }
 
   private createButton(): void {
@@ -128,11 +156,20 @@ export class LaneScene extends Phaser.Scene {
     if (state.lane === this.shown.lane && state.lang === this.shown.lang) return;
     this.shown = { lane: state.lane, lang: state.lang };
     this.view = laneView(state);
-    this.message.setText(this.view.message);
+    this.message
+      .setText(this.view.message)
+      .setPosition(this.view.messageAt.x, this.view.messageAt.y);
+    this.renderLesson();
     this.wishLabel.setText(this.view.wishText);
     this.renderWish();
     this.renderResult();
     this.renderControls();
+  }
+
+  private renderLesson(): void {
+    const { lesson } = this.view;
+    this.lessonPanel.setVisible(lesson !== null);
+    this.lesson.setVisible(lesson !== null).setText(lesson ?? "");
   }
 
   private renderWish(): void {

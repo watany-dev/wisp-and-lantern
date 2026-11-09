@@ -6,9 +6,12 @@ import {
   canvas,
   cardCenter,
   cardRect,
+  fontSize,
   heroSize,
   heroStart,
+  lessonBox,
   messageText,
+  resultText,
   slotCenter,
   slotSize,
   wishPicture,
@@ -43,6 +46,26 @@ const shown: Record<string, Rect> = {
   "wish picture": square(wishPicture, wishPictureSize),
 };
 const interactive = [...cardIds.map(cardRect), wispRect, buttonRect];
+
+const resultMessage: Rect = {
+  x: resultText.x,
+  y: resultText.y,
+  width: resultText.wrap,
+  height: resultText.height,
+};
+/**
+ * After a result the wisp is at a slot, not at home, and the choosing message gives way to the result
+ * message and, on the right result, the closing line. Each stage is checked on its own.
+ */
+const resultStage: Record<string, Rect> = {
+  ...Object.fromEntries(cardIds.map((id) => [`card ${id}`, cardRect(id)])),
+  ...Object.fromEntries(slots.map((r, i) => [`slot ${i}`, r])),
+  button: buttonRect,
+  "result message": resultMessage,
+  "closing line": lessonBox,
+  "wish text": wishText,
+  "wish picture": square(wishPicture, wishPictureSize),
+};
 
 const left = (r: Rect) => r.x - r.width / 2;
 const right = (r: Rect) => r.x + r.width / 2;
@@ -95,9 +118,42 @@ describe("lane layout (REQ-2.11)", () => {
     }
   });
 
+  it("keeps the result stage inside the canvas and free of overlap (REQ-3.5.4)", () => {
+    const names = Object.keys(resultStage);
+    for (const [i, a] of names.entries()) {
+      const r = resultStage[a]!;
+      expect(left(r), a).toBeGreaterThanOrEqual(0);
+      expect(top(r), a).toBeGreaterThanOrEqual(0);
+      expect(right(r), a).toBeLessThanOrEqual(canvas.width);
+      expect(bottom(r), a).toBeLessThanOrEqual(canvas.height);
+      for (const b of names.slice(i + 1)) {
+        expect(overlap(r, resultStage[b]!), `${a} / ${b}`).toBe(false);
+      }
+    }
+  });
+
+  it("puts the result message and the closing line between the slots and the button, in that order", () => {
+    const lowestSlot = Math.max(...slots.map(bottom));
+    expect(top(resultMessage)).toBeGreaterThan(lowestSlot);
+    expect(bottom(resultMessage)).toBeLessThanOrEqual(top(lessonBox));
+    expect(bottom(lessonBox)).toBeLessThanOrEqual(top(buttonRect));
+  });
+
+  it("uses the space the wisp left, and keeps the choosing message where it was", () => {
+    expect(top(resultMessage)).toBeGreaterThanOrEqual(top(wispRect));
+    expect(messageText).toMatchObject({ x: 195, y: 454 });
+    expect(resultText).toMatchObject({ x: 195, y: 380 });
+  });
+
+  it("does not make the closing line smaller than the message (REQ-3.5.4)", () => {
+    expect(fontSize.lesson).toBeGreaterThanOrEqual(fontSize.message);
+    expect(lessonBox.width).toBeLessThanOrEqual(canvas.width);
+  });
+
   it("keeps the hero's start clear of every target, so the floor drag has room", () => {
     const hero = square(heroStart, heroSize);
     expect(heroStart).toEqual(initialState.hero);
     for (const r of interactive) expect(overlap(hero, r)).toBe(false);
+    for (const [name, r] of Object.entries(resultStage)) expect(overlap(hero, r), name).toBe(false);
   });
 });
