@@ -1,5 +1,9 @@
 # Tasks: Trial 1, The Dark Lane
 
+> **Follow-up: [`03-trial-tell-vague-request`](../03-trial-tell-vague-request/tasks.md).** It replaces
+> part of the behavior these tasks built (see the note in `requirements.md`). The tasks and results
+> below are a record of what was done at the time and are not edited.
+
 One task per branch and per pull request (`AGENTS.md`). Branch `02-trial-tell/<task>`; each branch is
 cut from the one before, and each pull request targets the previous task's branch until that one is
 merged. Every task passes `npm run check`; tasks 7 and 8 also pass `npm run build` and `npm run smoke`.

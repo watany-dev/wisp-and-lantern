@@ -1,5 +1,13 @@
 # Design: Trial 1, The Dark Lane
 
+> **Partly replaced by [`03-trial-tell-vague-request`](../03-trial-tell-vague-request/design.md).**
+> Replaced here: the `Ask` row of the events table and the "Ask with a card missing" rule it carries
+> (an `Ask` now needs one card, not two); INV-6 and INV-7 (retired, with INV-8 to INV-14 in their
+> place); the `asked` comment that the search is exactly `pick` (the brought item is now derived from
+> `pick` and the wish); the model check's "a search has a complete pick" invariant and its 220-state
+> count; and the decision "Missing card does nothing". Everything else below still holds. The text
+> below is left as it was written.
+
 Implements `requirements.md` (REQ-2.n). Follows ADR 0001 (pure reducer), ADR 0003 (gates) and the
 layout rules in `.kiro/steering/structure.md`. No new dependency, no new asset, no new ADR.
 
