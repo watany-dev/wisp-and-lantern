@@ -87,13 +87,18 @@ test("REQ-2.12: finishes offline after the first load, in English", async ({ pag
   await page.goto("./?lang=en");
   await expect(page.locator("canvas")).toBeVisible();
   await expectBundledFont(page);
-  await startTrial(page, tap);
-  expect((await gameState(page)).lang).toBe("en");
+  // Phaser fetches the two placeholder PNGs at boot; wait until nothing is in flight, so the first
+  // load is complete before the network goes away.
+  await page.waitForLoadState("networkidle");
 
+  // Offline from the title screen on: the start tap, the scene change and the whole trial run
+  // without a network.
   await context.setOffline(true);
   const requests: string[] = [];
   page.on("request", (r) => requests.push(r.url()));
 
+  await startTrial(page, tap);
+  expect((await gameState(page)).lang).toBe("en");
   await pickCards(page, tap, other.color, other.thing);
   await askWisp(page, tap);
   await pressButton(page, tap);
