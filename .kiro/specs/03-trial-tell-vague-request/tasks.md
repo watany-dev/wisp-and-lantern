@@ -44,7 +44,7 @@ behavior (the Result line of that task says how).
 
 ## 2. Domain: the brought item
 
-- [ ] 2.1 Add `hasPick`, `deliver` and `delivered` to `lane.ts`, with unit tests. Nothing calls them
+- [x] 2.1 Add `hasPick`, `deliver` and `delivered` to `lane.ts`, with unit tests. Nothing calls them
       yet, so the game does not change.
   - Requirements: REQ-3.3 (1 to 5, 7)
   - Tests: `lane.test.ts`: all 30 rows (six wishes x five single cards) written by hand; both cards
@@ -52,7 +52,12 @@ behavior (the Result line of that task says how).
     no card; the wrap from the last color and the last object; a vague request differs from the wish
     for every wish and card; the result does not change on a second call.
   - Done when: `npm run check` passes with no surviving mutant.
-  - Result:
+  - Result: `npm run check` passes on Node 26.13.0: 188 tests (40 new, in `lane.test.ts`), mutation
+    score 100% (70 mutants in `lane.ts`, none survived), knip clean. The 30-row table is written by hand
+    and agrees with the rule; a separate test checks that it covers all six wishes and all five cards.
+    First run of the new tests failed lint (`toSorted` is not in the TypeScript lib target, and an
+    `as Wish` cast is banned), so the test looks the item up in the list of six instead of casting.
+    The game does not change: `canAsk` and `outcome` are untouched and nothing calls the new functions.
 
 ## 3. Content
 

@@ -32,6 +32,11 @@ export function isComplete(pick: Pick): pick is Wish {
   return pick.color !== null && pick.thing !== null;
 }
 
+/** The child picked at least one card. */
+export function hasPick(pick: Pick): boolean {
+  return pick.color !== null || pick.thing !== null;
+}
+
 /** The wisp can be sent: both cards are picked and it has not searched yet. */
 export function canAsk(lane: Lane): boolean {
   return !lane.asked && isComplete(lane.pick);
@@ -39,6 +44,29 @@ export function canAsk(lane: Lane): boolean {
 
 export function wishAt(index: number): Wish {
   return balance.wishes[index]!;
+}
+
+/** The entry after `item` in `order`; after the last comes the first. */
+function following<T>(order: readonly T[], item: T): T {
+  return order[(order.indexOf(item) + 1) % order.length]!;
+}
+
+/**
+ * What the wisp brings for a request. The cards the child picked are kept as asked. A card left out
+ * is filled in from the wish: the next color, or the next object, so the item differs from the wish
+ * exactly where the child said nothing. With both cards the item is the pair itself. Rules:
+ * .kiro/specs/03-trial-tell-vague-request/design.md.
+ */
+export function deliver(pick: Pick, wish: Wish): Wish {
+  return {
+    color: pick.color ?? following(colors, wish.color),
+    thing: pick.thing ?? following(things, wish.thing),
+  };
+}
+
+/** The item the wisp brought, or null before it has searched. Derived, never stored. */
+export function delivered(lane: Lane): Wish | null {
+  return lane.asked ? deliver(lane.pick, wishAt(lane.wish)) : null;
 }
 
 export function outcome(lane: Lane): Outcome {
