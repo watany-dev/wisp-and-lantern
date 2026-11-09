@@ -27,7 +27,7 @@ behavior (the Result line of that task says how).
 | "a search has a complete pick" model invariant and the 220-state count | `reducer.model.test.ts` | 5.1 | "at least one card"; 280 states |
 | "invites the child to pick, saying what is still missing" (`pickBoth`, `pickColor`, `pickThing`) | `lane-view.test.ts` | 4.1 | `pickAny` and `ready` |
 | "arms the wisp only with both cards picked", "fades the wisp while it cannot be sent" for one card | `lane-view.test.ts` | 5.1 | one card arms and un-fades the wisp |
-| the mobile step "a color alone is not a request" | `e2e/smoke.mobile.spec.ts` | 7.1 | the color-only and object-only paths |
+| the mobile step "a color alone is not a request" | `e2e/smoke.mobile.spec.ts` | 5.1 (the step), 7.1 (the full paths) | the step becomes "a color alone is a request"; 7.1 adds the color-only and object-only paths |
 
 ## 1. Spec
 
@@ -134,7 +134,7 @@ behavior (the Result line of that task says how).
     equals the wish. It is written against the brought item to follow the requirement; no test can
     tell, and mutation testing finds nothing to complain about. INV-6 and INV-7 were deleted with
     their tests; the numbers are listed as retired in `domain-invariants.md` (without the `INV-`
-    prefix, so the trace check does not count them). Replaced tests: see the table above.
+    prefix, so the trace check does not count them). Replaced tests: see the table above. CI caught one I had planned for 7.1: the existing mobile smoke still expected a color alone to do nothing, so the smoke job failed on this PR. The step now expects a color alone to send the wisp (a minimal change; the full paths stay in 7.1), and the lint caught the import it left unused. After the fix `npm run check` passes again (224 tests) and the 6 smoke tests pass on a fresh build (Chromium; CI runs WebKit).
 
 ## 6. Scene: the closing line
 

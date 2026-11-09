@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { wishAt } from "../src/domain/lane";
-import { cardCenter, wisp } from "../src/game/lane-layout";
+import { cardCenter } from "../src/game/lane-layout";
 import {
   askWisp,
   collectErrors,
@@ -46,14 +46,17 @@ test("REQ-2.1, REQ-2.3, REQ-2.4, REQ-2.7, REQ-2.8: plays trial 1 with taps in Ja
   await startTrial(page, tap);
   expect((await gameState(page)).lang).toBe("ja");
 
-  // A color alone is not a request: tapping the wisp searches nothing (the scene is ready, because
-  // the first pick above already landed).
+  // A color alone is a request (REQ-3.1): the wisp searches, and the pick stays as the child left it.
   await pressUntil(page, tap, cardCenter(other.color), (s) => s.lane.pick.color === other.color);
-  await tap(wisp);
-  await page.waitForTimeout(300);
-  expect((await gameState(page)).lane).toMatchObject({ asked: false, pick: { thing: null } });
+  expect((await gameState(page)).lane.asked).toBe(false);
+  await askWisp(page, tap);
+  expect((await gameState(page)).lane).toMatchObject({
+    asked: true,
+    pick: { color: other.color, thing: null },
+  });
+  await pressButton(page, tap);
 
-  // Both cards, then the explicit request: the helper searches exactly what was picked.
+  // Both cards, then the explicit request: the wisp brings exactly what was picked.
   await pickCards(page, tap, other.color, other.thing);
   await askWisp(page, tap);
   expect((await gameState(page)).lane).toMatchObject({ asked: true, pick: other });
