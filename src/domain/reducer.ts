@@ -3,7 +3,8 @@
 import type { GameEvent } from "./events";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
-import type { GameState, Lang } from "./state";
+import { reduceShed } from "./shed";
+import { trials, type GameState, type Lang } from "./state";
 
 export function reduce(state: GameState, event: GameEvent): GameState {
   switch (event.type) {
@@ -15,12 +16,23 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return { ...state, hero: { x: event.x, y: event.y } };
     case "Tick":
       return tick(state, event.ms);
+    case "StartShed":
+      return startShed(state);
     case "Ask":
-      return state.phase === "trial" ? ask(state, event) : state;
+      return inTrial(state, trials.lane) ? ask(state, event) : state;
     case "PickCard":
     case "Retry":
-      return state.phase === "trial" ? withLane(state, reduceLane(state.lane, event)) : state;
+      return inTrial(state, trials.lane) ? withLane(state, reduceLane(state.lane, event)) : state;
+    case "PickTool":
+    case "GiveTool":
+    case "RetryShed":
+      return inTrial(state, trials.shed) ? withShed(state, reduceShed(state.shed, event)) : state;
   }
+}
+
+/** Trial 1 and trial 2 events act only inside their own trial (REQ-5.9). */
+function inTrial(state: GameState, trial: number): boolean {
+  return state.phase === "trial" && state.trial === trial;
 }
 
 /** A run starts from the title or the end screen. During a run `Start` only sets the language. */
@@ -30,16 +42,21 @@ function start(state: GameState, lang: Lang | undefined): GameState {
   return {
     ...state,
     phase: "trial",
-    trial: 1,
+    trial: trials.lane,
     lang: next,
     lane: initialLane,
     run: restartRun(state.run),
   };
 }
 
-/** Time passes only during a run. At zero the run is over and its score is final. */
+/** The shed opens from the title only, with `shed` still initial. It starts no run: `run` and `lane` stay as they were. */
+function startShed(state: GameState): GameState {
+  return state.phase === "title" ? { ...state, phase: "trial", trial: trials.shed } : state;
+}
+
+/** Time passes only during a run of trial 1. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  if (state.phase !== "trial" || !(ms > 0)) return state;
+  if (!inTrial(state, trials.lane) || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
   return { ...state, phase: "over", run: finishRun(run) };
@@ -54,4 +71,8 @@ function ask(state: GameState, event: GameEvent & { type: "Ask" }): GameState {
 
 function withLane(state: GameState, lane: GameState["lane"]): GameState {
   return lane === state.lane ? state : { ...state, lane };
+}
+
+function withShed(state: GameState, shed: GameState["shed"]): GameState {
+  return shed === state.shed ? state : { ...state, shed };
 }

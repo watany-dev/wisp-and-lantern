@@ -372,3 +372,137 @@ describe("reduce: the end of a run (REQ-4.5, REQ-4.6)", () => {
     expect(reduce(started, runOut).run).toMatchObject({ score: 0, best: 0, record: false });
   });
 });
+
+// Trial 2 (spec 05-trial-grant-tools): the shed opens from the title and has its own events.
+const enterShed: GameEvent = { type: "StartShed" };
+const pickTool = (tool: "key" | "broom" | "hammer"): GameEvent => ({ type: "PickTool", tool });
+const giveTool: GameEvent = { type: "GiveTool" };
+const retryShed: GameEvent = { type: "RetryShed" };
+const inShed = play([enterShed]);
+
+describe("reduce: opening the shed (REQ-5.1, REQ-5.9)", () => {
+  it("StartShed on the title opens trial 2 and starts no run", () => {
+    expect(inShed.phase).toBe("trial");
+    expect(inShed.trial).toBe(2);
+    expect(inShed.shed).toEqual({ stage: "choosing", pick: null });
+    // The clock stays full, nothing is scored, and the lane is untouched.
+    expect(inShed.run).toBe(initialState.run);
+    expect(inShed.lane).toBe(initialState.lane);
+    expect(inShed.lang).toBe(initialState.lang);
+  });
+
+  it("StartShed keeps the language and the hero where they were", () => {
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterShed)).toEqual({ ...before, phase: "trial", trial: 2 });
+  });
+
+  it("StartShed is ignored in trial 1, in the shed and on the end screen", () => {
+    expect(reduce(started, enterShed)).toBe(started);
+    expect(reduce(inShed, enterShed)).toBe(inShed);
+    const over = reduce(started, tick(balance.runMs));
+    expect(over.phase).toBe("over");
+    expect(reduce(over, enterShed)).toBe(over);
+  });
+
+  it("Start in the shed sets the language only: it never leaves the shed or starts a run", () => {
+    const midway = play([pickTool("broom"), giveTool], inShed);
+    expect(reduce(midway, { type: "Start" })).toEqual(midway);
+    expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
+  });
+
+  it("SetLang and MoveHeroTo keep the pick and the result", () => {
+    const midway = play([pickTool("hammer"), giveTool], inShed);
+    const next = play(
+      [
+        { type: "SetLang", lang: "ja" },
+        { type: "MoveHeroTo", x: 1, y: 2 },
+      ],
+      midway,
+    );
+    expect(next.shed).toBe(midway.shed);
+  });
+});
+
+describe("reduce: the shed events (REQ-5.3 to REQ-5.7)", () => {
+  it("picks a tool, replaces it, and does not hand it over", () => {
+    const next = play([pickTool("key"), pickTool("broom")], inShed);
+    expect(next.shed).toEqual({ stage: "choosing", pick: "broom" });
+  });
+
+  it("hands over exactly the picked tool and only then tries it", () => {
+    expect(play([pickTool("hammer")], inShed).shed.stage).toBe("choosing");
+    expect(play([pickTool("hammer"), giveTool], inShed).shed).toEqual({
+      stage: "tried",
+      tool: "hammer",
+    });
+  });
+
+  it("a hand-over with nothing picked returns the same state", () => {
+    expect(reduce(inShed, giveTool)).toBe(inShed);
+  });
+
+  it("locks the pick and the hand-over while a result shows", () => {
+    const done = play([pickTool("broom"), giveTool], inShed);
+    expect(reduce(done, pickTool("key"))).toBe(done);
+    expect(reduce(done, giveTool)).toBe(done);
+  });
+
+  it("the retry returns to a fresh choosing and changes nothing else", () => {
+    const done = play([pickTool("broom"), giveTool], inShed);
+    expect(reduce(done, retryShed)).toEqual(inShed);
+    expect(reduce(inShed, retryShed)).toBe(inShed);
+  });
+
+  it("the key opens the door after any number of other tools, and again after a success", () => {
+    let state = inShed;
+    for (const tool of ["broom", "hammer", "broom", "hammer"] as const) {
+      state = play([pickTool(tool), giveTool, retryShed], state);
+    }
+    const open = play([pickTool("key"), giveTool], state);
+    expect(open.shed).toEqual({ stage: "tried", tool: "key" });
+    const again = play([retryShed, pickTool("key"), giveTool], open);
+    expect(again.shed).toEqual(open.shed);
+  });
+
+  it("does nothing outside the shed: on the title, in trial 1 and on the end screen", () => {
+    const over = reduce(started, tick(balance.runMs));
+    for (const state of [initialState, started, over]) {
+      for (const event of [pickTool("key"), giveTool, retryShed]) {
+        expect(reduce(state, event)).toBe(state);
+      }
+    }
+  });
+});
+
+describe("reduce: trial 1 events and the clock leave the shed alone (REQ-5.7, REQ-5.9)", () => {
+  const trialOneEvents: GameEvent[] = [
+    ...pick("red", "lantern"),
+    ask,
+    retry,
+    tick(1_000),
+    tick(balance.runMs),
+  ];
+
+  it("changes nothing in the shed, whatever is picked or tried", () => {
+    const states = [
+      inShed,
+      play([pickTool("key")], inShed),
+      play([pickTool("key"), giveTool], inShed),
+      play([pickTool("broom"), giveTool], inShed),
+    ];
+    for (const state of states) {
+      for (const event of trialOneEvents) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("the clock never runs in the shed: no time up, no score", () => {
+    const later = play(trialOneEvents, inShed);
+    expect(later.phase).toBe("trial");
+    expect(later.run).toBe(initialState.run);
+    expect(later.run.remainingMs).toBe(balance.runMs);
+    expect(later.run.score).toBe(0);
+  });
+});

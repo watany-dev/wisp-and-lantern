@@ -25,14 +25,14 @@
   - テスト: なし（文書）。`npm run check` の `check-trace` と日本語テキストゲートが含まれる（specs は許可リストにある）。
   - Result: Node 26.13.0 で `npm run check` が通る（`git add` のあと。`check-submission.sh` が `git ls-files` を読むため。`check-trace: 15 invariants, 0 without tests`）。プルリクエスト #60: 必須のCIチェックがすべて緑（`actions`、`static`、`test`、`mutation`、`sast`、`perf`、`build`、`smoke`、`secrets`、`guard`）、マージ済み。`.kiro/specs/` の外は変えていない。
 
-- [ ] 1.2 `design.md` とこのファイルを書き、日本語訳をつける。
+- [x] 1.2 `design.md` とこのファイルを書き、日本語訳をつける。
   - 要件: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-5.9, REQ-5.10, REQ-5.11, REQ-5.12, REQ-5.13, REQ-5.14, REQ-5.15
   - テスト: なし（文書）
-  - Result: このプルリクエストで埋める
+  - Result: Node 26.13.0 で `npm run check` が通る（`check-trace: 15 invariants, 0 without tests`。`REQ-5.n` はすべてこのファイルにあり、警告は消えた）。プルリクエスト #61: 必須のCIチェックがすべて緑、マージ済み。`.kiro/specs/` の外は変えていない。
 
 ## 2. ドメイン: 小屋の規則
 
-- [ ] 2.1 `shed.ts`（道具、`Shed`、`reduceShed`、`opensDoor`、`shedOutcome`、`triedTool`、`canGive`）、イベント `StartShed`・`PickTool`・`GiveTool`・`RetryShed`、`GameState.shed` と `trials`、`trial` の守りつきの reducer のケースを足す。INV-18〜INV-24 を、性質テストとともに同じプルリクエストで `domain-invariants.md` に足す。`src/game/` からは新しいコードを呼ばないので、ゲームは変わらない。
+- [x] 2.1 `shed.ts`（道具、`Shed`、`reduceShed`、`opensDoor`、`shedOutcome`、`triedTool`、`canGive`）、イベント `StartShed`・`PickTool`・`GiveTool`・`RetryShed`、`GameState.shed` と `trials`、`trial` の守りつきの reducer のケースを足す。INV-18〜INV-24 を、性質テストとともに同じプルリクエストで `domain-invariants.md` に足す。`src/game/` からは新しいコードを呼ばないので、ゲームは変わらない。
   - 要件: REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.9, REQ-5.13
   - 不変条件: INV-18〜INV-24（新規）。INV-3 と INV-4 を小屋のイベント込みで再実行
   - テスト:
@@ -40,7 +40,7 @@
     - `reducer.test.ts`（新しいケースのみ）: タイトルからだけの `StartShed`、小屋の外での小屋のイベント、小屋での `Ask`・`PickCard`・`Retry`・`Tick`、小屋での `Start` と `SetLang`、`lane` と `run` が手つかず。
     - `shed.pbt.test.ts`: 小屋のイベントを含む列での INV-3 と INV-4、INV-18〜INV-24 をそれぞれ `checkProperty` で。生成が全道具を渡し、選択を置き換え、両方の結果のあとでやり直し、成功のあとで遊び直すことのカバレッジテスト。
   - 完了の条件: ミュータントの生き残りなしで `npm run check` が通り、`check-trace` が22個の不変条件、テストなしゼロを報告し、新しい性質と単体のケースがそれぞれ、意図的に壊した reducer で失敗することが示される（下に記録）。
-  - Result: そのタスクのプルリクエストで埋める
+  - Result: Node 26.13.0 で `npm run check` が通る: テスト351件（297件に対して新規54件: `shed.test.ts` 26、`shed.pbt.test.ts` 14、`reducer.test.ts` 14）、カバレッジはすべての指標で100%、ミューテーションスコア100%（485件、生き残りなし。初回の実行でも生き残りなし）、`check-trace: 22 invariants, 0 without tests`、サイズ予算 OK。既存のテストは編集していない: `reducer.test.ts` の変更は末尾へのケースの追加。**意図的な破壊**（`shed.ts` か `reducer.ts` に適用し、4つのテストファイルを実行して元に戻した。行った破壊はこれで全部）: ハンマーも扉を開ける→4件失敗（INV-20と単体3）、`GiveTool` が常に鍵を試す→8件（INV-19、道具ごとの単体、カバレッジテスト）、試した後も `PickTool` が置き換える→4件（INV-21）、`PickTool` が試した道具を変える→3件（INV-21）、`RetryShed` が道具を選択として残す→7件（INV-21、INV-22）、小屋のイベントが試練2の外で効く→2件（INV-23）、小屋で `Tick` が時計を進める→3件（INV-24）、小屋で `PickCard` が効く→2件（INV-24）、未選択の `GiveTool` が鍵を試す→4件（INV-18、INV-19）、どの phase でも `StartShed`→1件（単体）、プレイも始める `StartShed`→2件（単体）。気づいた穴が1つ: プレイを再スタートする `StartShed` は INV-24 を緑のままにする（初期の run に `restartRun` を掛けても初期の run と等しいため）。単体テストが捕まえる。INV-3 と INV-4 は新しいイベントを含めて実行して通る。`src/game/` は変えていないので、このタスクではスモークは不要（既存の11件はここでは再実行していない）。
 
 ## 3. モデル検査
 

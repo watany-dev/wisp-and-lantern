@@ -20,6 +20,10 @@ from `initialState`.
 - A soft-lock check (the goal is always still reachable) belongs in the trial's `*.model.test.ts`;
   give it an id here only if a property test also covers it.
 - Spec `04-score-attack` adds 15 to 17 (the 60-second run) and widens INV-1 to the end screen.
+- Spec `05-trial-grant-tools` adds 18 to 24 (trial 2, the shed: `shed` in the state, `trial` 2). INV-5 and
+  INV-8 to INV-17 describe trial 1's lane and run; they are unchanged and hold for every event sequence,
+  including the shed events, because INV-23 and INV-24 keep the shed and trial 1 apart. INV-1 to INV-4 are
+  global and are also run over sequences that contain the shed events.
 - Retired numbers, never reused: 6 and 7. Spec `03-trial-tell-vague-request` retired them (one card
   is now a valid request) and added 8 to 14. They are written without the `INV-` prefix here so the
   trace check does not count them as live.
@@ -46,3 +50,10 @@ INV-1 and INV-2 to match the real state.
 | INV-15 | Inside a run the clock only runs down and stays between 0 and 60 seconds. Only a `Start` from the title or the end screen sets it back to 60 seconds. | `reducer.pbt.test.ts` |
 | INV-16 | Inside a run the score never goes down, and it goes up only on an `Ask` that brings the wish. A `Start` from the title or the end screen sets it to 0. | `reducer.pbt.test.ts` |
 | INV-17 | In a trial the clock is above zero and on the end screen it is zero. The end screen changes only on `Start`, `SetLang` and `MoveHeroTo`, and the last two leave the run and the lane alone. | `reducer.pbt.test.ts` |
+| INV-18 | Picking a tool only picks it: `PickTool` leaves the shed choosing with exactly that one tool picked, and a later pick replaces the earlier one. A tool is tried only by `GiveTool` with a tool picked, and `GiveTool` with none picked returns the same state. | `shed.pbt.test.ts` |
+| INV-19 | The tool tried is the tool picked at the hand-over. It is never changed, corrected or taken from somewhere else. | `shed.pbt.test.ts` |
+| INV-20 | Only the key opens the door: a tried key is `open`, a tried broom or hammer is `shut`. | `shed.pbt.test.ts` |
+| INV-21 | Once a tool is tried, every event except `RetryShed` leaves the shed equal: the result and the tried tool stay until the retry. | `shed.pbt.test.ts` |
+| INV-22 | `RetryShed` after a try returns to choosing with no tool picked and changes nothing else; before a try it returns the same state. | `shed.pbt.test.ts` |
+| INV-23 | Shed events return the same state outside trial 2, and in trial 2 change only `shed`. `shed` is the initial shed whenever `trial` is not 2. | `shed.pbt.test.ts` |
+| INV-24 | In trial 2 the trial 1 events `Ask`, `PickCard`, `Retry` and `Tick` return the same state, so the lane and the run stay initial: no clock, no score. | `shed.pbt.test.ts` |

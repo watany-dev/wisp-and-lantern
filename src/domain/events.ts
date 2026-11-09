@@ -1,10 +1,20 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
 import type { CardId } from "./lane";
+import type { ToolId } from "./shed";
 import type { Lang } from "./state";
 
 /** Events of trial 1. `Ask` is the only way the helper searches. */
 export type LaneEvent = { type: "PickCard"; card: CardId } | { type: "Ask" } | { type: "Retry" };
+
+/**
+ * Events of trial 2. `GiveTool` is the only way a tool is used. They have their own names so that no
+ * trial 1 event can act on the shed, and no shed event on the lane.
+ */
+export type ShedEvent =
+  | { type: "PickTool"; tool: ToolId }
+  | { type: "GiveTool" }
+  | { type: "RetryShed" };
 
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
@@ -12,4 +22,7 @@ export type GameEvent =
   | { type: "MoveHeroTo"; x: number; y: number }
   /** `ms` of play time passed. The only way time reaches the reducer (ADR 0001). */
   | { type: "Tick"; ms: number }
-  | LaneEvent;
+  /** Opens the shed from the title: the only way into trial 2. */
+  | { type: "StartShed" }
+  | LaneEvent
+  | ShedEvent;
