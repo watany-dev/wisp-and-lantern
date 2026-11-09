@@ -9,7 +9,7 @@ export type Rect = { x: number; y: number; width: number; height: number };
 export const canvas = { width: 390, height: 844 } as const;
 
 /** Where `initialState` puts the hero. The strip around it stays free for the floor drag. */
-export const heroStart: Point = { x: 195, y: 600 };
+export const heroStart: Point = { x: 195, y: 612 };
 export const heroSize = 64;
 
 export const slotSize = 88;

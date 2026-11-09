@@ -19,10 +19,13 @@ Status: `[ ]` open, `[x]` done. A task fills its **Result** line in its own pull
 
 ## 2. Looks
 
-- [ ] 2.1 Sharp rendering, drawn characters and scenery, motion.
+- [x] 2.1 Sharp rendering, drawn characters and scenery, motion.
   - Requirements: REQ-4.9 to REQ-4.11
   - Tests: layout and view stay unit-tested; the smoke plays through and its screenshots are read
-  - Result: (fill in when run)
+  - Result: `npm run check` passes on Node 26.13.0 (see the pull request for the numbers). The smoke (11 tests)
+    passes on Chromium with the iPhone 13 profile; screenshots were read by eye. In the sandbox's software
+    renderer the lane runs at about 36 fps (60 fps before this task, on a 390 x 844 canvas); a real GPU is
+    far faster, but this was not measured on a phone.
 
 ## Tests of the old behavior that this spec replaces
 

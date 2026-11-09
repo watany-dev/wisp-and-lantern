@@ -211,7 +211,7 @@ async function litSlots(page: Page): Promise<string[]> {
   const image = await look(page);
   const ratio = density(image, page);
   const { box, scale } = await canvasFrame(page);
-  const corner = 38;
+  const corner = 34;
   return colors
     .flatMap((color) => things.map((thing) => ({ color, thing })))
     .filter(({ color, thing }) => {

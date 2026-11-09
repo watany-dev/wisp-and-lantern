@@ -7,6 +7,11 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Changed
 
+- The game looks finished: it is drawn at the screen's pixel ratio (up to 2) so shapes and text are
+  sharp, and the flat placeholder squares are gone. The wisp is a glowing ghost that floats, the hero
+  a little witch with a lantern, the pumpkins and lanterns are shaded, the slots, cards and buttons
+  have depth, and a night sky with a moon, stars and trees sits behind every screen. A find pops the
+  star and bursts gold sparks. All art is drawn in code; no image files are shipped.
 - The game is now a 60-second score attack. The clock runs from the first tap, each wish found scores
   100 (plus 50 for each find in a row, up to 4), a different or vague request scores nothing, and
   when time is up an end screen shows the score and the best of the session with a button to play

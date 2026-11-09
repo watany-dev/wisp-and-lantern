@@ -25,7 +25,7 @@ const alphabet: readonly GameEvent[] = [
   { type: "SetLang", lang: "ja" },
   { type: "SetLang", lang: "en" },
   { type: "MoveHeroTo", x: 0, y: 0 },
-  { type: "MoveHeroTo", x: 195, y: 600 },
+  { type: "MoveHeroTo", x: 195, y: 612 },
 ];
 
 describe("reduce (exhaustive model check)", () => {

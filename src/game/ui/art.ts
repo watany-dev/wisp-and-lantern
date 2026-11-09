@@ -4,6 +4,8 @@
 
 import Phaser from "phaser";
 import { patternMarks, starPoints, type Mark } from "../pattern";
+import { drawLantern, drawPumpkin } from "./items";
+import { shade } from "./shade";
 
 type Graphics = Phaser.GameObjects.Graphics;
 type ItemArt = { fill: string; pattern: string; badge: string; silhouette: string };
@@ -11,8 +13,6 @@ type ItemArt = { fill: string; pattern: string; badge: string; silhouette: strin
 const ink = 0x1b1b2a;
 const white = 0xf4efe1;
 const gold = 0xffd54a;
-// Mid-tone, so the lantern's caps show on both the dark lane and the cream cards.
-const cap = 0x6b6b8f;
 const toColor = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
 
 function drawShape(g: Graphics, shape: string, size: number): void {
@@ -31,23 +31,9 @@ function drawMarks(g: Graphics, marks: Mark[]): void {
   }
 }
 
-function drawPumpkin(g: Graphics, s: number): void {
-  g.fillEllipse(0, s * 0.06, s, s * 0.82);
-  g.fillStyle(0x3a6b2f, 1);
-  g.fillRect(-s * 0.05, -s * 0.5, s * 0.1, s * 0.18);
-}
-
-function drawLantern(g: Graphics, s: number): void {
-  g.fillRoundedRect(-s * 0.3, -s * 0.36, s * 0.6, s * 0.78, s * 0.08);
-  g.fillStyle(cap, 1);
-  g.fillRect(-s * 0.36, -s * 0.46, s * 0.72, s * 0.1);
-  g.fillRect(-s * 0.36, s * 0.38, s * 0.72, s * 0.1);
-}
-
 export function drawSilhouette(g: Graphics, silhouette: string, size: number, fill: string): void {
-  g.fillStyle(toColor(fill), 1);
-  if (silhouette === "pumpkin") drawPumpkin(g, size);
-  else drawLantern(g, size);
+  if (silhouette === "pumpkin") drawPumpkin(g, size, toColor(fill));
+  else drawLantern(g, size, toColor(fill));
 }
 
 /** A small shape in the corner, so a color is also told by its shape (hard rule 7). */
@@ -73,17 +59,21 @@ export function drawSwatch(
   g: Graphics,
   art: { fill: string; shape: string; pattern: string },
 ): void {
+  g.fillStyle(shade(toColor(art.fill), 0.6), 1);
+  drawShape(g, art.shape, 58);
   g.fillStyle(toColor(art.fill), 1);
   drawShape(g, art.shape, 52);
   drawMarks(g, patternMarks(art.pattern, 30));
 }
 
 export function drawStar(g: Graphics, r: number): void {
+  const points = (k: number) => starPoints(r * k).map((p) => new Phaser.Math.Vector2(p.x, p.y));
+  g.fillStyle(shade(gold, 0.7), 1);
+  g.fillPoints(points(1.12), true);
   g.fillStyle(gold, 1);
-  g.fillPoints(
-    starPoints(r).map((p) => new Phaser.Math.Vector2(p.x, p.y)),
-    true,
-  );
+  g.fillPoints(points(1), true);
+  g.fillStyle(0xfff3b0, 0.9);
+  g.fillPoints(points(0.45), true);
 }
 
 /** A picked card: a thick frame and a tick, so the mark is a shape, not a color. */
@@ -116,6 +106,57 @@ export function drawBar(g: Graphics, width: number, height: number, fraction: nu
   if (fill < height) return;
   g.fillStyle(gold, 1);
   g.fillRoundedRect(0, 0, fill, height, height / 2);
+}
+
+/**
+ * An empty lane slot: a dark socket with a thin rim and a faint ring. The rim is darker than the
+ * lit slot's panel (`palette.lit`), so a lit slot is told from an empty one by its panel color.
+ */
+export function drawSlot(g: Graphics, size: number): void {
+  drawPanel(g, size, size, palette.dark);
+  g.lineStyle(2, 0x20203a, 1);
+  g.strokeRoundedRect(-size / 2 + 1, -size / 2 + 1, size - 2, size - 2, 13);
+  g.lineStyle(2, 0x2a2a4a, 0.5);
+  g.strokeCircle(0, 0, size * 0.3);
+}
+
+/** A lit slot: the lit panel, and a warm halo around it that fades outward. */
+export function drawLitSlot(g: Graphics, size: number): void {
+  for (const [grow, alpha] of [
+    [16, 0.05],
+    [11, 0.08],
+    [6, 0.14],
+  ] as const) {
+    g.lineStyle(grow, gold, alpha);
+    g.strokeRoundedRect(
+      -size / 2 - grow / 2,
+      -size / 2 - grow / 2,
+      size + grow,
+      size + grow,
+      14 + grow / 2,
+    );
+  }
+  drawPanel(g, size, size, palette.lit);
+  g.fillStyle(gold, 0.16);
+  g.fillCircle(0, 0, size * 0.32);
+}
+
+/** A card: a soft shadow below, the cream face, and a light rim. */
+export function drawCardFace(g: Graphics, width: number, height: number): void {
+  g.fillStyle(0x000000, 0.35);
+  g.fillRoundedRect(-width / 2, -height / 2 + 5, width, height, 14);
+  drawPanel(g, width, height, white);
+  g.lineStyle(2, 0xffffff, 0.6);
+  g.strokeRoundedRect(-width / 2 + 1, -height / 2 + 1, width - 2, height - 2, 13);
+}
+
+/** A button: a darker lip below the face, and a light band on top, so it looks pressable. */
+export function drawButton(g: Graphics, width: number, height: number): void {
+  g.fillStyle(shade(gold, 0.72), 1);
+  g.fillRoundedRect(-width / 2, -height / 2 + 6, width, height, 14);
+  drawPanel(g, width, height - 4, gold);
+  g.fillStyle(0xffffff, 0.28);
+  g.fillRoundedRect(-width / 2 + 8, -height / 2 + 6, width - 16, height * 0.28, 10);
 }
 
 export const palette = { ink, white, gold, dark: 0x15152a, lit: 0x2a2a4a };

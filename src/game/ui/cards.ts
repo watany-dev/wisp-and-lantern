@@ -4,7 +4,7 @@ import type Phaser from "phaser";
 import { isColor, type CardId } from "../../domain/lane";
 import { cardCenter, cardSize } from "../lane-layout";
 import { colorArt, thingArt } from "../lane-view";
-import { drawPanel, drawPickedMark, drawSilhouette, drawSwatch, palette } from "./art";
+import { drawCardFace, drawPickedMark, drawSilhouette, drawSwatch } from "./art";
 import { inkStyle } from "./text";
 
 export type CardWidget = {
@@ -22,7 +22,7 @@ function drawCardArt(g: Phaser.GameObjects.Graphics, id: CardId): void {
 export function createCard(scene: Phaser.Scene, id: CardId, onTap: () => void): CardWidget {
   const { width, height } = cardSize;
   const panel = scene.add.graphics();
-  drawPanel(panel, width, height, palette.white);
+  drawCardFace(panel, width, height);
   const art = scene.add.graphics({ x: 0, y: -14 });
   drawCardArt(art, id);
   const label = scene.add.text(0, 30, "", { ...inkStyle, fontSize: "20px" }).setOrigin(0.5);
