@@ -13,6 +13,15 @@ const generated = [
   ".cache/**",
 ];
 
+const plugins = lazyPlugins(() => [
+  {
+    name: "build-sha-meta",
+    transformIndexHtml: () => [
+      { tag: "meta", attrs: { name: "build", content: buildSha }, injectTo: "head" },
+    ],
+  },
+]);
+
 export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
   build: {
@@ -21,14 +30,8 @@ export default defineConfig({
     // Phaser alone is over 1 MB; scripts/check-size.mjs enforces the real budget.
     chunkSizeWarningLimit: 1600,
   },
-  plugins: lazyPlugins(() => [
-    {
-      name: "build-sha-meta",
-      transformIndexHtml: () => [
-        { tag: "meta", attrs: { name: "build", content: buildSha }, injectTo: "head" },
-      ],
-    },
-  ]),
+  // `lazyPlugins` may return undefined; with exactOptionalPropertyTypes the key must then be absent.
+  ...(plugins && { plugins }),
 
   // `vp test` (Vitest). Benchmarks use vitest.perf.config.ts instead.
   test: {

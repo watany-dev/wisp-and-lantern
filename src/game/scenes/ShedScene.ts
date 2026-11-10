@@ -75,7 +75,7 @@ export class ShedScene extends Phaser.Scene {
     this.render(this.game_.state());
   }
 
-  update(_time: number, deltaMs: number): void {
+  override update(_time: number, deltaMs: number): void {
     const next = stepToward(this.wispBox, this.view.wispTarget, balance.wispSpeed, deltaMs);
     if (next) this.wispBox.setPosition(next.x, next.y);
     this.walkHero(deltaMs);
