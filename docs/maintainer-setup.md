@@ -28,7 +28,7 @@ Settings that GitHub Actions cannot apply. Do them in this order.
 | check | workflow | fails when |
 |---|---|---|
 | `actions` | ci | zizmor or zghalint (`.zghalint.yml`) finds a problem in `.github/workflows/` |
-| `static` | ci | `npm run verify` (including licenses and package sources), `vp check` (Oxfmt formatting, Oxlint, TypeScript 7 type check), knip (unused files, exports, dependencies), `npm audit signatures`, a high or critical advisory in shipped dependencies, or ShellCheck fails |
+| `static` | ci | `npm run verify` (including licenses and package sources), `vp check` (Oxfmt formatting, Oxlint, TypeScript 7 type check), knip (unused files, exports, dependencies), `npm audit signatures`, a high or critical advisory in shipped dependencies (on a pull request only when it changes `package.json` or `package-lock.json`; the nightly audit covers the rest), or ShellCheck fails |
 | `test` | ci | a unit, property, model-check or script test fails, or coverage of `src/` drops below 95% (lines, statements, functions or branches) |
 | `mutation` | ci | Stryker finds a mutant of the unit-tested code that no test kills (`stryker.config.json`) |
 | `sast` | ci | Semgrep (`p/default` rules) reports a finding |
