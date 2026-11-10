@@ -27,6 +27,17 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 3, The Wisp Field ("check it", learning goal L3): the wisp brings five stars and one or two are
+  fakes. They all shine alike, so the child taps them one at a time to check them. A real star keeps its
+  shape and gets a tick and the word "real"; a fake becomes a hollow dashed outline with the word "fake",
+  and the message says the wisp mixed it up. When all five are checked, a button keeps the real stars
+  (and only those), a closing line looks back at checking first, and "Next stars" plays the next of four
+  fixed rounds. No clock or score. The child opens it from a new star button on the title (above the key
+  button; the title's wisp and hero moved up to make room); a tap elsewhere on the title still starts
+  trial 1. Japanese and English, one finger or a mouse, drawn in code, no network after the first load.
+  Spec in `.kiro/specs/06-trial-verify-stars/`; invariants INV-25 to INV-32 added. The other trials'
+  events and the clock still act only in their own trial.
+
 - Trial 2, The Locked Shed ("hand over the tools", learning goal L2): a cat is shut in a shed. The child
   picks one of three tools (key, broom, hammer), taps the wisp to hand it over, and the wisp tries exactly
   that tool on the lock. Only the key opens the door; the broom and the hammer leave it shut, and the

@@ -171,15 +171,16 @@ The alphabet is finite and includes events that must not matter:
 
 - on the title: `StartField`, `SetLang` (ja, en), `MoveHeroTo` (two positions), `CheckStar` for each star
   and for two indexes that do not exist, `KeepStars`, `RetryField`, `Tick` (short and run-ending), one trial 1
-  card, `Ask`, `Retry`, `StartShed`'s tool events (`PickTool`, `GiveTool`, `RetryShed`). Not `Start` and not
-  `StartShed`: they are other trials' entrances and have their own model checks.
+  card, `Ask`, `Retry`, the shed's events (`PickTool`, `GiveTool`, `RetryShed`). Not `Start` and not `StartShed`: they are
+  other trials' entrances and have their own model checks.
 - after the entrance: all of the above plus `Start`, `Start` with a language, and `StartShed`.
 
 The model wraps the real reducer's state with two things that are not part of the game, an independent record
 of what the child did, written from the spec and not from the reducer: `record`, the set of stars the child
-checked this round and the last one, and `plays`, the number of kept results so far, capped at 2.
-The record also holds the round it expects, counted from the number of `RetryField` events that worked.
-The model test has its own copy of the round table, so changing the table in the source fails the test.
+checked this round (a sorted set, so the order does not make a new state), the star checked last, the round it
+expects and whether it was kept; and `plays`, the number of kept results so far, capped at 2, counted from
+what the game did so that a broken game cannot fake a replay. The model test has its own copy of the round
+table, so changing the table in the source fails the test.
 
 | check | what |
 |---|---|
@@ -188,7 +189,7 @@ The model test has its own copy of the round table, so changing the table in the
 | goal 2 | from every state a fresh round (nothing checked) in the field is reachable |
 | goal 3 | from every state a second kept result is reachable (`plays` 2): the replay |
 | witnesses | the shortest trace to a fake found, to a real found, to the kept result, and to the second kept result, from an invariant that says "not this state" |
-| number of states | recorded in the test and in the Result line of task 3.1 |
+| number of states | 1,968, recorded in the test and in the Result line of task 3.1: the title (2 languages x 2 hero positions) and the field (2 x 2 for each of 6 rounds in progress with 81 states each, and 5 kept results) |
 
 It must fail when the rules are broken on purpose, and the counterexamples are kept in the test:
 
@@ -198,10 +199,13 @@ It must fail when the rules are broken on purpose, and the counterexamples are k
 | `CheckStar` also checks the next star | the checked-set invariant | `StartField, CheckStar 0` |
 | a second `CheckStar` on a star unchecks it | the checked-set invariant | `StartField, CheckStar 0, CheckStar 0` |
 | `CheckStar` moves to the next round | the round invariant | `StartField, CheckStar 0` |
-| `RetryField` is ignored | goal 1 (and 3) is stuck | the kept result, trace `StartField`, five checks, `KeepStars` |
+| `KeepStars` is ignored | goal 1 is stuck in every state | the start, trace empty |
+| `RetryField` is ignored | goal 2 (a fresh round) is stuck as soon as one star is checked, and goal 3 (the replay) from the start; goal 1 still holds | `StartField, CheckStar 0`; the start, trace empty |
 | `Tick` runs the clock in the field | the run invariant | `StartField, Tick 1000` |
 
-The break is a wrapper `step` around the real `reduce`, as in trials 1 and 2; no source is edited for it.
+The break is a wrapper `step` around the real `reduce`, as in trials 1 and 2; no source is edited for it. A
+broken game can drift away from the record in many ways, so the broken checks use a looser state identity
+(no language, hero or exact clock) and, for the one break about a single star, a small alphabet.
 
 ## Content (`src/content/`)
 
@@ -212,11 +216,11 @@ A `field` group is added to `strings.ja.json` and `strings.en.json` under the sa
 |---|---|---|---|
 | `field.enter` | ほしを たしかめよう | Check the stars | the title's field button |
 | `field.guide` | ひとつずつ たしかめて⏎ほんものを うけとろう | Check each star first,⏎then keep the real ones | the top line, always |
-| `field.start` | ウィスプが ほしを 5こ⏎もってきたよ | The wisp brought 5 stars⏎Tap one to check it | nothing checked yet |
+| `field.start` | ウィスプの ほし 5こ⏎タップして たしかめよう | The wisp brought 5 stars⏎Tap one to check it | nothing checked yet |
 | `field.real` | この ほしは ほんもの！ | This star is real! | the star checked last is real |
 | `field.fake` | にせものだった！⏎ウィスプも まちがえるよ | That one is a fake!⏎The wisp mixed it up | the star checked last is fake |
 | `field.kept` | ほんものの ほしを⏎{0}こ うけとったよ | You kept {0} real stars | kept result message |
-| `field.lesson` | ひとつずつ たしかめて⏎ほんものだけ うけとったね | You checked each star⏎and kept the real ones | closing line, kept only |
+| `field.lesson` | たしかめてから⏎ほんものだけ うけとったね | You checked each star⏎and kept the real ones | closing line, kept only |
 | `field.keep` | ほんものを うけとる | Keep the real stars | button when all are checked |
 | `field.again` | つぎの ほしを みる | Next stars | button after the keep |
 | `field.marks.real` | ほんもの | real | the label under a real star |
@@ -224,6 +228,9 @@ A `field` group is added to `strings.ja.json` and `strings.en.json` under the sa
 
 Why these words:
 
+- **The start message says the same in both languages.** The first Japanese draft said only that the wisp
+  brought stars, while the English also said to tap one (the rubric's "the Japanese and English say the same
+  thing"). The Japanese is now `ウィスプの ほし 5こ` / `タップして たしかめよう`.
 - **The guide states both steps** (check, then keep) and stays on screen all the time, so the order is
   known before the first tap. The `start` message does not repeat it: it says what the wisp did.
 - **Fake, not "wisp".** The table's word is "wisps"; the child-facing word is "fake" (`にせもの`), because the
@@ -237,9 +244,11 @@ Why these words:
 - **The closing line** looks back at what the child did, in the order they did it (checked, then kept),
   and shares no sentence with the kept message. After the kid-reader pass (the `kid-reader` agent is not
   runnable from this session; the rubric in `.kiro/agents/kid-reader.md` was applied by hand, and the
-  result goes in the pull request) the wording is kept as in the directions. The English lines are 21 and
-  23 characters; the layout is the limit (a 320 px wrap at 22 px; checked on the screen in task 7.1, and the
-  test allows 24 characters per English line). The next playtest should check whether children read "each
+  result goes in the pull request) the English is kept as in the directions. The Japanese first line became
+  `たしかめてから` ("after checking"): the direction's `ひとつずつ たしかめて` is also the guide's first line, so the
+  closing line would have repeated it. The English lines are 21 and 23 characters; the layout is the limit (a
+  320 px wrap at 22 px; checked on the screen in task 6.1, and the test allows 24 characters per English
+  line). The next playtest should check whether children read "each
   star" as the five they tapped.
 - **The buttons say what happens.** `Keep the real stars` names the act and the object. `Next stars`
   does not say "again" because the stars are different. It is not a retry for a mistake of the child.
@@ -256,7 +265,7 @@ kanji, no Latin letters, 12 characters, 2 lines). `lane`, `shed` and `run` strin
 
 - `TitleScene` gets a second button: a gold panel (`drawButton`) with a small star and `field.enter`, at
   (195, 648), 300 x 80, above the shed button (195, 736). To make room, the title's wisp moves from (285,
-  590) to (285, 538) and the hero from (110, 600) to (110, 548). The button's own handler dispatches
+  590) to (285, 538) and the hero from (110, 600) to (110, 548); `titleArt` in `field-layout.ts` holds both. The button's own handler dispatches
   `StartField`. The existing "a press that hit no object starts trial 1" guard already covers it: the
   button is an object, so a press on it reaches `StartField` only. If both ran anyway, only the first would
   have an effect: after `StartField`, a `Start` sets the language only, and after `Start`, a `StartField`
@@ -405,7 +414,7 @@ badge disc is bright only for a real star. So unchecked reads "solid, no badge",
 - **The title button is an object, not a new screen.** A selection screen is a router and is out of scope.
 - **The title art moves up by 52 pixels** so that two buttons fit under it with 8 pixels between them.
   The shed button does not move, so trial 2's layout and its tests are untouched; only `titleArtBottom`
-  changes (660 to 600), and no test pins the old value. Trial 3's button sits above trial 2's.
+  changes (660 to 606), and no test pins the old value. Trial 3's button sits above trial 2's.
 - **No exit from the field.** The same reason as the shed: a "back" button needs a `Leave` event and a
   title return that resets the other trials' state, and is a different feature. Listed under "Found, not
   fixed". A reload returns to the title.

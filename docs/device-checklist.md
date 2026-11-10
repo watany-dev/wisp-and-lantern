@@ -24,5 +24,7 @@ open an issue for each problem.
 - [ ] Color: trial 1 cards and targets are distinguishable in grayscale
 - [ ] Trial 2: children (5–8) finish The Locked Shed without verbal help, and say in their own words that the key was the one that worked (record verbatim); note whether they try the hammer again after the door stays shut, and how they read the closing line
 - [ ] Color: trial 2 tools are told apart by outline in grayscale, and the picked tool is told by its frame and tick
+- [ ] Trial 3: children (5–8) finish The Wisp Field without verbal help, and say in their own words why they checked the stars before keeping them (record verbatim); note whether they say the wisp made a mistake or did it on purpose, whether they look at a star before they tap it, and how they read the closing line
+- [ ] Color: trial 3 real and fake stars are told apart in grayscale by their shape (solid with a tick, hollow without) and their word
 - [ ] Stability: one full playthrough on iPhone Safari, Android Chrome and desktop Chrome
 - [ ] Performance: 60 fps target; if it stays under 30 fps, cut effects

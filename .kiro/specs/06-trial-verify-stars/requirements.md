@@ -77,7 +77,7 @@ not edited.
 | old requirement | the code today | change | new |
 |---|---|---|---|
 | REQ-5.1.1 "one extra tap target" on the title; REQ-5.1.3 | the title has the shed button at (195, 736); the scene starts trial 1 on a press that hit no object | one more button, for trial 3, above the shed button. The shed button does not move. A press on either button starts nothing else | REQ-6.1.1, 6.1.3 |
-| title art positions (REQ-2.1, 04) | the title's wisp is at (285, 590) and the hero at (110, 600), art ends at about y 660 | both move up by 52 game pixels so that the new button fits between the art and the shed button. `titleArtBottom` in `shed-layout.ts` becomes 600. No test pins the old value: `shed-layout.test.ts` checks that the shed button is below it | REQ-6.1.1 |
+| title art positions (REQ-2.1, 04) | the title's wisp is at (285, 590) and the hero at (110, 600), art ends at about y 660 | both move up by 52 game pixels (to (285, 538) and (110, 548)) so that the new button fits between the art and the shed button. `titleArtBottom` in `shed-layout.ts` becomes 606. No test pins the old value: `shed-layout.test.ts` checks that the shed button is below it | REQ-6.1.1 |
 | `sceneFor` (REQ-5.9.2) | `trial` 2 is the shed, anything else in a trial is the lane | `trial` 3 is the field | REQ-6.8.2 |
 | `GameEvent` | has `StartShed`, the shed events | gains `StartField`, `CheckStar`, `KeepStars`, `RetryField` | REQ-6.8.3 |
 | `Ask`, `PickCard`, `Retry`, `Tick`, `PickTool`, `GiveTool`, `RetryShed` | applied only in their own trial (the guards from 05) | no code change: they already return the same state in trial 3. INV-32 now says so for the field | REQ-6.8.3, INV-32 |
@@ -182,7 +182,7 @@ it without a grown-up.
 
 1. The kept result shows a closing line, a separate text, that looks back at the child's action: they
    checked each star and kept the real ones. The wording is chosen in `design.md` after the kid-reader
-   rubric; the directions are ja `ひとつずつ たしかめて` / `ほんものだけ うけとったね` and en
+   rubric; the directions are ja `ひとつずつ たしかめて` / `ほんものだけ うけとったね` (the first line was changed in task 4.1, see `design.md`) and en
    `You checked each star` / `and kept the real ones`.
 2. It is shown only on the kept result, not while checking. It is not joined to the message. The
    result, the stars and the button stay visible, and no text gets smaller to make room.
@@ -267,7 +267,7 @@ it without a grown-up.
    field after it, with a finite alphabet that includes invalid trial 1 and trial 2 events, out-of-range
    stars, `Tick`, `Start` and language changes. It checks: the marks always equal what the child
    checked, a fake star is never kept, a keep needs five checks, from every reachable state the kept
-   result is reachable, and also after a success; it records the number of states and the
+   result is reachable, and also after a kept result; it records the number of states and the
    counterexamples of deliberate breaks. It does not drop any field state to pass.
 5. Mutation testing finds no surviving mutant in the unit-tested code.
 
@@ -277,8 +277,8 @@ it without a grown-up.
    star checked, the message; a fake star found; a second check of the same star changes nothing; all five
    checked, the keep button appears; keep, the closing line shows and the fake stars are faded; the next
    round has a different set of fake stars; and the round table repeats after four rounds. `window.__game`
-   is used to read the state, never to do what a tap can do. The one `dispatch` allowed is `Tick` and
-   `SetLang`, which have no button.
+   is used to read the state, never to do what a tap can do. `dispatch` is used only for `Tick` and `SetLang`, which have no button, and for a
+   `KeepStars` sent too early, which no button offers.
 2. The smoke checks the screen, not only the state: for each star the solid or hollow shape and the
    tick badge, and the closing line and the button, are seen in the pixels. A state that says "fake" with a
    solid star fails.
@@ -336,6 +336,6 @@ and the shed. `.kiro/steering/domain-invariants.md` gets a note on this scope an
 | property (`field.pbt.test.ts`) | INV-3 and INV-4 with the field events, INV-25 to INV-32 | REQ-6.8, 6.12 |
 | model (`field.model.test.ts`) | states, invariants, goals, the deliberate breaks | REQ-6.5, 6.7, 6.12 |
 | content (`field-content.test.ts`) | keys, placeholders, Japanese rules, lengths, no blame, no claims | REQ-6.4, 6.6, 6.11 |
-| view and layout (`field-view.test.ts`, `field-layout.test.ts`, `field-palette.test.ts`, `route.test.ts`) | what each stage shows, no overlap, targets of 80 or more, scene choice | REQ-6.1 to 6.9 |
+| view and layout (`field-view.test.ts`, `field-layout.test.ts`, `route.test.ts`) | what each stage shows, no overlap, targets of 80 or more, scene choice | REQ-6.1 to 6.9 |
 | mutation (`npm run mutation`) | no surviving mutant | REQ-6.12, 6.14 |
 | mobile and desktop smoke | real taps, pixels, screenshots, offline | REQ-6.1 to 6.13 |
