@@ -2,6 +2,7 @@
 
 import Phaser from "phaser";
 import type { Game } from "./judge";
+import { FieldScene } from "./scenes/FieldScene";
 import { LaneScene } from "./scenes/LaneScene";
 import { OverScene } from "./scenes/OverScene";
 import { ShedScene } from "./scenes/ShedScene";
@@ -22,6 +23,12 @@ export function boot(parent: HTMLElement, game: Game): Phaser.Game {
       height: canvas.height * pixelRatio,
     },
     input: { activePointers: 2 },
-    scene: [new TitleScene(game), new LaneScene(game), new OverScene(game), new ShedScene(game)],
+    scene: [
+      new TitleScene(game),
+      new LaneScene(game),
+      new OverScene(game),
+      new ShedScene(game),
+      new FieldScene(game),
+    ],
   });
 }
