@@ -20,7 +20,8 @@ const shedEvent: fc.Arbitrary<GameEvent> = fc.oneof(
   { weight: 2, arbitrary: fc.record({ type: fc.constant("RetryShed" as const) }) },
 );
 const otherEvent: fc.Arbitrary<GameEvent> = fc.oneof(
-  fc.record({ type: fc.constant("Start" as const), lang: fc.option(lang, { nil: undefined }) }),
+  // `lang` is either absent or a language: `{ lang: undefined }` is not a valid event.
+  fc.record({ type: fc.constant("Start" as const), lang }, { requiredKeys: ["type"] }),
   fc.record({ type: fc.constant("SetLang" as const), lang }),
   fc.record({ type: fc.constant("MoveHeroTo" as const), x: fc.integer(), y: fc.integer() }),
   fc.record({ type: fc.constant("PickCard" as const), card }),

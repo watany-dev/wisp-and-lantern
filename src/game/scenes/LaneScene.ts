@@ -97,7 +97,7 @@ export class LaneScene extends Phaser.Scene {
     this.render(this.game_.state());
   }
 
-  update(_time: number, deltaMs: number): void {
+  override update(_time: number, deltaMs: number): void {
     this.game_.dispatch({ type: "Tick", ms: tickMs(deltaMs) });
     this.moveWisp(deltaMs);
     this.walkHero(deltaMs);

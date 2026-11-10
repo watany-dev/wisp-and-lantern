@@ -66,6 +66,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2 # a pull request checks out a merge commit; its first parent is the base
       - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .nvmrc
@@ -80,7 +81,22 @@ jobs:
         run: npm run knip
       - name: Registry signatures and provenance of installed packages
         run: npm audit signatures
+      # The result depends on the advisory database at run time, not on the change, so a pull
+      # request that leaves the dependencies alone must not turn red when an advisory is published.
+      # The nightly `audit` job reports those. If the diff cannot be read, the audit runs.
+      - name: Did this change touch the dependencies?
+        id: deps
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          audit=true
+          if [ "$EVENT_NAME" = pull_request ] && git diff --quiet HEAD^1 HEAD -- package.json package-lock.json; then
+            audit=false
+            echo "package.json and package-lock.json are unchanged: skipping the PR-time npm audit (the nightly audit covers it)." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "audit=$audit" >> "$GITHUB_OUTPUT"
       - name: Known high or critical advisories in shipped dependencies
+        if: steps.deps.outputs.audit == 'true'
         run: npm audit --omit=dev --audit-level=high
       - name: Shell scripts (ShellCheck 0.11.0)
         run: >-

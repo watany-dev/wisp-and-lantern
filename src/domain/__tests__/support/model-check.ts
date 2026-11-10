@@ -14,7 +14,7 @@ export type Model<S, E> = {
   events: (state: S) => readonly E[];
   step: (state: S, event: E) => S;
   invariants: Record<string, (state: S) => boolean>;
-  goal?: (state: S) => boolean;
+  goal?: ((state: S) => boolean) | undefined;
   /** Identity of a state; defaults to JSON. Abstract away fields that do not matter. */
   key?: (state: S) => string;
   /** The search fails instead of running forever when the model is larger than this. */
