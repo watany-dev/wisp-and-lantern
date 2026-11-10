@@ -28,6 +28,21 @@
       "hammer": "hammer"
     }
   },
+  "field": {
+    "enter": "Check the stars",
+    "guide": "Check each star first,\nthen keep the real ones",
+    "start": "The wisp brought 5 stars\nTap one to check it",
+    "real": "This star is real!",
+    "fake": "That one is a fake!\nThe wisp mixed it up",
+    "kept": "You kept {0} real stars",
+    "lesson": "You checked each star\nand kept the real ones",
+    "keep": "Keep the real stars",
+    "again": "Next stars",
+    "marks": {
+      "real": "real",
+      "fake": "fake"
+    }
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",
