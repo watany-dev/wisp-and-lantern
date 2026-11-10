@@ -71,7 +71,7 @@ export const pressShedButton = (page: Page, press: Press) =>
  * The average color of a 5 x 5 patch of the screenshot around each game point. Only the game rectangle
  * `area` is photographed, which keeps a poll cheap on a slow runner.
  */
-async function colorsAt(page: Page, area: Rect, points: Point[]): Promise<Rgb[]> {
+export async function colorsAt(page: Page, area: Rect, points: Point[]): Promise<Rgb[]> {
   const { box, scale } = await canvasFrame(page);
   const left = area.x - area.width / 2;
   const top = area.y - area.height / 2;
@@ -104,7 +104,7 @@ type Seen = {
   star: boolean;
 };
 
-const brightness = ([r, g, b]: Rgb) => (r + g + b) / 3;
+export const brightness = ([r, g, b]: Rgb) => (r + g + b) / 3;
 
 /** What the four probe points of the picture show right now (REQ-5.14.2). */
 async function seen(page: Page): Promise<Seen> {
