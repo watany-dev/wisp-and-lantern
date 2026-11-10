@@ -16,6 +16,16 @@ export type ShedEvent =
   | { type: "GiveTool" }
   | { type: "RetryShed" };
 
+/**
+ * Events of trial 3. `CheckStar` shows what one star is; `KeepStars` is the only way a star is accepted.
+ * They have their own names so that no other trial's event can act on the field, and no field event on
+ * another trial.
+ */
+export type FieldEvent =
+  | { type: "CheckStar"; index: number }
+  | { type: "KeepStars" }
+  | { type: "RetryField" };
+
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
@@ -24,5 +34,8 @@ export type GameEvent =
   | { type: "Tick"; ms: number }
   /** Opens the shed from the title: the only way into trial 2. */
   | { type: "StartShed" }
+  /** Opens the field from the title: the only way into trial 3. */
+  | { type: "StartField" }
   | LaneEvent
-  | ShedEvent;
+  | ShedEvent
+  | FieldEvent;

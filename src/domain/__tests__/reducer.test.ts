@@ -506,3 +506,142 @@ describe("reduce: trial 1 events and the clock leave the shed alone (REQ-5.7, RE
     expect(later.run.score).toBe(0);
   });
 });
+
+// Trial 3 (spec 06-trial-verify-stars): the field opens from the title and has its own events.
+const enterField: GameEvent = { type: "StartField" };
+const checkStar = (index: number): GameEvent => ({ type: "CheckStar", index });
+const keepStars: GameEvent = { type: "KeepStars" };
+const retryField: GameEvent = { type: "RetryField" };
+const inField = play([enterField]);
+const allChecked = [0, 1, 2, 3, 4].map(checkStar);
+
+describe("reduce: opening the field (REQ-6.1, REQ-6.8)", () => {
+  it("StartField on the title opens trial 3 and starts no run", () => {
+    expect(inField.phase).toBe("trial");
+    expect(inField.trial).toBe(3);
+    expect(inField.field).toBe(initialState.field);
+    // The clock stays full, nothing is scored, and the lane and the shed are untouched.
+    expect(inField.run).toBe(initialState.run);
+    expect(inField.lane).toBe(initialState.lane);
+    expect(inField.shed).toBe(initialState.shed);
+    expect(inField.lang).toBe(initialState.lang);
+  });
+
+  it("StartField keeps the language and the hero where they were", () => {
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterField)).toEqual({ ...before, phase: "trial", trial: 3 });
+  });
+
+  it("StartField is ignored in trial 1, in the shed, in the field and on the end screen", () => {
+    expect(reduce(started, enterField)).toBe(started);
+    expect(reduce(inShed, enterField)).toBe(inShed);
+    expect(reduce(inField, enterField)).toBe(inField);
+    const over = reduce(started, tick(balance.runMs));
+    expect(over.phase).toBe("over");
+    expect(reduce(over, enterField)).toBe(over);
+  });
+
+  it("StartShed is ignored in the field, so one entrance never opens the other", () => {
+    expect(reduce(inField, enterShed)).toBe(inField);
+    expect(reduce(inShed, enterField)).toBe(inShed);
+  });
+
+  it("Start in the field sets the language only: it never leaves the field or starts a run", () => {
+    const midway = play([checkStar(0), checkStar(3)], inField);
+    expect(reduce(midway, { type: "Start" })).toEqual(midway);
+    expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
+  });
+
+  it("SetLang and MoveHeroTo keep the marks and the result", () => {
+    const midway = play([...allChecked, keepStars], inField);
+    const next = play(
+      [
+        { type: "SetLang", lang: "ja" },
+        { type: "MoveHeroTo", x: 1, y: 2 },
+      ],
+      midway,
+    );
+    expect(next.field).toBe(midway.field);
+  });
+});
+
+describe("reduce: the field events (REQ-6.3 to REQ-6.7)", () => {
+  it("checks one star, and nothing is kept by checking", () => {
+    const next = play([checkStar(3)], inField);
+    expect(next.field).toMatchObject({
+      stage: "checking",
+      checked: [false, false, false, true, false],
+    });
+    expect(play(allChecked, inField).field.stage).toBe("checking");
+  });
+
+  it("a second tap on a checked star, and a star that does not exist, return the same state", () => {
+    const one = play([checkStar(1)], inField);
+    expect(reduce(one, checkStar(1))).toBe(one);
+    expect(reduce(inField, checkStar(7))).toBe(inField);
+  });
+
+  it("keeps only when all five are checked", () => {
+    expect(reduce(inField, keepStars)).toBe(inField);
+    const almost = play(allChecked.slice(1), inField);
+    expect(reduce(almost, keepStars)).toBe(almost);
+    const done = play([...allChecked, keepStars], inField);
+    expect(done.field).toEqual({ stage: "kept", round: 0 });
+  });
+
+  it("locks the field after the keep, and the retry starts the next round", () => {
+    const done = play([...allChecked, keepStars], inField);
+    expect(reduce(done, checkStar(0))).toBe(done);
+    expect(reduce(done, keepStars)).toBe(done);
+    const next = reduce(done, retryField);
+    expect(next).toEqual({ ...inField, field: { ...inField.field, round: 1 } });
+    expect(reduce(inField, retryField)).toBe(inField);
+  });
+
+  it("does nothing outside the field: on the title, in trial 1, in the shed and on the end screen", () => {
+    const over = reduce(started, tick(balance.runMs));
+    for (const state of [initialState, started, inShed, over]) {
+      for (const event of [checkStar(0), keepStars, retryField]) {
+        expect(reduce(state, event)).toBe(state);
+      }
+    }
+  });
+});
+
+describe("reduce: the other trials' events and the clock leave the field alone (REQ-6.7, REQ-6.8)", () => {
+  const otherEvents: GameEvent[] = [
+    ...pick("red", "lantern"),
+    ask,
+    retry,
+    tick(1_000),
+    tick(balance.runMs),
+    pickTool("key"),
+    giveTool,
+    retryShed,
+  ];
+
+  it("changes nothing in the field, whatever is checked or kept", () => {
+    const states = [
+      inField,
+      play([checkStar(0)], inField),
+      play(allChecked, inField),
+      play([...allChecked, keepStars], inField),
+    ];
+    for (const state of states) {
+      for (const event of otherEvents) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("the clock never runs in the field: no time up, no score", () => {
+    const later = play(otherEvents, inField);
+    expect(later.phase).toBe("trial");
+    expect(later.run).toBe(initialState.run);
+    expect(later.run.remainingMs).toBe(balance.runMs);
+    expect(later.run.score).toBe(0);
+    expect(later.lane).toBe(initialState.lane);
+    expect(later.shed).toBe(initialState.shed);
+  });
+});

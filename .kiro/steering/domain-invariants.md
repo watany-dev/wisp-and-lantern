@@ -24,6 +24,10 @@ from `initialState`.
   INV-8 to INV-17 describe trial 1's lane and run; they are unchanged and hold for every event sequence,
   including the shed events, because INV-23 and INV-24 keep the shed and trial 1 apart. INV-1 to INV-4 are
   global and are also run over sequences that contain the shed events.
+- Spec `06-trial-verify-stars` adds 25 to 32 (trial 3, the field: `field` in the state, `trial` 3). INV-5, INV-8 to
+  INV-24 describe trial 1's lane and run and trial 2's shed; they are unchanged and hold for every event
+  sequence, including the field events, because INV-31 and INV-32 keep the field and the other trials apart.
+  INV-1 to INV-4 are global and are also run over sequences that contain the field events.
 - Retired numbers, never reused: 6 and 7. Spec `03-trial-tell-vague-request` retired them (one card
   is now a valid request) and added 8 to 14. They are written without the `INV-` prefix here so the
   trace check does not count them as live.
@@ -57,3 +61,11 @@ INV-1 and INV-2 to match the real state.
 | INV-22 | `RetryShed` after a try returns to choosing with no tool picked and changes nothing else; before a try it returns the same state. | `shed.pbt.test.ts` |
 | INV-23 | Shed events return the same state outside trial 2, and in trial 2 change only `shed`. `shed` is the initial shed whenever `trial` is not 2. | `shed.pbt.test.ts` |
 | INV-24 | In trial 2 the trial 1 events `Ask`, `PickCard`, `Retry` and `Tick` return the same state, so the lane and the run stay initial: no clock, no score. | `shed.pbt.test.ts` |
+| INV-25 | Checking checks one star: `CheckStar` with an unchecked star's index in the field marks exactly that star, sets it as the last one checked, and every other star keeps its mark. An index that is not 0 to 4, a star already checked, or a field already kept returns the same state. | `field.pbt.test.ts` |
+| INV-26 | A round has 1 or 2 fake stars out of the 5, and what a check shows is true and steady: a checked star is a fake exactly when it is among the round's fakes, and the round does not change until `RetryField`. | `field.pbt.test.ts` |
+| INV-27 | The field reaches the kept result only by `KeepStars`, and only when all five stars are checked. `KeepStars` with any star unchecked returns the same state. | `field.pbt.test.ts` |
+| INV-28 | The keep accepts exactly the real stars of the round: none is fake, none is missing, and every one of them was checked before the keep. | `field.pbt.test.ts` |
+| INV-29 | Once kept, every event except `RetryField` leaves the field equal: the result stays until the retry. | `field.pbt.test.ts` |
+| INV-30 | `RetryField` after the keep starts the next round (the first after the last): nothing checked, and nothing else in the state changes. Before the keep it returns the same state. | `field.pbt.test.ts` |
+| INV-31 | Field events (`CheckStar`, `KeepStars`, `RetryField`) return the same state outside trial 3, and in trial 3 change only `field`. `field` is the initial field whenever `trial` is not 3. | `field.pbt.test.ts` |
+| INV-32 | In trial 3 the events of the other trials (`Ask`, `PickCard`, `Retry`, `Tick`, `PickTool`, `GiveTool`, `RetryShed`) return the same state, so the lane, the run and the shed stay initial: no clock, no score. | `field.pbt.test.ts` |
