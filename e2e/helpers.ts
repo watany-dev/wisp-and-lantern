@@ -25,8 +25,15 @@ export type GameState = {
   run: { remainingMs: number; score: number; streak: number; best: number; record: boolean };
   shed: { stage: "choosing"; pick: string | null } | { stage: "tried"; tool: string };
   field:
-    | { stage: "checking"; round: number; checked: readonly boolean[]; last: number | null }
-    | { stage: "kept"; round: number };
+    | {
+        stage: "sorting";
+        seed: number;
+        round: number;
+        sorted: readonly boolean[];
+        looking: number | null;
+        note: { star: number; said: "real" | "fake" } | null;
+      }
+    | { stage: "kept" | "cleared"; seed: number; round: number };
 };
 type GameWindow = Window & { __game: { state: () => GameState; dispatch: (e: unknown) => void } };
 

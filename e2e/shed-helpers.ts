@@ -104,7 +104,7 @@ type Seen = {
   star: boolean;
 };
 
-export const brightness = ([r, g, b]: Rgb) => (r + g + b) / 3;
+const brightness = ([r, g, b]: Rgb) => (r + g + b) / 3;
 
 /** What the four probe points of the picture show right now (REQ-5.14.2). */
 async function seen(page: Page): Promise<Seen> {
