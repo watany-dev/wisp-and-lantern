@@ -5,21 +5,22 @@ import Phaser from "phaser";
 import { balance } from "../../domain/balance";
 import { starCount } from "../../domain/field";
 import type { GameState, Lang } from "../../domain/state";
-import { fieldWisp, starCenter } from "../field-layout";
-import { fieldView, justChecked, justKept, type FieldView } from "../field-view";
+import { fieldMessage, fieldWisp, starCenter } from "../field-layout";
+import { fieldView, justFinished, justSorted, type FieldView } from "../field-view";
 import type { Game } from "../judge";
-import { buttonRect, fontSize, lessonBox, lessonWrap, resultText } from "../lane-layout";
+import { fontSize } from "../lane-layout";
+import { sceneFor } from "../route";
 import { guideText } from "../shed-layout";
 import { stepToward } from "../steer";
 import { burst, ripple } from "../fx/sparks";
-import { drawButton, drawPanel, palette } from "../ui/art";
 import { drawBackground } from "../ui/background";
 import { fitCamera } from "../ui/camera";
+import { createButtons, paintButtons, type ButtonsWidget } from "../ui/field-buttons";
+import { createLens, paintLens, type LensWidget } from "../ui/field-lens";
 import { createStarCard, paintStar, type StarWidget } from "../ui/star-card";
-import { inkStyle, textStyle } from "../ui/text";
+import { textStyle } from "../ui/text";
 import { createHero, createWispArt } from "../ui/wisp-actor";
 
-type Graphics = Phaser.GameObjects.Graphics;
 type Text = Phaser.GameObjects.Text;
 
 export class FieldScene extends Phaser.Scene {
@@ -30,10 +31,8 @@ export class FieldScene extends Phaser.Scene {
   private wispBox!: Phaser.GameObjects.Container;
   private guide!: Text;
   private message!: Text;
-  private lessonPanel!: Graphics;
-  private lesson!: Text;
-  private button!: Phaser.GameObjects.Container;
-  private buttonLabel!: Text;
+  private lens!: LensWidget;
+  private buttons!: ButtonsWidget;
   private stars: StarWidget[] = [];
 
   constructor(private readonly game_: Game) {
@@ -49,9 +48,9 @@ export class FieldScene extends Phaser.Scene {
     drawBackground(this, false);
     this.hero = createHero(this);
     this.createTexts();
-    this.createLesson();
+    this.lens = createLens(this);
     this.wispBox = this.add.container(fieldWisp.x, fieldWisp.y, [createWispArt(this)]);
-    this.createButton();
+    this.buttons = createButtons(this, (event) => this.game_.dispatch(event));
     this.stars = Array.from({ length: starCount }, (_, i) => this.addStar(i));
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (_p: unknown, over: unknown[]) => {
       this.walks = over.length === 0;
@@ -76,47 +75,20 @@ export class FieldScene extends Phaser.Scene {
       .text(guideText.x, guideText.y, "", { ...textStyle, fontSize: size, ...wrap })
       .setOrigin(0.5);
     this.message = this.add
-      .text(resultText.x, resultText.y, "", { ...textStyle, fontSize: size, ...wrap })
+      .text(fieldMessage.x, fieldMessage.y, "", { ...textStyle, fontSize: size, ...wrap })
       .setOrigin(0.5);
   }
 
-  /** The closing line: its own panel and text, shown on the kept result until the button. */
-  private createLesson(): void {
-    const { x, y, width, height } = lessonBox;
-    this.lessonPanel = this.add.graphics({ x, y });
-    drawPanel(this.lessonPanel, width, height, palette.lit);
-    this.lessonPanel
-      .lineStyle(3, palette.gold, 1)
-      .strokeRoundedRect(-width / 2, -height / 2, width, height, 14);
-    const style = {
-      ...textStyle,
-      fontSize: `${fontSize.lesson}px`,
-      wordWrap: { width: lessonWrap },
-    };
-    this.lesson = this.add.text(x, y, "", style).setOrigin(0.5);
-    this.lessonPanel.setVisible(false);
-    this.lesson.setVisible(false);
-  }
-
-  private createButton(): void {
-    const { x, y, width, height } = buttonRect;
-    const panel = this.add.graphics();
-    drawButton(panel, width, height);
-    this.buttonLabel = this.add.text(0, 0, "", { ...inkStyle, fontSize: "24px" }).setOrigin(0.5);
-    this.button = this.add.container(x, y, [panel, this.buttonLabel]).setSize(width, height);
-    this.button.setInteractive().on("pointerdown", () => this.tapButton());
-    this.button.setVisible(false);
-  }
-
-  private tapButton(): void {
-    if (this.view?.button) this.game_.dispatch(this.view.button.event);
-  }
-
   private addStar(index: number): StarWidget {
-    return createStarCard(this, index, () => this.game_.dispatch({ type: "CheckStar", index }));
+    return createStarCard(this, index, () => this.game_.dispatch({ type: "InspectStar", index }));
   }
 
   private render(state: GameState): void {
+    // Leaving the cleared trial returns to the title: that scene takes over.
+    if (sceneFor(state) !== "field") {
+      this.scene.start(sceneFor(state), { fromField: true });
+      return;
+    }
     this.hero.setPosition(state.hero.x, state.hero.y);
     if (state.field === this.shown.field && state.lang === this.shown.lang) return;
     const before = this.view;
@@ -130,25 +102,29 @@ export class FieldScene extends Phaser.Scene {
   private show(view: FieldView): void {
     this.guide.setText(view.guide);
     this.message.setText(view.message);
-    this.lessonPanel.setVisible(view.lesson !== null);
-    this.lesson.setVisible(view.lesson !== null).setText(view.lesson ?? "");
-    this.button.setVisible(view.button !== null);
-    this.buttonLabel.setText(view.button?.text ?? "");
+    paintLens(this.lens, view);
+    paintButtons(this.buttons, view.buttons, this.game.getTime());
     view.stars.forEach((star, i) => paintStar(this.stars[i]!, star));
   }
 
-  /** A check or the keep plays a short flourish. The state and the picture already say everything. */
+  /** A verdict or the keep plays a short flourish. The state and the picture already say everything. */
   private flourish(before: FieldView | undefined, view: FieldView): void {
-    const found = justChecked(before, view);
-    if (found !== null) this.revealed(found, view.stars[found]!.mark === "real");
-    if (justKept(before, view)) this.celebrate(view);
+    const verdict = justSorted(before, view);
+    if (verdict !== null)
+      this.sorted(verdict.star, verdict.right, view.stars[verdict.star]!.ticked);
+    if (justFinished(before, view)) this.celebrate(view);
   }
 
-  /** A ripple at the star; sparks for a real star, and the wisp tilts once for a fake one. */
-  private revealed(index: number, real: boolean): void {
+  /**
+   * A right verdict: a ripple, and sparks for a real star; the wisp tilts once for a fake one, as it mixed
+   * it up. A wrong verdict: the star wobbles once. No red, no shake of the screen, no sound.
+   */
+  private sorted(index: number, right: boolean, real: boolean): void {
     const { x, y } = starCenter(index);
+    const art = this.stars[index]!.art;
+    this.tweens.add({ targets: art, scale: right ? 1.3 : 1.2, duration: 180, yoyo: true });
+    if (!right) return;
     ripple(this, x, y);
-    this.tweens.add({ targets: this.stars[index]!.art, scale: 1.3, duration: 180, yoyo: true });
     if (real) burst(this, x, y);
     else
       this.tweens.add({ targets: this.wispBox, angle: 12, duration: 160, yoyo: true, repeat: 1 });

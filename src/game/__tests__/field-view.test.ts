@@ -1,251 +1,262 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { GameEvent } from "../../domain/events";
-import { reduce } from "../../domain/reducer";
-import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
-import { fieldEnterLabel, fieldView, justChecked, justKept } from "../field-view";
+import type { GameEvent } from "../../domain/events";
+import { fakesOf } from "../../domain/field";
+import { reduce } from "../../domain/reducer";
+import { initialState, type GameState, type Lang } from "../../domain/state";
+import { fieldEnterLabel, fieldView, justFinished, justSorted } from "../field-view";
 
-const strings = { ja, en };
-const enter: GameEvent = { type: "StartField" };
-const check = (index: number): GameEvent => ({ type: "CheckStar", index });
+// Seed 0: round 0 has one fake star (4); round 1 has two (1 and 4). See `fakesOf` in the domain tests.
+const strings = { ja: ja.field, en: en.field };
+const play = (events: GameEvent[], from: GameState) => events.reduce(reduce, from);
+const open = (lang: Lang) => play([{ type: "StartField", seed: 0 }], { ...initialState, lang });
+const look = (index: number): GameEvent => ({ type: "InspectStar", index });
+const sort = (verdict: "real" | "fake"): GameEvent => ({ type: "SortStar", verdict });
 const keep: GameEvent = { type: "KeepStars" };
 const retry: GameEvent = { type: "RetryField" };
-const all = [0, 1, 2, 3, 4].map(check);
-const view = (lang: Lang, ...events: GameEvent[]) =>
-  fieldView([enter, ...events].reduce(reduce, { ...initialState, lang }));
+const leave: GameEvent = { type: "LeaveField" };
+const stars = [0, 1, 2, 3, 4];
 
-// Round 0 has one fake star, number 3. Round 1 has two: 0 and 2.
-const real0 = (lang: Lang) => strings[lang].field.marks.real;
-const fake0 = (lang: Lang) => strings[lang].field.marks.fake;
+/** The events that look at and rightly sort every star of the round the state is in. */
+function sortAll(state: GameState): GameEvent[] {
+  const fakes = fakesOf(state.field.seed, state.field.round);
+  return stars.flatMap((i) => [look(i), sort(fakes.includes(i) ? "fake" : "real")]);
+}
+const ready = (lang: Lang) => play(sortAll(open(lang)), open(lang));
+const kept = (lang: Lang) => play([keep], ready(lang));
+const secondReady = (lang: Lang) => {
+  const next = play([retry], kept(lang));
+  return play(sortAll(next), next);
+};
+const cleared = (lang: Lang) => play([keep], secondReady(lang));
 
-describe.each(["ja", "en"] as const)("fieldView while checking in %s", (lang) => {
-  const s = strings[lang].field;
-
-  it("shows the guide in every stage (REQ-6.2.2)", () => {
-    for (const events of [[], [check(0)], all, [...all, keep], [...all, keep, retry]]) {
-      expect(view(lang, ...events).guide).toBe(s.guide);
-    }
-  });
-
-  describe("nothing checked yet (REQ-6.2.3)", () => {
-    const v = view(lang);
-
-    it("says the wisp brought the stars, with no button and no closing line", () => {
-      expect(v.message).toBe(s.start);
-      expect(v.button).toBeNull();
-      expect(v.lesson).toBeNull();
-      expect(v.last).toBeNull();
-    });
-
-    it("shows five stars that look exactly alike: solid, unlabeled, unticked, not faded", () => {
-      expect(v.stars).toHaveLength(5);
-      v.stars.forEach((star, i) => {
-        expect(star).toEqual({
-          index: i,
-          mark: "unchecked",
-          label: "",
-          picture: "solid",
-          ticked: false,
-          alpha: 1,
-        });
-      });
-    });
-  });
-});
-
-describe.each(["ja", "en"] as const)("fieldView with some stars checked in %s", (lang) => {
-  const s = strings[lang].field;
-
-  describe("a real star checked (REQ-6.3.2)", () => {
-    const v = view(lang, check(0));
-
-    it("says that the star is real, kindly, with no button", () => {
-      expect(v.message).toBe(s.real);
-      expect(v.button).toBeNull();
-      expect(v.lesson).toBeNull();
-      expect(v.last).toBe(0);
-    });
-
-    it("shows that star solid with its label and the tick, and the others unchanged", () => {
-      expect(v.stars[0]).toEqual({
-        index: 0,
-        mark: "real",
-        label: real0(lang),
-        picture: "solid",
-        ticked: true,
-        alpha: 1,
-      });
-      for (const star of v.stars.slice(1)) {
-        expect(star).toMatchObject({
-          mark: "unchecked",
-          label: "",
-          picture: "solid",
-          ticked: false,
-        });
-      }
-    });
-  });
-
-  describe("a fake star checked (REQ-6.3.2, REQ-6.4)", () => {
-    const v = view(lang, check(3));
-
-    it("says that the star is a fake and that the wisp mixed it up", () => {
-      expect(v.message).toBe(s.fake);
-      expect(v.button).toBeNull();
-      expect(v.last).toBe(3);
-    });
-
-    it("shows that star as a hollow outline with its label and no tick, and the others unchanged", () => {
-      expect(v.stars[3]).toEqual({
-        index: 3,
-        mark: "fake",
-        label: fake0(lang),
-        picture: "hollow",
-        ticked: false,
-        alpha: 1,
-      });
-      expect(v.stars.filter((star) => star.picture === "hollow")).toHaveLength(1);
-      expect(v.stars.filter((star) => star.mark === "unchecked")).toHaveLength(4);
-    });
-  });
-
-  it("makes the message follow the star checked last, not the one before (REQ-6.3.6)", () => {
-    expect(view(lang, check(3), check(0)).message).toBe(s.real);
-    expect(view(lang, check(0), check(3)).message).toBe(s.fake);
-    expect(view(lang, check(0), check(3), check(1)).message).toBe(s.real);
-  });
-
-  it("keeps the message when the same star is tapped again (REQ-6.3.4)", () => {
-    expect(view(lang, check(3), check(3))).toEqual(view(lang, check(3)));
-  });
-
-  it("shows a fake star found earlier as still fake after the next checks", () => {
-    const v = view(lang, check(3), check(0), check(1));
-    expect(v.stars[3]).toMatchObject({ mark: "fake", picture: "hollow", label: fake0(lang) });
-    expect(v.stars.filter((star) => star.ticked).map((star) => star.index)).toEqual([0, 1]);
-  });
-});
-
-describe.each(["ja", "en"] as const)("fieldView with all five checked in %s", (lang) => {
-  const s = strings[lang].field;
-
-  it("shows the keep button only when all five are checked, whatever the order (REQ-6.5.1)", () => {
-    expect(view(lang, ...all.slice(0, 4)).button).toBeNull();
-    expect(view(lang, ...all.slice(1)).button).toBeNull();
-    for (const events of [all, [4, 3, 2, 1, 0].map(check), [check(3), ...all]]) {
-      expect(view(lang, ...events).button).toEqual({ text: s.keep, event: { type: "KeepStars" } });
-    }
-  });
-
-  it("still shows no closing line when all five are checked, and keeps the message about the last", () => {
-    const v = view(lang, ...all);
-    expect(v.lesson).toBeNull();
-    expect(v.message).toBe(s.real);
-    expect(view(lang, check(0), check(1), check(2), check(4), check(3)).message).toBe(s.fake);
-    expect(v.stars.every((star) => star.alpha === 1)).toBe(true);
-  });
-});
-
-describe.each(["ja", "en"] as const)("fieldView after the keep in %s", (lang) => {
-  const s = strings[lang].field;
-  const v = view(lang, ...all, keep);
-
-  it("names the number of real stars kept, and shows the closing line as its own text (REQ-6.5.3, REQ-6.6)", () => {
-    expect(v.message).toBe(s.kept.replace("{0}", "4"));
-    expect(v.lesson).toBe(s.lesson);
-    expect(v.message).not.toContain(v.lesson!);
-    expect(v.last).toBeNull();
-  });
-
-  it("offers the next stars button with the retry event", () => {
-    expect(v.button).toEqual({ text: s.again, event: { type: "RetryField" } });
-  });
-
-  it("keeps the real stars ticked and solid, and fades the fake one but still shows it", () => {
-    expect(v.stars.map((star) => [star.index, star.mark, star.ticked, star.alpha])).toEqual([
-      [0, "real", true, 1],
-      [1, "real", true, 1],
-      [2, "real", true, 1],
-      [3, "fake", false, 0.3],
-      [4, "real", true, 1],
-    ]);
-    expect(v.stars[3]).toMatchObject({ picture: "hollow", label: fake0(lang) });
-    expect(v.stars[0]).toMatchObject({ picture: "solid", label: real0(lang) });
-  });
-
-  it("names 3 when the round has two fake stars (round 1)", () => {
-    const second = view(lang, ...all, keep, retry, ...all, keep);
-    expect(second.message).toBe(s.kept.replace("{0}", "3"));
-    expect(second.stars.filter((star) => star.alpha === 0.3).map((star) => star.index)).toEqual([
-      0, 2,
-    ]);
-  });
-});
-
-describe("the next round (REQ-6.7.1)", () => {
-  it("starts again with nothing checked, no button and no closing line, and the other fake stars", () => {
-    const v = view("en", ...all, keep, retry);
-    expect(v.message).toBe(en.field.start);
-    expect(v.button).toBeNull();
-    expect(v.lesson).toBeNull();
-    expect(v.last).toBeNull();
-    expect(v.stars.every((star) => star.mark === "unchecked" && star.alpha === 1)).toBe(true);
-    // Round 1: star 0 is a fake and star 3 is real.
-    expect(view("en", ...all, keep, retry, check(0)).message).toBe(en.field.fake);
-    expect(view("en", ...all, keep, retry, check(3)).message).toBe(en.field.real);
-  });
-});
-
-describe("the language changes the words and nothing else (REQ-6.11.4)", () => {
-  it("gives the same shapes, marks and buttons in Japanese and English", () => {
-    for (const events of [[], [check(3)], all, [...all, keep]]) {
-      const a = view("ja", ...events);
-      const b = view("en", ...events);
-      expect(a.stars.map((x) => [x.mark, x.picture, x.ticked, x.alpha])).toEqual(
-        b.stars.map((x) => [x.mark, x.picture, x.ticked, x.alpha]),
-      );
-      expect(a.button?.event).toEqual(b.button?.event);
-      expect(a.last).toBe(b.last);
-      expect(a.lesson === null).toBe(b.lesson === null);
-    }
-  });
-
-  it("labels the title's button in the child's language", () => {
-    expect(fieldEnterLabel("en")).toBe(en.field.enter);
+describe("fieldEnterLabel (REQ-6.1.1)", () => {
+  it("is the title button's words in each language", () => {
     expect(fieldEnterLabel("ja")).toBe(ja.field.enter);
+    expect(fieldEnterLabel("en")).toBe(en.field.enter);
   });
 });
 
-describe("justChecked and justKept (the scene's flourish)", () => {
-  const fresh = view("en");
-  const one = view("en", check(0));
-  const two = view("en", check(0), check(3));
+describe.each(["ja", "en"] as const)("fieldView in %s", (lang) => {
+  const s = strings[lang];
 
-  it("justChecked names the star that was checked since the view before", () => {
-    expect(justChecked(fresh, one)).toBe(0);
-    expect(justChecked(one, two)).toBe(3);
-    expect(justChecked(undefined, one)).toBe(0);
+  it("always shows the guide and five stars, one per number", () => {
+    for (const state of [
+      open(lang),
+      play([look(1)], open(lang)),
+      ready(lang),
+      kept(lang),
+      cleared(lang),
+    ]) {
+      const view = fieldView(state);
+      expect(view.guide).toBe(s.guide);
+      expect(view.stars.map((star) => star.index)).toEqual(stars);
+    }
   });
 
-  it("justChecked is null when nothing was checked since", () => {
-    expect(justChecked(fresh, fresh)).toBeNull();
-    expect(justChecked(one, one)).toBeNull();
-    // The same star again, and it is not star 0: nothing new, whatever its number.
-    expect(justChecked(view("en", check(3)), view("en", check(3)))).toBeNull();
-    expect(justChecked(view("en", check(4)), view("en", check(4)))).toBeNull();
-    expect(justChecked(undefined, fresh)).toBeNull();
-    expect(justChecked(two, view("en", ...all, keep))).toBeNull();
-    expect(justChecked(view("en", ...all, keep), view("en", ...all, keep, retry))).toBeNull();
+  it("at the start: the clue is on every star, nothing sorted, no lens, no button, the start message (REQ-6.2.3)", () => {
+    const view = fieldView(open(lang));
+    expect(view.message).toBe(s.start);
+    expect(view.stars.map((star) => star.shine)).toEqual([
+      "normal",
+      "normal",
+      "normal",
+      "normal",
+      "bright",
+    ]);
+    for (const star of view.stars) {
+      expect(star).toMatchObject({
+        mark: "unsorted",
+        label: "",
+        ticked: false,
+        looking: false,
+        alpha: 1,
+      });
+    }
+    expect(view).toMatchObject({
+      lens: null,
+      clear: null,
+      buttons: [],
+      verdict: null,
+      finished: false,
+    });
   });
 
-  it("justKept is true for the first view with the closing line only", () => {
-    const done = view("en", ...all, keep);
-    expect(justKept(view("en", ...all), done)).toBe(true);
-    expect(justKept(undefined, done)).toBe(true);
-    expect(justKept(done, done)).toBe(false);
-    expect(justKept(fresh, one)).toBe(false);
-    expect(justKept(undefined, fresh)).toBe(false);
-    expect(justKept(done, view("en", ...all, keep, retry))).toBe(false);
+  it("while looking: the lens shows the star's shine, both verdict buttons appear, and only that star is framed (REQ-6.3)", () => {
+    const real = fieldView(play([look(0)], open(lang)));
+    expect(real.message).toBe(s.look);
+    expect(real.lens).toEqual({ shine: "normal" });
+    expect(real.stars.map((star) => star.looking)).toEqual([true, false, false, false, false]);
+    expect(real.buttons.map((b) => [b.id, b.text, b.slot, b.icon, b.event])).toEqual([
+      ["real", s.marks.real, "left", "tick", sort("real")],
+      ["fake", s.marks.fake, "right", "dots", sort("fake")],
+    ]);
+    const fake = fieldView(play([look(4)], open(lang)));
+    expect(fake.lens).toEqual({ shine: "bright" });
+    expect(fake.stars.map((star) => star.looking)).toEqual([false, false, false, false, true]);
+  });
+
+  it("keeps the clue on a star whatever happens to it: the same shine while looking, sorted and kept", () => {
+    const start = fieldView(open(lang)).stars.map((star) => star.shine);
+    for (const state of [
+      play([look(2)], open(lang)),
+      play([look(4), sort("fake")], open(lang)),
+      ready(lang),
+      kept(lang),
+    ]) {
+      expect(fieldView(state).stars.map((star) => star.shine)).toEqual(start);
+    }
+  });
+});
+
+describe.each(["ja", "en"] as const)("fieldView, verdicts and rounds in %s", (lang) => {
+  const s = strings[lang];
+
+  it("after a right verdict on a real star: the star has its word and tick, the message confirms it, the lens closes", () => {
+    const view = fieldView(play([look(0), sort("real")], open(lang)));
+    expect(view.message).toBe(s.sortedReal);
+    expect(view.stars[0]).toMatchObject({
+      mark: "real",
+      label: s.marks.real,
+      ticked: true,
+      alpha: 1,
+    });
+    expect(view).toMatchObject({ lens: null, buttons: [], verdict: { star: 0, right: true } });
+  });
+
+  it("after a right verdict on a fake star: the star has its word, no tick and fades; the message says the wisp mixed it up", () => {
+    const view = fieldView(play([look(4), sort("fake")], open(lang)));
+    expect(view.message).toBe(s.sortedFake);
+    expect(view.stars[4]).toMatchObject({
+      mark: "fake",
+      label: s.marks.fake,
+      ticked: false,
+      alpha: 0.5,
+    });
+    expect(view.verdict).toEqual({ star: 4, right: true });
+  });
+
+  it("after a wrong verdict: the star stays unsorted with no word, the message says what happened, and the lens is closed (REQ-6.3.4)", () => {
+    const calledReal = fieldView(play([look(4), sort("real")], open(lang)));
+    expect(calledReal.message).toBe(s.missFake);
+    expect(calledReal.stars[4]).toMatchObject({
+      mark: "unsorted",
+      label: "",
+      ticked: false,
+      alpha: 1,
+    });
+    expect(calledReal).toMatchObject({
+      lens: null,
+      buttons: [],
+      verdict: { star: 4, right: false },
+    });
+    const calledFake = fieldView(play([look(0), sort("fake")], open(lang)));
+    expect(calledFake.message).toBe(s.missReal);
+    expect(calledFake.stars[0]).toMatchObject({ mark: "unsorted", label: "", ticked: false });
+    expect(calledFake.verdict).toEqual({ star: 0, right: false });
+  });
+
+  it("looking again after a wrong verdict shows the look message and drops the verdict", () => {
+    const view = fieldView(play([look(4), sort("real"), look(4)], open(lang)));
+    expect(view.message).toBe(s.look);
+    expect(view.verdict).toBeNull();
+    expect(view.lens).toEqual({ shine: "bright" });
+  });
+});
+
+describe.each(["ja", "en"] as const)("fieldView, keeping and clearing in %s", (lang) => {
+  const s = strings[lang];
+
+  it("when all five are sorted: the message is still about the last star (a fake one keeps the wisp's mix-up), and the one wide keep button shows, nothing kept yet (REQ-6.5.1)", () => {
+    const view = fieldView(ready(lang));
+    expect(view.message).toBe(s.sortedFake);
+    expect(view.buttons).toEqual([
+      { id: "keep", text: s.keep, event: keep, slot: "single", icon: "none" },
+    ]);
+    expect(view).toMatchObject({ clear: null, finished: false });
+    expect(view.stars.map((star) => star.ticked)).toEqual([true, true, true, true, false]);
+  });
+
+  it("before then, no keep button is shown, whatever has been sorted", () => {
+    const partial = play(sortAll(open(lang)).slice(0, 8), open(lang));
+    expect(fieldView(partial).buttons).toEqual([]);
+    expect(fieldView(play([look(4)], partial)).buttons.map((b) => b.id)).toEqual(["real", "fake"]);
+  });
+
+  it("after the keep of the first round: the number of real stars, the next button, no clear panel (REQ-6.5.3)", () => {
+    const view = fieldView(kept(lang));
+    expect(view.message).toBe(s.kept.replace("{0}", "4"));
+    expect(view.buttons).toEqual([
+      { id: "next", text: s.next, event: retry, slot: "single", icon: "none" },
+    ]);
+    expect(view).toMatchObject({ clear: null, lens: null, finished: true, verdict: null });
+    expect(view.stars.map((star) => star.alpha)).toEqual([1, 1, 1, 1, 0.5]);
+  });
+
+  it("the second round has two fake stars and keeps three", () => {
+    const view = fieldView(secondReady(lang));
+    expect(view.stars.map((star) => star.shine)).toEqual([
+      "normal",
+      "bright",
+      "normal",
+      "normal",
+      "bright",
+    ]);
+    expect(fieldView(cleared(lang)).message).toBe(s.kept.replace("{0}", "3"));
+  });
+
+  it("when the trial is cleared: the clear word, the closing line, and the play again and title buttons (REQ-6.7)", () => {
+    const view = fieldView(cleared(lang));
+    expect(view.clear).toEqual({ title: s.clear, lesson: s.lesson });
+    expect(view.buttons).toEqual([
+      { id: "again", text: s.again, event: retry, slot: "left", icon: "none" },
+      { id: "leave", text: s.leave, event: leave, slot: "right", icon: "none" },
+    ]);
+    expect(view.finished).toBe(true);
+  });
+
+  it("shows the closing line on the cleared trial only, not while sorting or after the first round", () => {
+    for (const state of [open(lang), play([look(0)], open(lang)), ready(lang), kept(lang)]) {
+      expect(fieldView(state).clear).toBeNull();
+    }
+  });
+});
+
+describe("what changed since the last view (the flourish)", () => {
+  const start = fieldView(open("en"));
+  const looked = fieldView(play([look(0)], open("en")));
+  const right = fieldView(play([look(0), sort("real")], open("en")));
+  const wrong = fieldView(play([look(0), sort("fake")], open("en")));
+
+  it("justSorted gives the verdict that is new, and nothing for the same verdict again", () => {
+    expect(justSorted(looked, right)).toEqual({ star: 0, right: true });
+    expect(justSorted(looked, wrong)).toEqual({ star: 0, right: false });
+    expect(justSorted(undefined, right)).toEqual({ star: 0, right: true });
+    expect(justSorted(right, right)).toBeNull();
+    expect(justSorted(start, looked)).toBeNull();
+    expect(justSorted(wrong, start)).toBeNull();
+  });
+
+  it("justSorted sees a new verdict on another star, or a different one on the same star", () => {
+    const other = fieldView(play([look(0), sort("real"), look(1), sort("real")], open("en")));
+    expect(justSorted(right, other)).toEqual({ star: 1, right: true });
+    expect(justSorted(right, { ...right, verdict: { star: 0, right: false } })).toEqual({
+      star: 0,
+      right: false,
+    });
+    expect(justSorted(right, { ...right, verdict: { star: 1, right: true } })).toEqual({
+      star: 1,
+      right: true,
+    });
+  });
+
+  it("justFinished is true once, when the round is kept", () => {
+    const done = fieldView(kept("en"));
+    expect(justFinished(fieldView(ready("en")), done)).toBe(true);
+    expect(justFinished(undefined, done)).toBe(true);
+    expect(justFinished(done, done)).toBe(false);
+    expect(justFinished(start, looked)).toBe(false);
+    expect(justFinished(undefined, start)).toBe(false);
   });
 });

@@ -1,55 +1,58 @@
-// The stars of the field: the slot behind a star, a solid gold star, and the hollow dashed outline of a
-// fake star with a larger, paler halo. Painting only; no logic (ADR 0003). The probes in
-// `field-layout.ts` read the middle of the star: bright when solid, dark when hollow.
+// The stars of the field: the slot behind a star, and the star with its clue. A real star is gold with a
+// faint halo and an unbroken rim; a fake star is whiter, with a larger, stronger halo and a rim of separate
+// dots. The numbers are in `field-look.ts`, where a test proves they differ in brightness and in shape.
+// Painting only; no logic (ADR 0003).
 
-import type Phaser from "phaser";
-import { starArt, starSlot } from "../field-layout";
+import Phaser from "phaser";
+import type { Shine } from "../../domain/field";
+import { dotAngles, looks, rim, type Look } from "../field-look";
 import { starPoints } from "../pattern";
-import { drawLitSlot, drawSlot, drawStar } from "./art";
+import { drawLitSlot, drawSlot } from "./art";
 
 type Graphics = Phaser.GameObjects.Graphics;
-type Picture = "solid" | "hollow";
 
-const pale = 0xcfe0ff;
-
-/** The slot behind a star: lit for a solid star, a dark socket for a hollow one. */
-export function drawStarSlot(g: Graphics, picture: Picture): void {
-  if (picture === "solid") drawLitSlot(g, starSlot);
-  else drawSlot(g, starSlot);
+/** The slot behind a star: lit, or a dark socket once a fake star has been put aside. */
+export function drawStarSlot(g: Graphics, size: number, aside: boolean): void {
+  if (aside) drawSlot(g, size);
+  else drawLitSlot(g, size);
 }
 
-/** One dashed edge of the hollow star: two strokes with a gap in the middle. */
-function dashedEdge(g: Graphics, a: { x: number; y: number }, b: { x: number; y: number }): void {
-  for (const [from, to] of [
-    [0, 0.38],
-    [0.62, 1],
-  ] as const) {
-    g.lineBetween(
-      a.x + (b.x - a.x) * from,
-      a.y + (b.y - a.y) * from,
-      a.x + (b.x - a.x) * to,
-      a.y + (b.y - a.y) * to,
-    );
+function drawBody(g: Graphics, look: Look, r: number): void {
+  const points = (k: number) => starPoints(r * k).map((p) => new Phaser.Math.Vector2(p.x, p.y));
+  g.fillStyle(look.edge, 1);
+  g.fillPoints(points(1.12), true);
+  g.fillStyle(look.body, 1);
+  g.fillPoints(points(1), true);
+  g.fillStyle(look.core, 0.9);
+  g.fillPoints(points(0.45), true);
+}
+
+/** An unbroken ring for a real star, twelve separate dots for a fake one. */
+function drawRim(g: Graphics, look: Look, r: number): void {
+  const radius = r * rim.radius;
+  if (look.rim === "line") {
+    g.lineStyle(r * rim.lineWidth, look.rimColor, 1);
+    g.strokeCircle(0, 0, radius);
+    return;
+  }
+  g.fillStyle(look.rimColor, 1);
+  for (const angle of dotAngles) {
+    g.fillCircle(radius * Math.cos(angle), radius * Math.sin(angle), r * rim.dotRadius);
   }
 }
 
-/** A fake star: pale rings around an empty middle, and a dashed outline of the star. */
-function drawHollowStar(g: Graphics, r: number): void {
-  for (const [scale, alpha] of [
-    [1.75, 0.1],
-    [1.5, 0.15],
-    [1.25, 0.22],
-  ] as const) {
-    g.lineStyle(r * 0.3, pale, alpha);
-    g.strokeCircle(0, 0, r * scale);
+/**
+ * The star at (0, 0): its halo, its body and its rim. The same drawing in a slot and in the lens. A halo
+ * that would reach further than `haloLimit` (in pixels) is shrunk to fit, keeping its layers in order.
+ */
+export function drawClueStar(g: Graphics, shine: Shine, r: number, haloLimit = Infinity): void {
+  const look = looks[shine];
+  const widest = Math.max(...look.halo.map(([reach]) => reach)) * r;
+  const fit = Math.min(1, haloLimit / widest);
+  for (const [reach, alpha] of look.halo) {
+    g.fillStyle(look.haloColor, alpha);
+    g.fillCircle(0, 0, r * reach * fit);
   }
-  g.lineStyle(3, pale, 1);
-  const corners = starPoints(r * starArt.haloScale);
-  corners.forEach((corner, i) => dashedEdge(g, corner, corners[(i + 1) % corners.length]!));
-}
-
-/** The star in a slot, centered at (0, 0): the existing gold star, or the hollow outline. */
-export function drawStarPicture(g: Graphics, picture: Picture): void {
-  if (picture === "solid") drawStar(g, starArt.radius);
-  else drawHollowStar(g, starArt.radius);
+  drawBody(g, look, r);
+  drawRim(g, look, r);
 }

@@ -1,6 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
 import type { CardId } from "./lane";
+import type { Verdict } from "./field";
 import type { ToolId } from "./shed";
 import type { Lang } from "./state";
 
@@ -17,12 +18,13 @@ export type ShedEvent =
   | { type: "RetryShed" };
 
 /**
- * Events of trial 3. `CheckStar` shows what one star is; `KeepStars` is the only way a star is accepted.
- * They have their own names so that no other trial's event can act on the field, and no field event on
- * another trial.
+ * Events of trial 3. `InspectStar` only puts a star in the lens; `SortStar` is the child's verdict on it;
+ * `KeepStars` is the only way a star is accepted. They have their own names so that no other trial's
+ * event can act on the field, and no field event on another trial.
  */
 export type FieldEvent =
-  | { type: "CheckStar"; index: number }
+  | { type: "InspectStar"; index: number }
+  | { type: "SortStar"; verdict: Verdict }
   | { type: "KeepStars" }
   | { type: "RetryField" };
 
@@ -34,8 +36,10 @@ export type GameEvent =
   | { type: "Tick"; ms: number }
   /** Opens the shed from the title: the only way into trial 2. */
   | { type: "StartShed" }
-  /** Opens the field from the title: the only way into trial 3. */
-  | { type: "StartField" }
+  /** Opens the field from the title: the only way into trial 3. `seed` picks which stars are fake. */
+  | { type: "StartField"; seed: number }
+  /** Back to the title from the cleared field: the only way out of trial 3. */
+  | { type: "LeaveField" }
   | LaneEvent
   | ShedEvent
   | FieldEvent;

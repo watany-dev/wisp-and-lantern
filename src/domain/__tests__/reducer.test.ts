@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
+import { fakesOf } from "../field";
 import { reduce } from "../reducer";
 import { initialState, type GameState } from "../state";
 
@@ -508,23 +509,46 @@ describe("reduce: trial 1 events and the clock leave the shed alone (REQ-5.7, RE
 });
 
 // Trial 3 (spec 06-trial-verify-stars): the field opens from the title and has its own events.
-const enterField: GameEvent = { type: "StartField" };
-const checkStar = (index: number): GameEvent => ({ type: "CheckStar", index });
+const enterField: GameEvent = { type: "StartField", seed: 0 };
+const inspectStar = (index: number): GameEvent => ({ type: "InspectStar", index });
+const sortAs = (verdict: "real" | "fake"): GameEvent => ({ type: "SortStar", verdict });
 const keepStars: GameEvent = { type: "KeepStars" };
 const retryField: GameEvent = { type: "RetryField" };
+const leaveField: GameEvent = { type: "LeaveField" };
 const inField = play([enterField]);
-const allChecked = [0, 1, 2, 3, 4].map(checkStar);
+
+/** The events that sort every unsorted star of the round the right way: look, then the true verdict. */
+function sortAll(state: GameState): GameEvent[] {
+  return [0, 1, 2, 3, 4].flatMap((i): GameEvent[] => [
+    inspectStar(i),
+    sortAs(fakesOf(state.field.seed, state.field.round).includes(i) ? "fake" : "real"),
+  ]);
+}
+const sorted = play(sortAll(inField), inField);
+const kept = play([keepStars], sorted);
+const secondRound = play([retryField], kept);
+const cleared = play([...sortAll(secondRound), keepStars], secondRound);
 
 describe("reduce: opening the field (REQ-6.1, REQ-6.8)", () => {
-  it("StartField on the title opens trial 3 and starts no run", () => {
+  it("StartField on the title opens trial 3 with round 0 for the seed and starts no run", () => {
     expect(inField.phase).toBe("trial");
     expect(inField.trial).toBe(3);
-    expect(inField.field).toBe(initialState.field);
+    expect(inField.field).toEqual({ ...initialState.field, seed: 0 });
+    expect(reduce(initialState, { type: "StartField", seed: 7 }).field).toEqual({
+      ...initialState.field,
+      seed: 7,
+    });
     // The clock stays full, nothing is scored, and the lane and the shed are untouched.
     expect(inField.run).toBe(initialState.run);
     expect(inField.lane).toBe(initialState.lane);
     expect(inField.shed).toBe(initialState.shed);
     expect(inField.lang).toBe(initialState.lang);
+  });
+
+  it("the seed is a whole number: a negative or fractional seed gives the same rounds every time", () => {
+    const odd = reduce(initialState, { type: "StartField", seed: -1 });
+    expect(odd.field.seed).toBe(4_294_967_295);
+    expect(reduce(initialState, { type: "StartField", seed: 1.9 }).field.seed).toBe(1);
   });
 
   it("StartField keeps the language and the hero where they were", () => {
@@ -550,64 +574,122 @@ describe("reduce: opening the field (REQ-6.1, REQ-6.8)", () => {
   });
 
   it("Start in the field sets the language only: it never leaves the field or starts a run", () => {
-    const midway = play([checkStar(0), checkStar(3)], inField);
+    const midway = play([inspectStar(0)], inField);
     expect(reduce(midway, { type: "Start" })).toEqual(midway);
     expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
   });
 
-  it("SetLang and MoveHeroTo keep the marks and the result", () => {
-    const midway = play([...allChecked, keepStars], inField);
-    const next = play(
-      [
-        { type: "SetLang", lang: "ja" },
-        { type: "MoveHeroTo", x: 1, y: 2 },
-      ],
-      midway,
-    );
-    expect(next.field).toBe(midway.field);
+  it("SetLang and MoveHeroTo keep what the child sorted and the result", () => {
+    for (const before of [play([inspectStar(0)], inField), kept, cleared]) {
+      const next = play(
+        [
+          { type: "SetLang", lang: "ja" },
+          { type: "MoveHeroTo", x: 1, y: 2 },
+        ],
+        before,
+      );
+      expect(next.field).toBe(before.field);
+    }
   });
 });
 
 describe("reduce: the field events (REQ-6.3 to REQ-6.7)", () => {
-  it("checks one star, and nothing is kept by checking", () => {
-    const next = play([checkStar(3)], inField);
-    expect(next.field).toMatchObject({
-      stage: "checking",
-      checked: [false, false, false, true, false],
+  it("InspectStar only looks: no star is sorted until the child gives a verdict", () => {
+    const next = play([inspectStar(3)], inField);
+    expect(next.field).toMatchObject({ stage: "sorting", looking: 3, note: null });
+    expect(play([0, 1, 2, 3, 4].map(inspectStar), inField).field).toMatchObject({
+      sorted: [false, false, false, false, false],
     });
-    expect(play(allChecked, inField).field.stage).toBe("checking");
   });
 
-  it("a second tap on a checked star, and a star that does not exist, return the same state", () => {
-    const one = play([checkStar(1)], inField);
-    expect(reduce(one, checkStar(1))).toBe(one);
-    expect(reduce(inField, checkStar(7))).toBe(inField);
+  it("SortStar with a star in the lens sorts it only with the right verdict", () => {
+    // Seed 0, round 0: star 4 is the fake one.
+    const looking = play([inspectStar(4)], inField);
+    const calledReal = reduce(looking, sortAs("real"));
+    expect(calledReal.field).toMatchObject({
+      sorted: [false, false, false, false, false],
+      looking: null,
+      note: { star: 4, said: "real" },
+    });
+    const right = reduce(looking, sortAs("fake"));
+    expect(right.field).toMatchObject({
+      sorted: [false, false, false, false, true],
+      looking: null,
+      note: { star: 4, said: "fake" },
+    });
   });
 
-  it("keeps only when all five are checked", () => {
+  it("SortStar with no star in the lens, and InspectStar on a bad or sorted star, change nothing", () => {
+    expect(reduce(inField, sortAs("real"))).toBe(inField);
+    expect(reduce(inField, inspectStar(5))).toBe(inField);
+    const looking = play([inspectStar(1)], inField);
+    expect(reduce(looking, inspectStar(1))).toBe(looking);
+    const one = play([inspectStar(1), sortAs("real")], inField);
+    expect(reduce(one, inspectStar(1))).toBe(one);
+  });
+
+  it("keeps only when all five are sorted, and only the real stars", () => {
     expect(reduce(inField, keepStars)).toBe(inField);
-    const almost = play(allChecked.slice(1), inField);
+    const almost = play(sortAll(inField).slice(2), inField);
     expect(reduce(almost, keepStars)).toBe(almost);
-    const done = play([...allChecked, keepStars], inField);
-    expect(done.field).toEqual({ stage: "kept", round: 0 });
+    expect(kept.field).toEqual({ stage: "kept", seed: 0, round: 0 });
+  });
+
+  it("the first round of a run is kept, the second clears the trial", () => {
+    expect(kept.field.stage).toBe("kept");
+    expect(secondRound.field).toMatchObject({ stage: "sorting", round: 1 });
+    expect(cleared.field).toEqual({ stage: "cleared", seed: 0, round: 1 });
   });
 
   it("locks the field after the keep, and the retry starts the next round", () => {
-    const done = play([...allChecked, keepStars], inField);
-    expect(reduce(done, checkStar(0))).toBe(done);
-    expect(reduce(done, keepStars)).toBe(done);
-    const next = reduce(done, retryField);
-    expect(next).toEqual({ ...inField, field: { ...inField.field, round: 1 } });
+    for (const event of [inspectStar(0), sortAs("real"), keepStars]) {
+      expect(reduce(kept, event)).toBe(kept);
+    }
+    expect(secondRound).toEqual({ ...inField, field: { ...inField.field, round: 1 } });
     expect(reduce(inField, retryField)).toBe(inField);
+  });
+
+  it("the retry after a cleared trial starts the next run, and the table wraps", () => {
+    const third = reduce(cleared, retryField);
+    expect(third.field).toEqual({ ...inField.field, round: 2 });
+    const fourth = play([...sortAll(third), keepStars, retryField], third);
+    expect(fourth.field).toEqual({ ...inField.field, round: 3 });
+    const wrapped = play([...sortAll(fourth), keepStars, retryField], fourth);
+    expect(wrapped.field).toEqual(inField.field);
   });
 
   it("does nothing outside the field: on the title, in trial 1, in the shed and on the end screen", () => {
     const over = reduce(started, tick(balance.runMs));
     for (const state of [initialState, started, inShed, over]) {
-      for (const event of [checkStar(0), keepStars, retryField]) {
+      for (const event of [inspectStar(0), sortAs("real"), keepStars, retryField, leaveField]) {
         expect(reduce(state, event)).toBe(state);
       }
     }
+  });
+});
+
+describe("reduce: leaving the field (REQ-6.7)", () => {
+  it("LeaveField from the cleared trial returns to the title with the field initial", () => {
+    const back = reduce(cleared, leaveField);
+    expect(back).toEqual({ ...cleared, phase: "title", trial: 0, field: initialState.field });
+    expect(back.run).toBe(initialState.run);
+    expect(back.lane).toBe(initialState.lane);
+    expect(back.shed).toBe(initialState.shed);
+  });
+
+  it("LeaveField anywhere else in the field changes nothing", () => {
+    for (const state of [inField, play([inspectStar(0)], inField), sorted, kept]) {
+      expect(reduce(state, leaveField)).toBe(state);
+    }
+  });
+
+  it("the title after leaving opens the field again from round 0, and the lane too", () => {
+    const back = reduce(cleared, leaveField);
+    expect(reduce(back, { type: "StartField", seed: 3 }).field).toEqual({
+      ...initialState.field,
+      seed: 3,
+    });
+    expect(reduce(back, { type: "Start" }).trial).toBe(1);
   });
 });
 
@@ -623,13 +705,8 @@ describe("reduce: the other trials' events and the clock leave the field alone (
     retryShed,
   ];
 
-  it("changes nothing in the field, whatever is checked or kept", () => {
-    const states = [
-      inField,
-      play([checkStar(0)], inField),
-      play(allChecked, inField),
-      play([...allChecked, keepStars], inField),
-    ];
+  it("changes nothing in the field, whatever is sorted or kept", () => {
+    const states = [inField, play([inspectStar(0)], inField), sorted, kept, cleared];
     for (const state of states) {
       for (const event of otherEvents) expect(reduce(state, event)).toBe(state);
     }

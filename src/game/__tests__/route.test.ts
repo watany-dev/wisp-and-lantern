@@ -31,7 +31,7 @@ describe("sceneFor (REQ-5.9.2)", () => {
 
 describe("sceneFor for the field (REQ-6.8.2)", () => {
   it("shows the field in trial 3", () => {
-    expect(sceneFor(reduce(initialState, { type: "StartField" }))).toBe("field");
+    expect(sceneFor(reduce(initialState, { type: "StartField", seed: 0 }))).toBe("field");
     expect(sceneFor({ phase: "trial", trial: 3 })).toBe("field");
   });
 
