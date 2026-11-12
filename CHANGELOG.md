@@ -43,14 +43,21 @@ There are no numbered releases: the `submitted` tag marks the version entered in
   showed the answer, was replaced after three preview rounds); invariants INV-26 to INV-39 (25 retired). The
   other trials' events and the clock still act only in their own trial.
 
-- Trial 2, The Locked Shed ("hand over the tools", learning goal L2): a cat is shut in a shed. The child
-  picks one of three tools (key, broom, hammer), taps the wisp to hand it over, and the wisp tries exactly
-  that tool on the lock. Only the key opens the door; the broom and the hammer leave it shut, and the
-  child tries again, any number of times, with no clock or score. The open result names the key and shows
-  a closing line. The child opens it from a new key button on the title; a tap elsewhere on the title still
-  starts trial 1. Japanese and English, one finger or a mouse, drawn in code, no network after the first
-  load. Spec in `.kiro/specs/05-trial-grant-tools/`; invariants INV-18 to INV-24 added. Trial 1 events and
-  the clock now act only in trial 1 (`trial` is 1), and the shed's events only in trial 2.
+- Trial 2, The Locked Shed ("hand over the tools", learning goal L2) is now a 60-second time attack with five
+  puzzles. A cat is stuck in a different way each round: a padlock, a heap of leaves, boards nailed over
+  the door, a rope round it, or up on the roof. The child picks one of five tools (key, broom, hammer,
+  scissors, ladder), taps the wisp to hand it over, and the wisp tries exactly that tool. Each puzzle has one
+  tool that fits; any other tool leaves the puzzle as it was, and the child tries again. A freed cat scores
+  100 (plus 50 for each in a row, up to 4), shows its own closing line and a "Next puzzle" button. The clock,
+  the score and the end screen are trial 1's: when the 60 seconds are up the end screen shows the score and the
+  best, with "Play again" and a new "Title" button. A "Title" button is also on the shed's screen, so the
+  child can always go back. The order of the puzzles comes from a seed the game draws when a run starts. The
+  child opens it from the key button on the title, which now says "How many in 60 seconds?"; a tap elsewhere
+  on the title still starts trial 1. Japanese and English, one finger or a mouse, drawn in code, no network
+  after the first load. Spec in `.kiro/specs/05-trial-grant-tools/` (revision 2: the first build had three
+  tools, one answer, no clock and no way back, and got three comments); invariants INV-18 to INV-24 reworded,
+  INV-15 to INV-17 widened to the shed, INV-40 to INV-43 added. Trial 1 events act only in trial 1 and the
+  shed's events only in trial 2.
 
 - Trial 1, The Dark Lane: pick a color card and an object card, tap the wisp to ask, see what it
   brings, and try again. The helper searches only when asked and only with both cards picked. Plays
