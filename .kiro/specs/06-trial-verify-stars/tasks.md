@@ -263,7 +263,13 @@ and is replaced together with the behavior it described.
   - Tests: `npm run check`, `npm run build`, `npm run smoke`; the smoke of trials 1 and 2 (including the score
     attack) unchanged and green.
   - Done when: CI's `smoke` (WebKit) is green on the pull request. Until then the work is not called done.
-  - Result: On the final tree of the branch `06-trial-verify-stars/trial-3`: `npm run check` passes on Node 26.13.0 (668 tests,
+  - Result: **Re-measured on the clean branch `06-trial-verify-stars/clean` (the same tree on top of `main`):** `npm run check` exits 0 on
+    Node 26.13.0 with the same figures as below (668 tests, mutation score 100% of 1,050 mutants: 1,039 killed, 1 timeout, 4 ignored,
+    6 module-crash errors, none survived; `check-trace: 36 invariants, 0 without tests`; size 363.1 KB gzip); `npm run build` then
+    the smoke on Chromium with the iPhone 13 touch profile, `--workers=1`: 29 passed. The field was also played by hand-written real
+    taps (throwaway script, not committed) in Japanese, in colour and in grayscale: a wrong verdict sorts nothing, a right one sorts the
+    star, the keep takes the real stars, the second keep shows the clear panel, and "Title" returns to the title. CI is in the pull
+    request. The figures below were first measured on the branch `06-trial-verify-stars/trial-3`: `npm run check` passes on Node 26.13.0 (668 tests,
     coverage 100% on statements, branches, functions and lines, mutation score 100% with 1,050 mutants of which 1,039
     were killed, 1 timed out, 4 were ignored by `Stryker disable` and 6 crashed their module and are reported as
     errors, not survivors; `check-trace: 36 invariants, 0 without tests`; size budget 363.1 KB of 1,024 KB gzip);

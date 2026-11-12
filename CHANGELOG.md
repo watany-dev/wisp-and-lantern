@@ -27,6 +27,22 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 3, The Wisp Field ("check it", learning goal L3): the wisp brings five stars and one or two are
+  fakes. A fake shines brighter than a real star and its rim is a ring of dots instead of one line, so the
+  child can tell by looking, from the first screen, with no color and no sound. The child taps a star to look
+  at it closely (it is shown larger), then decides "real" or "fake". A right decision sorts the star. A wrong
+  one sorts nothing, says kindly what happened ("a fake got mixed in", "that one was real") and asks for
+  another look; it can be tried again without limit. When all five are sorted, a button keeps the real stars
+  (and only those). Two rounds (one fake, then two) clear the trial: a result screen shows "Cleared!", the
+  closing line, "Play again" and "Title". The fake stars come from a seed the game draws when the field opens,
+  so the same seed plays the same. No clock or score. The child opens it from a new star button on the title
+  (above the key button; the title's wisp and hero moved up to make room); a tap elsewhere on the title still
+  starts trial 1. On the title, trial 1's way in and its 60 seconds now sit in their own card, and the two
+  buttons say they have no timer. Japanese and English, one finger or a mouse, drawn in code, no network
+  after the first load. Spec in `.kiro/specs/06-trial-verify-stars/` (revision 2: the first build, a tap that
+  showed the answer, was replaced after three preview rounds); invariants INV-26 to INV-39 (25 retired). The
+  other trials' events and the clock still act only in their own trial.
+
 - Trial 2, The Locked Shed ("hand over the tools", learning goal L2): a cat is shut in a shed. The child
   picks one of three tools (key, broom, hammer), taps the wisp to hand it over, and the wisp tries exactly
   that tool on the lock. Only the key opens the door; the broom and the hammer leave it shut, and the
