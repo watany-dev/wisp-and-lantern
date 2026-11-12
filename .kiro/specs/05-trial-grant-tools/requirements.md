@@ -1,5 +1,10 @@
 # Requirements: Trial 2, The Locked Shed ("hand over the tools")
 
+> **Scope note: a third trial now exists ([`06-trial-verify-stars`](../06-trial-verify-stars/requirements.md)).**
+> "Trials 3 to 6 stay out" and "no way back from the shed" below describe this spec's scope. Trial 3 (The Wisp
+> Field) is added by `06`, which also moves the title's wisp and hero up and puts its button above the shed button;
+> the shed button and everything below are unchanged. Nothing in the text below is changed.
+
 Spec `05-trial-grant-tools`. Teaches learning goal L2 (`docs/learning-design.md`): a helper can only act
 with the tools it is given, so hand over the one it needs. Requirement ids are `REQ-5.n`. `REQ-4.n`
 belongs to `04-score-attack`, `REQ-3.n` to `03-trial-tell-vague-request`, `REQ-2.n` to `02-trial-tell`
