@@ -42,7 +42,7 @@ describe("shed colors (REQ-5.5.6, REQ-5.14.2)", () => {
   });
 
   it("keeps the wall's own colors apart from the probe colors, so a probe never reads the wall", () => {
-    for (const color of [shedLook.wall, shedLook.wallLine, shedLook.roof, shedLook.ground]) {
+    for (const color of Object.values(shedLook)) {
       expect(apart(color, shedColors.doorway)).toBeGreaterThan(20);
       expect(apart(color, shedColors.windowGlass)).toBeGreaterThan(20);
     }
@@ -58,6 +58,15 @@ describe("shed colors (REQ-5.5.6, REQ-5.14.2)", () => {
       "ground",
       "lock",
       "lockDark",
+      "plank",
+      "plankEdge",
+      "nail",
+      "rope",
+      "ropeDark",
+      "leafRed",
+      "leafOrange",
+      "leafGold",
+      "leafBrown",
     ]);
   });
 });

@@ -1,11 +1,15 @@
-// Trial 2, The Locked Shed. Draws `shedView(state)` and turns taps into events; it keeps no rules.
-// It never dispatches `Tick`: the shed has no clock. Spec: .kiro/specs/05-trial-grant-tools/design.md
+// Trial 2, The Locked Shed: a 60-second time attack. Draws `shedView(state)` and turns taps into events;
+// it keeps no rules. Like the lane, it dispatches `Tick` from `update`, which is how time reaches the
+// reducer. Spec: .kiro/specs/05-trial-grant-tools/design.md
 
 import Phaser from "phaser";
 import { balance } from "../../domain/balance";
 import { tools, type ToolId } from "../../domain/shed";
+import { tickMs } from "../clock";
 import type { GameState, Lang } from "../../domain/state";
 import type { Game } from "../judge";
+import { hudView } from "../lane-view";
+import { sceneFor } from "../route";
 import {
   buttonRect,
   fontSize,
@@ -15,7 +19,7 @@ import {
   wisp,
   wispRect,
 } from "../lane-layout";
-import { guideText, shedBox, shedParts, shedPoint } from "../shed-layout";
+import { guideText, leaveButton, shedBox, shedParts, shedPoint, toolSpot } from "../shed-layout";
 import { justTried, shedView, type ShedView } from "../shed-view";
 import { stepToward } from "../steer";
 import { burst, ripple } from "../fx/sparks";
@@ -23,8 +27,10 @@ import { drawButton, drawPanel, palette } from "../ui/art";
 import { drawBackground } from "../ui/background";
 import { fitCamera } from "../ui/camera";
 import type { CardWidget } from "../ui/cards";
+import { createHud, paintHud, type HudWidget } from "../ui/hud";
+import { createLeaveButton, type LeaveWidget } from "../ui/leave-button";
 import { drawShed, drawShedStar } from "../ui/shed-art";
-import { inkStyle, textStyle } from "../ui/text";
+import { goldStyle, inkStyle, textStyle } from "../ui/text";
 import { createToolCard } from "../ui/tool-card";
 import { drawTool } from "../ui/tools";
 import { createHero, createWispArt } from "../ui/wisp-actor";
@@ -49,6 +55,9 @@ export class ShedScene extends Phaser.Scene {
   private button!: Phaser.GameObjects.Container;
   private buttonLabel!: Text;
   private cards = new Map<ToolId, CardWidget>();
+  private hud!: HudWidget;
+  private leave!: LeaveWidget;
+  private lastScore = 0;
 
   constructor(private readonly game_: Game) {
     super("shed");
@@ -59,14 +68,19 @@ export class ShedScene extends Phaser.Scene {
     this.shown = {};
     this.cards = new Map();
     this.walks = true;
+    this.lastScore = 0;
     fitCamera(this);
     drawBackground(this, false);
     this.hero = createHero(this);
+    this.hud = createHud(this);
     this.createPicture();
     this.createTexts();
     this.createWisp();
     this.createButton();
     for (const id of tools) this.addCard(id);
+    this.leave = createLeaveButton(this, leaveButton, 16, () =>
+      this.game_.dispatch({ type: "LeaveShed" }),
+    );
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (_p: unknown, over: unknown[]) => {
       this.walks = over.length === 0;
     });
@@ -76,6 +90,7 @@ export class ShedScene extends Phaser.Scene {
   }
 
   override update(_time: number, deltaMs: number): void {
+    this.game_.dispatch({ type: "Tick", ms: tickMs(deltaMs) });
     const next = stepToward(this.wispBox, this.view.wispTarget, balance.wispSpeed, deltaMs);
     if (next) this.wispBox.setPosition(next.x, next.y);
     this.walkHero(deltaMs);
@@ -91,8 +106,7 @@ export class ShedScene extends Phaser.Scene {
 
   private createPicture(): void {
     this.shedArt = this.add.graphics({ x: shedBox.x, y: shedBox.y });
-    const lock = shedPoint(shedParts.tool);
-    this.triedArt = this.add.graphics({ x: lock.x, y: lock.y }).setDepth(4);
+    this.triedArt = this.add.graphics().setDepth(4);
     const star = shedPoint(shedParts.star);
     this.star = this.add.graphics({ x: star.x, y: star.y }).setDepth(6);
   }
@@ -162,7 +176,13 @@ export class ShedScene extends Phaser.Scene {
   }
 
   private render(state: GameState): void {
+    // The clock ran out (the end screen), or the child went back to the title: that scene takes over.
+    if (sceneFor(state) !== "shed") {
+      this.scene.start(sceneFor(state), { fromTrial: true });
+      return;
+    }
     this.hero.setPosition(state.hero.x, state.hero.y);
+    this.renderRun(state);
     if (state.shed === this.shown.shed && state.lang === this.shown.lang) return;
     const before = this.view;
     this.shown = { shed: state.shed, lang: state.lang };
@@ -176,6 +196,30 @@ export class ShedScene extends Phaser.Scene {
     this.renderControls();
   }
 
+  /** The clock, the bar and the score change every frame; a freed cat also pops its points. */
+  private renderRun(state: GameState): void {
+    paintHud(this.hud, hudView(state));
+    const gained = state.run.score - this.lastScore;
+    this.lastScore = state.run.score;
+    if (gained > 0) this.popPoints(gained);
+  }
+
+  /** "+150" rises from the star by the freed cat, then fades. */
+  private popPoints(points: number): void {
+    const at = shedPoint(shedParts.star);
+    const text = this.add
+      .text(at.x, at.y, `+${points}`, { ...goldStyle, fontSize: "34px" })
+      .setOrigin(0.5)
+      .setDepth(10);
+    this.tweens.add({
+      targets: text,
+      y: at.y - 70,
+      alpha: 0,
+      duration: 1100,
+      onComplete: () => text.destroy(),
+    });
+  }
+
   private renderLesson(): void {
     const { lesson } = this.view;
     this.lessonPanel.setVisible(lesson !== null);
@@ -187,7 +231,8 @@ export class ShedScene extends Phaser.Scene {
     const { picture } = this.view;
     this.shedArt.clear();
     drawShed(this.shedArt, picture);
-    this.triedArt.clear().setAngle(0);
+    const at = shedPoint(toolSpot(picture.puzzle));
+    this.triedArt.clear().setAngle(0).setPosition(at.x, at.y);
     if (picture.tool) drawTool(this.triedArt, picture.tool, shedParts.tool.size);
     this.star.clear();
     if (picture.star) drawShedStar(this.star);
@@ -208,6 +253,7 @@ export class ShedScene extends Phaser.Scene {
   private renderControls(): void {
     const { armed, button, tools: states, wispAlpha } = this.view;
     this.ring.setVisible(armed);
+    this.leave.label.setText(this.view.leave);
     this.wispBox.setAlpha(wispAlpha);
     this.button.setVisible(button !== null);
     this.buttonLabel.setText(button?.text ?? "");

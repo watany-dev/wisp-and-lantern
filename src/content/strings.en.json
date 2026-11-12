@@ -15,18 +15,46 @@
   },
   "shed": {
     "enter": "Free the cat",
-    "guide": "Give the wisp a tool\nto free the cat",
+    "timeAttack": "How many in 60 seconds?",
     "pick": "Pick one tool",
     "ready": "Tap the wisp to\ngive it the {0}",
-    "open": "The cat is out!\nThe wisp used the {0}",
-    "shut": "The wisp used the {0}\nThe door stayed shut",
-    "lesson": "You gave a {0}\nIt opened the door",
-    "again": "Play again",
+    "free": "The cat is out!\nThe wisp used the {0}",
+    "next": "Next puzzle",
     "retry": "Try another tool",
+    "leave": "Title",
     "tools": {
       "key": "key",
       "broom": "broom",
-      "hammer": "hammer"
+      "hammer": "hammer",
+      "scissors": "scissors",
+      "ladder": "ladder"
+    },
+    "puzzles": {
+      "lock": {
+        "guide": "The door is locked!\nGive the wisp a tool",
+        "stuck": "The wisp used the {0}\nThe door stayed shut",
+        "lesson": "You gave the {0}\nIt opened the door"
+      },
+      "leaves": {
+        "guide": "Leaves block the door!\nGive the wisp a tool",
+        "stuck": "The wisp used the {0}\nThe leaves are still there",
+        "lesson": "You gave the {0}\nIt swept the leaves away"
+      },
+      "boards": {
+        "guide": "Boards cover the door!\nGive the wisp a tool",
+        "stuck": "The wisp used the {0}\nThe boards are still on",
+        "lesson": "You gave the {0}\nIt took the boards off"
+      },
+      "rope": {
+        "guide": "A rope ties the door!\nGive the wisp a tool",
+        "stuck": "The wisp used the {0}\nThe rope is still tied",
+        "lesson": "You gave the {0}\nIt cut the rope"
+      },
+      "roof": {
+        "guide": "The cat is on the roof!\nGive the wisp a tool",
+        "stuck": "The wisp used the {0}\nThe cat is still up there",
+        "lesson": "You gave the {0}\nIt got the cat down"
+      }
     }
   },
   "field": {

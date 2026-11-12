@@ -54,6 +54,7 @@ const otherEvent: fc.Arbitrary<GameEvent> = fc.oneof(
   fc.record({ type: fc.constant("GiveTool" as const) }),
   fc.record({ type: fc.constant("RetryShed" as const) }),
   fc.record({ type: fc.constant("StartShed" as const) }),
+  fc.record({ type: fc.constant("LeaveShed" as const) }),
   fc.record({ type: fc.constant("StartField" as const), seed }),
   // Short ticks, and a long one that would end a run of trial 1.
   fc.record({ type: fc.constant("Tick" as const), ms: fc.integer({ min: -100, max: 2_000 }) }),
@@ -124,7 +125,8 @@ const isOtherTrialEvent = (e: GameEvent) =>
   e.type === "Tick" ||
   e.type === "PickTool" ||
   e.type === "GiveTool" ||
-  e.type === "RetryShed";
+  e.type === "RetryShed" ||
+  e.type === "LeaveShed";
 const isStar = (i: number) => Number.isInteger(i) && i >= 0 && i < starCount;
 const truth = (f: Field, i: number): Verdict => (isFake(f, i) ? "fake" : "real");
 
@@ -434,7 +436,8 @@ describe("the field and the other trials stay apart (properties)", () => {
           if (isField(before) && isOtherTrialEvent(e)) expect(after).toBe(before);
           if (isField(after)) {
             expect(after.lane).toEqual(initialState.lane);
-            expect(after.run).toEqual(initialState.run);
+            // A run of the shed may have set the best score of the session before the child came here.
+            expect({ ...after.run, best: 0 }).toEqual(initialState.run);
             expect(after.shed).toEqual(initialState.shed);
           }
         }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { tools } from "../../domain/shed";
+import { puzzles, tools } from "../../domain/shed";
 import { initialState } from "../../domain/state";
 import {
   buttonRect,
@@ -7,6 +7,9 @@ import {
   cardSize,
   heroSize,
   heroStart,
+  hudBar,
+  hudScore,
+  hudTime,
   lessonBox,
   messageText,
   resultText,
@@ -16,6 +19,10 @@ import {
 } from "../lane-layout";
 import {
   guideText,
+  leaveButton,
+  obstacleProbes,
+  overLeave,
+  overWispTwoButtons,
   probes,
   shedBox,
   shedParts,
@@ -24,6 +31,7 @@ import {
   titleShedButton,
   toolCenter,
   toolRect,
+  toolSpot,
   wispArtSize,
   wispWork,
 } from "../shed-layout";
@@ -49,57 +57,96 @@ const box = (t: { x: number; y: number; wrap: number; height: number }): Rect =>
 const inBox = (p: { x: number; y: number }) =>
   p.x >= left(shedBox) && p.x <= right(shedBox) && p.y >= top(shedBox) && p.y <= bottom(shedBox);
 
+/** A part of the picture as a rectangle in game pixels. */
+const asRect = (r: { x: number; y: number; width: number; height: number }): Rect => ({
+  ...shedPoint(r),
+  width: r.width,
+  height: r.height,
+});
+/** What can be in the way of the cat, as rectangles: the leaves, the planks, the rope's bands. */
+const obstacles: Record<string, Rect[]> = {
+  leaves: [asRect(shedParts.leaves)],
+  boards: shedParts.planks.map(asRect),
+  rope: [
+    asRect({
+      x: shedParts.rope.x,
+      y: 52,
+      width: shedParts.rope.width,
+      height: 52,
+    }),
+  ],
+};
+
 const guide = box(guideText);
 const toolRects = tools.map(toolRect);
 const wispAtWork = square(wispWork, wispArtSize);
 
+/** What is on screen in every stage: the top row of the run, the tools and the way back to the title. */
+const always: Record<string, Rect> = {
+  clock: hudTime,
+  bar: hudBar,
+  score: hudScore,
+  guide,
+  shed: shedBox,
+  leave: leaveButton,
+  ...Object.fromEntries(tools.map((t) => [`tool ${t}`, toolRect(t)])),
+};
+
 /** Each stage of the shed on its own: the choosing message and the result message share a place. */
 const stages: Record<string, Record<string, Rect>> = {
-  choosing: {
-    guide,
-    shed: shedBox,
-    wisp: wispRect,
-    message: box(messageText),
-    ...Object.fromEntries(tools.map((t) => [`tool ${t}`, toolRect(t)])),
-  },
-  shut: {
-    guide,
-    shed: shedBox,
+  choosing: { ...always, wisp: wispRect, message: box(messageText) },
+  stuck: {
+    ...always,
     "wisp at the door": wispAtWork,
     message: box(resultText),
     button: buttonRect,
-    ...Object.fromEntries(tools.map((t) => [`tool ${t}`, toolRect(t)])),
   },
-  open: {
-    guide,
-    shed: shedBox,
+  freed: {
+    ...always,
     "wisp at the door": wispAtWork,
     message: box(resultText),
     "closing line": lessonBox,
     button: buttonRect,
-    ...Object.fromEntries(tools.map((t) => [`tool ${t}`, toolRect(t)])),
   },
 };
 
 describe("shed layout (REQ-5.10)", () => {
-  it("puts the guide, the picture, the tools and the button where the design says", () => {
-    expect(guideText).toEqual({ x: 195, y: 56, wrap: 340, height: 60 });
+  it("puts the guide, the picture, the tools, the way back and the button where the design says", () => {
+    expect(guideText).toEqual({ x: 195, y: 68, wrap: 340, height: 56 });
     expect(shedBox).toEqual({ x: 195, y: 198, width: 300, height: 200 });
     expect(tools.map(toolCenter)).toEqual([
       { x: 75, y: 690 },
       { x: 195, y: 690 },
       { x: 315, y: 690 },
+      { x: 135, y: 788 },
+      { x: 255, y: 788 },
     ]);
+    expect(leaveButton).toEqual({ x: 347, y: 788, width: 80, height: 80 });
     expect(titleShedButton).toEqual({ x: 195, y: 736, width: 300, height: 80 });
     expect(wispWork).toEqual({ x: 120, y: 318 });
   });
 
   it("makes every tool card the size of a lane card, and every target at least 80 x 80", () => {
     for (const r of toolRects) expect(r).toMatchObject(cardSize);
-    for (const r of [...toolRects, wispRect, buttonRect, titleShedButton]) {
+    for (const r of [...toolRects, wispRect, buttonRect, titleShedButton, leaveButton, overLeave]) {
       expect(r.width).toBeGreaterThanOrEqual(80);
       expect(r.height).toBeGreaterThanOrEqual(80);
     }
+  });
+
+  it("puts the five tools in two rows like the lane's cards, the way back at the end of the lower row", () => {
+    const upper = tools.filter((t) => toolCenter(t).y === 690);
+    const lower = tools.filter((t) => toolCenter(t).y === 788);
+    expect(upper).toHaveLength(3);
+    expect(lower).toHaveLength(2);
+    expect(Math.max(...lower.map((t) => right(toolRect(t))))).toBeLessThan(left(leaveButton));
+    expect(bottom(leaveButton)).toBeLessThanOrEqual(canvas.height);
+    expect(right(leaveButton)).toBeLessThanOrEqual(canvas.width);
+  });
+
+  it("keeps the clock row clear of the guide, which is clear of the picture", () => {
+    for (const r of [hudTime, hudBar, hudScore]) expect(bottom(r)).toBeLessThanOrEqual(top(guide));
+    expect(top(hudTime)).toBeGreaterThanOrEqual(0);
   });
 
   it.each(Object.keys(stages))("keeps the %s stage inside the canvas", (name) => {
@@ -129,8 +176,10 @@ describe("shed layout (REQ-5.10)", () => {
     expect(left(wispAtWork)).toBeGreaterThanOrEqual(left(shedBox));
     expect(bottom(wispAtWork)).toBeLessThanOrEqual(top(box(resultText)));
   });
+});
 
-  it("keeps the order from the top: guide, shed, wisp, message, closing line, button, tools", () => {
+describe("shed layout, the order and the hero (REQ-5.10)", () => {
+  it("keeps the order from the top: clock, guide, shed, wisp, message, closing line, button, tools", () => {
     expect(bottom(guide)).toBeLessThanOrEqual(top(shedBox));
     expect(bottom(shedBox)).toBeLessThanOrEqual(top(wispRect));
     expect(bottom(wispRect)).toBeLessThanOrEqual(top(box(messageText)));
@@ -155,6 +204,25 @@ describe("shed layout (REQ-5.10)", () => {
     expect(right(titleShedButton)).toBeLessThanOrEqual(canvas.width);
     expect(bottom(titleShedButton)).toBeLessThanOrEqual(canvas.height);
     expect(top(titleShedButton)).toBeGreaterThan(titleArtBottom);
+  });
+});
+
+describe("the end screen's two buttons (REQ-5.16, REQ-5.10)", () => {
+  // The wisp is drawn at 1.8 times its size of 60.
+  const wispOver = square(overWispTwoButtons, wispArtSize * 1.8);
+
+  it("puts the way back under the play-again button, inside the canvas", () => {
+    expect(overLeave).toEqual({ x: 195, y: 634, width: 300, height: 80 });
+    expect(top(overLeave)).toBeGreaterThan(bottom(buttonRect));
+    expect(left(overLeave)).toBeGreaterThanOrEqual(0);
+    expect(right(overLeave)).toBeLessThanOrEqual(canvas.width);
+    expect(bottom(overLeave)).toBeLessThanOrEqual(canvas.height);
+  });
+
+  it("keeps the wisp clear of both buttons and inside the canvas", () => {
+    expect(overlap(wispOver, buttonRect)).toBe(false);
+    expect(overlap(wispOver, overLeave)).toBe(false);
+    expect(bottom(wispOver)).toBeLessThanOrEqual(canvas.height);
   });
 });
 
@@ -210,16 +278,98 @@ describe("the shed picture (REQ-5.5.6)", () => {
     expect(shedPoint(parts.catOutside).x - 18).toBeGreaterThanOrEqual(wallRight);
   });
 
-  it("reads the picture at four points, each in its own part and clear of the tool", () => {
+  it("reads the picture at five points, each in its own part and clear of the tool", () => {
     expect(probes.door).toEqual({ x: 127, y: 210 });
     expect(probes.window).toEqual({ x: 250, y: 228 });
     expect(probes.catOutside).toEqual({ x: 331, y: 268 });
+    expect(probes.catRoof).toEqual({ x: 103, y: 139 });
     expect(probes.star).toEqual({ x: 323, y: 212 });
     expect(probes.door.x).toBeGreaterThan(left(doorRect));
     expect(probes.door.y).toBeGreaterThan(top(doorRect));
-    const tool = square(shedPoint(parts.tool), parts.tool.size);
-    expect(overlap(tool, square(probes.door, 2))).toBe(false);
     expect(overlap(windowRect, square(probes.window, 2))).toBe(true);
     for (const p of Object.values(probes)) expect(inBox(p)).toBe(true);
+  });
+});
+
+describe("the puzzles in the picture (REQ-5.2.3, REQ-5.5.6)", () => {
+  const parts = shedParts;
+  const doorRect = asRect(parts.door);
+
+  it("tries the tool at a spot of its own in each puzzle, inside the picture and clear of every probe", () => {
+    for (const puzzle of puzzles) {
+      const at = shedPoint(toolSpot(puzzle));
+      const tool = square(at, parts.tool.size);
+      expect(inBox(at), puzzle).toBe(true);
+      expect(left(tool), puzzle).toBeGreaterThanOrEqual(left(shedBox));
+      for (const [name, p] of Object.entries(probes)) {
+        expect(overlap(tool, square(p, 2)), `${puzzle} / ${name}`).toBe(false);
+      }
+    }
+  });
+
+  it("puts the tool on the door for the lock, the leaves, the boards and the rope, and on the roof for the cat", () => {
+    for (const puzzle of ["lock", "leaves", "boards", "rope"] as const) {
+      const at = shedPoint(toolSpot(puzzle));
+      expect(at.x, puzzle).toBeGreaterThan(left(doorRect));
+      expect(at.x, puzzle).toBeLessThan(right(doorRect));
+      expect(at.y, puzzle).toBeGreaterThan(top(doorRect));
+      expect(at.y, puzzle).toBeLessThan(bottom(doorRect));
+    }
+    expect(shedPoint(toolSpot("roof")).x).toBeLessThan(left(doorRect));
+  });
+});
+
+describe("the obstacles in the picture (REQ-5.2.3, REQ-5.5.6)", () => {
+  const parts = shedParts;
+  const doorRect = asRect(parts.door);
+
+  it("keeps every obstacle on or at the door, inside the picture, and off the door probe", () => {
+    for (const [name, list] of Object.entries(obstacles)) {
+      for (const r of list) {
+        expect(left(r), name).toBeGreaterThanOrEqual(left(shedBox));
+        expect(right(r), name).toBeLessThanOrEqual(right(shedBox));
+        expect(top(r), name).toBeGreaterThanOrEqual(top(shedBox));
+        expect(bottom(r), name).toBeLessThanOrEqual(bottom(shedBox));
+        expect(overlap(r, square(probes.door, 2)), name).toBe(false);
+      }
+    }
+  });
+
+  it("reads each obstacle at a point on it, clear of the tool, the door probe and the leaves' vein", () => {
+    const rects: Record<string, Rect[]> = {
+      leaves: obstacles.leaves!,
+      boards: obstacles.boards!,
+      rope: obstacles.rope!,
+    };
+    for (const puzzle of ["leaves", "boards", "rope"] as const) {
+      const at = obstacleProbes[puzzle];
+      expect(
+        rects[puzzle]!.some((r) => overlap(r, square(at, 5))),
+        puzzle,
+      ).toBe(true);
+      const tool = square(shedPoint(toolSpot(puzzle)), shedParts.tool.size);
+      expect(overlap(tool, square(at, 5)), puzzle).toBe(false);
+      expect(overlap(square(probes.door, 5), square(at, 5)), puzzle).toBe(false);
+    }
+  });
+
+  it("keeps the rope's bands and its knot on the door, and the planks across its whole width", () => {
+    for (const y of parts.rope.bands) {
+      expect(shedPoint({ x: 0, y }).y).toBeGreaterThan(top(doorRect));
+      expect(shedPoint({ x: 0, y }).y).toBeLessThan(bottom(doorRect));
+    }
+    expect(parts.rope.knot.x).toBe(parts.door.x);
+    for (const plank of parts.planks) {
+      expect(plank.x - plank.width / 2).toBeLessThan(parts.door.x - parts.door.width / 2);
+      expect(plank.x + plank.width / 2).toBeGreaterThan(parts.door.x + parts.door.width / 2);
+    }
+  });
+
+  it("sits the cat on the roof's left slope, clear of the guide and of the door, and on the picture", () => {
+    const cat = shedPoint(parts.catRoof);
+    expect(inBox(cat)).toBe(true);
+    // A cat of width 36 reaches about 27 above its center.
+    expect(cat.y - 27).toBeGreaterThanOrEqual(bottom(guide));
+    expect(cat.x + 18).toBeLessThan(shedPoint({ x: 0, y: 0 }).x);
   });
 });

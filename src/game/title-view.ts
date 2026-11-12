@@ -1,12 +1,13 @@
 // The title's words for a language. Plain data in, plain data out (ADR 0003). `intro` is trial 1's rule
-// (the 60 seconds) and belongs to its card only; `noClock` is the caption on the two buttons whose trials have
-// no timer, so every sentence on the title matches the trial it sits with (REQ-6.1.6).
+// (the 60 seconds) and belongs to its card only; the shed's button says in its own caption that it has a
+// clock too (REQ-5.1.1), and `noClock` is the caption of the field's button, whose trial has none, so every
+// sentence on the title matches the trial it sits with (REQ-6.1.6).
 
 import en from "../content/strings.en.json";
 import ja from "../content/strings.ja.json";
 import type { Lang } from "../domain/state";
 import { fieldEnterLabel } from "./field-view";
-import { shedEnterLabel } from "./shed-view";
+import { shedCaption, shedEnterLabel } from "./shed-view";
 
 const strings = { ja, en };
 
@@ -16,9 +17,11 @@ export type TitleView = {
   prompt: string;
   /** Trial 1's rule: the 60 seconds. */
   intro: string;
-  /** The caption under the label of each of the other two buttons: no timer. */
+  /** The caption under the field's label: no timer. */
   noClock: string;
   shed: string;
+  /** The caption under the shed's label: the 60-second time attack. */
+  shedCaption: string;
   field: string;
 };
 
@@ -30,6 +33,7 @@ export function titleView(lang: Lang): TitleView {
     intro: s.run.intro,
     noClock: s.noClock,
     shed: shedEnterLabel(lang),
+    shedCaption: shedCaption(lang),
     field: fieldEnterLabel(lang),
   };
 }

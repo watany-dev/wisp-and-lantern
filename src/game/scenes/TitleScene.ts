@@ -1,6 +1,6 @@
 // The title screen: the game's name, trial 1's card (a tap anywhere starts it, and it has the 60 seconds),
-// the wisp and the hero, and two buttons that open trial 2 (the shed) and trial 3 (the field). Each button
-// says in its own caption that it has no timer, so the 60 seconds can only be read as trial 1's. Specs:
+// the wisp and the hero, and two buttons that open trial 2 (the shed, also a 60-second run) and trial 3 (the
+// field). Each button says in its own caption whether it has a clock. Specs:
 // .kiro/specs/04-score-attack/design.md, .kiro/specs/05-trial-grant-tools/design.md,
 // .kiro/specs/06-trial-verify-stars/design.md
 
@@ -29,7 +29,7 @@ import { inkStyle, textStyle } from "../ui/text";
 import { drawTool } from "../ui/tools";
 import { createHero, createWispArt } from "../ui/wisp-actor";
 
-/** After the field sends the child back here, a quick second tap must not start trial 1. */
+/** After a trial sends the child back here, a quick second tap must not start trial 1. */
 const returnLockMs = 700;
 
 /** The canvas does not scroll or zoom the page while the child plays. */
@@ -47,19 +47,19 @@ export class TitleScene extends Phaser.Scene {
   private shed!: Entrance;
   private field!: Entrance;
   private lockUntil = 0;
-  private fromField = false;
+  private fromTrial = false;
   private touchGuarded = false;
 
   constructor(private readonly game_: Game) {
     super("title");
   }
 
-  init(data?: { fromField?: boolean }): void {
-    this.fromField = data?.fromField === true;
+  init(data?: { fromTrial?: boolean }): void {
+    this.fromTrial = data?.fromTrial === true;
   }
 
   create(): void {
-    this.lockUntil = this.fromField ? this.game.getTime() + returnLockMs : 0;
+    this.lockUntil = this.fromTrial ? this.game.getTime() + returnLockMs : 0;
     fitCamera(this);
     drawBackground(this);
     this.createTexts();
@@ -67,7 +67,7 @@ export class TitleScene extends Phaser.Scene {
     this.add.container(wisp.x, wisp.y, [createWispArt(this)]).setScale(wisp.scale);
     this.add.container(hero.x, hero.y, [createHero(this)]).setScale(hero.scale);
     this.shed = this.createEntrance(titleShedButton, drawKey, () =>
-      this.enter({ type: "StartShed" }),
+      this.enter({ type: "StartShed", seed: newSeed() }),
     );
     this.field = this.createEntrance(titleFieldButton, drawGoldStar, () =>
       this.enter({ type: "StartField", seed: newSeed() }),
@@ -133,7 +133,7 @@ export class TitleScene extends Phaser.Scene {
     return { label, caption };
   }
 
-  private enter(event: { type: "StartShed" } | { type: "StartField"; seed: number }): void {
+  private enter(event: { type: "StartShed" | "StartField"; seed: number }): void {
     if (this.game_.state().phase === "title") this.game_.dispatch(event);
   }
 
@@ -151,7 +151,7 @@ export class TitleScene extends Phaser.Scene {
     this.prompt.setText(view.prompt);
     this.intro.setText(view.intro);
     this.shed.label.setText(view.shed);
-    this.shed.caption.setText(view.noClock);
+    this.shed.caption.setText(view.shedCaption);
     this.field.label.setText(view.field);
     this.field.caption.setText(view.noClock);
   }

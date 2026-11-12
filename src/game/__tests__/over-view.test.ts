@@ -34,11 +34,41 @@ describe.each(["ja", "en"] as const)("overView in %s (REQ-4.5)", (lang) => {
   });
 
   it("offers one button that starts a new run", () => {
-    expect(over(lang).button).toEqual({ text: s.again, event: { type: "Start" } });
+    expect(over(lang).buttons).toEqual([{ text: s.again, action: "play" }]);
   });
 
   it("leaves no placeholder in any line", () => {
     const view = over(lang, ...find0);
     for (const text of [view.score, view.best]) expect(text).not.toContain("{0}");
+  });
+});
+
+// The end screen of the shed's run (spec 05-trial-grant-tools, REQ-5.7.5, REQ-5.16): the same lines, and two
+// buttons, play again and back to the title.
+const shedOver = (lang: Lang, ...events: GameEvent[]) =>
+  overView(
+    [{ type: "StartShed" } as GameEvent, ...events, end].reduce(reduce, { ...initialState, lang }),
+  );
+
+describe.each(["ja", "en"] as const)("overView after a run of the shed in %s", (lang) => {
+  const s = strings[lang].run;
+
+  it("says the time is up and shows the score and the best", () => {
+    const view = shedOver(lang, { type: "PickTool", tool: "key" }, { type: "GiveTool" });
+    expect(view.title).toBe(s.over);
+    expect(view.score).toBe(s.score.replace("{0}", "100"));
+    expect(view.best).toBe(s.best.replace("{0}", "100"));
+    expect(view.record).toBe(s.newBest);
+  });
+
+  it("offers play again for the shed, and the way back to the title", () => {
+    expect(shedOver(lang).buttons).toEqual([
+      { text: s.again, action: "playShed" },
+      { text: strings[lang].shed.leave, action: "leave" },
+    ]);
+  });
+
+  it("does not call a run that scored nothing a record", () => {
+    expect(shedOver(lang).record).toBeNull();
   });
 });

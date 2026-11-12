@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { tools } from "../../domain/shed";
+import { puzzles, tools } from "../../domain/shed";
 import en from "../strings.en.json";
 import ja from "../strings.ja.json";
 
@@ -8,20 +8,33 @@ import ja from "../strings.ja.json";
 
 const keys = [
   "enter",
-  "guide",
+  "timeAttack",
   "pick",
   "ready",
-  "open",
-  "shut",
-  "lesson",
-  "again",
+  "free",
+  "next",
   "retry",
+  "leave",
   "tools",
+  "puzzles",
 ];
-// The messages that name a tool: the picked tool, or the tried tool (REQ-5.4, REQ-5.5, REQ-5.8).
-const nameKeys = ["ready", "open", "shut", "lesson"] as const;
+const puzzleKeys = ["guide", "stuck", "lesson"] as const;
+type Lang = "ja" | "en";
 const shed = { ja: ja.shed, en: en.shed };
-const labels = (lang: "ja" | "en") => tools.map((t) => shed[lang].tools[t]);
+const labels = (lang: Lang) => tools.map((t) => shed[lang].tools[t]);
+
+/** The plain strings of a group: everything but the tool names and the puzzles' texts. */
+const plain = (lang: Lang) => {
+  const { tools: _names, puzzles: _puzzles, ...texts } = shed[lang];
+  return texts;
+};
+/** The texts of the puzzles, as [puzzle, key, text]. */
+const puzzleTexts = (lang: Lang) =>
+  puzzles.flatMap((p) => puzzleKeys.map((k) => [p, k, shed[lang].puzzles[p][k]] as const));
+
+// The messages that name a tool: the picked tool, or the tried tool (REQ-5.4, REQ-5.5, REQ-5.8).
+const namedPlain = ["ready", "free"] as const;
+const namedPuzzle = ["stuck", "lesson"] as const;
 
 /** Mirrors `scripts/check-kid-strings.mjs` (REQ-5.12.2): no kanji, no Latin letters, 12 x 2. */
 function kidProblems(text: string): string[] {
@@ -42,13 +55,17 @@ const lines = (text: string) => text.split("\n");
 const longest = (text: string) => Math.max(...lines(text).map((l) => l.length));
 
 /** Every string of the group, with the tool name inserted where it takes one. */
-function allRendered(lang: "ja" | "en"): string[] {
-  const { tools: _names, ...texts } = shed[lang];
-  return Object.entries(texts).flatMap(([key, text]) =>
-    (nameKeys as readonly string[]).includes(key)
-      ? labels(lang).map((name) => render(text, name))
-      : [text],
-  );
+function allRendered(lang: Lang): string[] {
+  const out: string[] = [];
+  for (const [key, text] of Object.entries(plain(lang))) {
+    const named = (namedPlain as readonly string[]).includes(key);
+    out.push(...(named ? labels(lang).map((name) => render(text, name)) : [text]));
+  }
+  for (const [, key, text] of puzzleTexts(lang)) {
+    const named = (namedPuzzle as readonly string[]).includes(key);
+    out.push(...(named ? labels(lang).map((name) => render(text, name)) : [text]));
+  }
+  return out;
 }
 
 describe("shed strings: keys and placeholders (REQ-5.12.1, REQ-5.12.3)", () => {
@@ -57,21 +74,33 @@ describe("shed strings: keys and placeholders (REQ-5.12.1, REQ-5.12.3)", () => {
     expect(Object.keys(en.shed)).toEqual(keys);
   });
 
-  it("name the three domain tools, in both languages", () => {
-    expect(Object.keys(ja.shed.tools)).toEqual([...tools]);
-    expect(Object.keys(en.shed.tools)).toEqual([...tools]);
-    expect(en.shed.tools).toEqual({ key: "key", broom: "broom", hammer: "hammer" });
-    expect(new Set(labels("ja")).size).toBe(tools.length);
+  it("name the five domain tools and the five puzzles, in both languages", () => {
+    for (const lang of ["ja", "en"] as const) {
+      expect(Object.keys(shed[lang].tools)).toEqual([...tools]);
+      expect(Object.keys(shed[lang].puzzles)).toEqual([...puzzles]);
+      for (const p of puzzles) expect(Object.keys(shed[lang].puzzles[p])).toEqual([...puzzleKeys]);
+      expect(new Set(labels(lang)).size).toBe(tools.length);
+    }
+    expect(en.shed.tools).toEqual({
+      key: "key",
+      broom: "broom",
+      hammer: "hammer",
+      scissors: "scissors",
+      ladder: "ladder",
+    });
   });
 
-  it("take exactly one tool name in ready, open, shut and the closing line, and nowhere else", () => {
-    for (const group of [ja.shed, en.shed]) {
-      const { tools: _names, ...texts } = group;
-      for (const [key, text] of Object.entries(texts)) {
-        const expected = (nameKeys as readonly string[]).includes(key) ? 2 : 1;
-        expect(text.split("{0}"), key).toHaveLength(expected);
+  it("take exactly one tool name in ready, free and each puzzle's stuck message and closing line, and nowhere else", () => {
+    for (const lang of ["ja", "en"] as const) {
+      for (const [key, text] of Object.entries(plain(lang))) {
+        const expected = (namedPlain as readonly string[]).includes(key) ? 2 : 1;
+        expect(text.split("{0}"), `${lang} ${key}`).toHaveLength(expected);
       }
-      for (const name of Object.values(group.tools)) expect(name).not.toContain("{");
+      for (const [p, key, text] of puzzleTexts(lang)) {
+        const expected = (namedPuzzle as readonly string[]).includes(key) ? 2 : 1;
+        expect(text.split("{0}"), `${lang} ${p} ${key}`).toHaveLength(expected);
+      }
+      for (const name of labels(lang)) expect(name).not.toContain("{");
     }
   });
 
@@ -85,103 +114,153 @@ describe("shed strings: keys and placeholders (REQ-5.12.1, REQ-5.12.3)", () => {
 describe("shed strings: Japanese rules (REQ-5.12.2)", () => {
   it("obey hard rule 2 for every message with every tool name inserted", () => {
     for (const name of labels("ja")) {
-      for (const key of nameKeys) {
-        const text = render(ja.shed[key], name);
-        expect(kidProblems(text), `${key} / ${name}`).toEqual([]);
+      for (const key of namedPlain) {
+        expect(kidProblems(render(ja.shed[key], name)), `${key} / ${name}`).toEqual([]);
+      }
+      for (const p of puzzles) {
+        for (const key of namedPuzzle) {
+          const text = render(ja.shed.puzzles[p][key], name);
+          expect(kidProblems(text), `${p} ${key} / ${name}`).toEqual([]);
+        }
       }
     }
   });
 
   it("obey hard rule 2 in every other string and in the tool names", () => {
-    for (const key of ["enter", "guide", "pick", "again", "retry"] as const) {
+    for (const key of ["enter", "timeAttack", "pick", "next", "retry", "leave"] as const) {
       expect(kidProblems(ja.shed[key]), key).toEqual([]);
+    }
+    for (const p of puzzles) {
+      expect(kidProblems(ja.shed.puzzles[p].guide), `${p} guide`).toEqual([]);
     }
     for (const name of labels("ja")) expect(kidProblems(name), name).toEqual([]);
   });
 });
 
 describe("shed strings: English length (REQ-5.12.2)", () => {
+  // 22 px text in a 340 px column (a 320 px column for the closing line) fits about 27 characters.
+  const most = 26;
+
   it("keeps every message to two short lines with every tool name inserted", () => {
     for (const name of labels("en")) {
-      for (const key of ["ready", "open", "shut"] as const) {
+      for (const key of namedPlain) {
         const text = render(en.shed[key], name);
         expect(lines(text).length, text).toBeLessThanOrEqual(2);
-        expect(longest(text), text).toBeLessThanOrEqual(24);
+        expect(longest(text), text).toBeLessThanOrEqual(most);
+      }
+      for (const p of puzzles) {
+        const text = render(en.shed.puzzles[p].stuck, name);
+        expect(lines(text).length, text).toBeLessThanOrEqual(2);
+        expect(longest(text), text).toBeLessThanOrEqual(most);
       }
     }
-    for (const key of ["guide", "pick", "enter", "again", "retry"] as const) {
+    for (const key of ["pick", "enter", "timeAttack", "next", "retry", "leave"] as const) {
       expect(lines(en.shed[key]).length, key).toBeLessThanOrEqual(2);
-      expect(longest(en.shed[key]), key).toBeLessThanOrEqual(24);
+      expect(longest(en.shed[key]), key).toBeLessThanOrEqual(most);
+    }
+    for (const p of puzzles) {
+      expect(lines(en.shed.puzzles[p].guide).length, p).toBeLessThanOrEqual(2);
+      expect(longest(en.shed.puzzles[p].guide), p).toBeLessThanOrEqual(most);
     }
   });
 
-  it("keeps the closing line to two lines of at most 20 characters, with every tool name", () => {
+  it("keeps the closing line to two lines of at most 26 characters, with every tool name", () => {
     for (const name of labels("en")) {
-      const text = render(en.shed.lesson, name);
-      expect(lines(text)).toHaveLength(2);
-      expect(longest(text), text).toBeLessThanOrEqual(20);
+      for (const p of puzzles) {
+        const text = render(en.shed.puzzles[p].lesson, name);
+        expect(lines(text), text).toHaveLength(2);
+        expect(longest(text), text).toBeLessThanOrEqual(most);
+      }
     }
   });
 
-  it("keeps the button labels short enough for the 300 px button", () => {
-    for (const text of [ja.shed.again, ja.shed.retry, ja.shed.enter]) {
+  it("keeps the button labels short enough for the 300 px button and the 80 px title button", () => {
+    for (const text of [ja.shed.next, ja.shed.retry, ja.shed.enter, ja.shed.timeAttack]) {
       expect(lines(text)).toHaveLength(1);
       expect(text.replace(/\s/gu, "").length).toBeLessThanOrEqual(12);
     }
-    for (const text of [en.shed.again, en.shed.retry, en.shed.enter]) {
+    for (const text of [en.shed.next, en.shed.retry, en.shed.enter, en.shed.timeAttack]) {
       expect(lines(text)).toHaveLength(1);
-      expect(text.length).toBeLessThanOrEqual(20);
+      expect(text.length).toBeLessThanOrEqual(24);
     }
+    expect(ja.shed.leave.length).toBeLessThanOrEqual(4);
+    expect(en.shed.leave.length).toBeLessThanOrEqual(5);
   });
 });
 
 describe("shed strings: the words say what the rules do (REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.8)", () => {
-  // Japanese for: "was not opened" (akanakatta), "again/other" (hoka no), escaped.
+  // Japanese for: "was not opened" (akanakatta), "as it was" (sonomama), "other" (hoka no), escaped.
   const notOpenedJa = /\u3042\u304b\u306a\u304b\u3063\u305f/;
+  const asWasJa = /\u305d\u306e\u307e\u307e|\u307e\u3060/;
   const otherJa = /\u307b\u304b\u306e/;
 
-  it("name the key in the open message and in the closing line, and any tool in the shut message", () => {
-    expect(render(en.shed.open, en.shed.tools.key)).toContain("key");
-    expect(render(ja.shed.open, ja.shed.tools.key)).toContain(ja.shed.tools.key);
-    expect(render(en.shed.lesson, en.shed.tools.key)).toContain("key");
-    expect(render(ja.shed.lesson, ja.shed.tools.key)).toContain(ja.shed.tools.key);
+  it("name the tool the wisp used in the free message, and in every puzzle's stuck message and closing line", () => {
     for (const lang of ["ja", "en"] as const) {
-      for (const name of labels(lang)) expect(render(shed[lang].shut, name)).toContain(name);
+      for (const name of labels(lang)) {
+        expect(render(shed[lang].free, name)).toContain(name);
+        for (const p of puzzles) {
+          expect(render(shed[lang].puzzles[p].stuck, name)).toContain(name);
+          expect(render(shed[lang].puzzles[p].lesson, name)).toContain(name);
+        }
+      }
     }
   });
 
-  it("state in plain words that the door stayed shut, and invite another tool", () => {
-    expect(en.shed.shut).toMatch(/shut/);
-    expect(ja.shed.shut).toMatch(notOpenedJa);
+  it("state in plain words that the puzzle is still there, and invite another tool", () => {
+    expect(en.shed.puzzles.lock.stuck).toMatch(/stayed shut/);
+    expect(ja.shed.puzzles.lock.stuck).toMatch(notOpenedJa);
+    for (const p of puzzles.filter((x) => x !== "lock")) {
+      expect(en.shed.puzzles[p].stuck, p).toMatch(/still/);
+      expect(ja.shed.puzzles[p].stuck, p).toMatch(asWasJa);
+    }
     expect(en.shed.retry).toMatch(/another tool/i);
     expect(ja.shed.retry).toMatch(otherJa);
   });
 
-  it("keep the closing line its own text: no line of it appears in the open message", () => {
+  it("keep the closing line its own text: no line of it appears in the free message", () => {
     for (const lang of ["ja", "en"] as const) {
-      const name = shed[lang].tools.key;
-      const message = render(shed[lang].open, name);
-      const lesson = render(shed[lang].lesson, name);
-      for (const line of lines(lesson)) expect(message).not.toContain(line);
-      for (const line of lines(message)) expect(lesson).not.toContain(line);
+      for (const name of labels(lang)) {
+        const message = render(shed[lang].free, name);
+        for (const p of puzzles) {
+          const lesson = render(shed[lang].puzzles[p].lesson, name);
+          for (const line of lines(lesson)) expect(message).not.toContain(line);
+          for (const line of lines(message)) expect(lesson).not.toContain(line);
+        }
+      }
     }
   });
 
   it("make the closing line a look back at the hand-over, in the order the child did it", () => {
-    expect(render(en.shed.lesson, "key")).toBe("You gave a key\nIt opened the door");
-    expect(lines(en.shed.lesson)[0]).toMatch(/gave/);
+    expect(render(en.shed.puzzles.lock.lesson, "key")).toBe("You gave the key\nIt opened the door");
+    for (const p of puzzles)
+      expect(lines(en.shed.puzzles[p].lesson)[0], p).toMatch(/^You gave the /);
   });
 
-  it("offer one tool at a time: the guide, pick and ready never suggest a second tool", () => {
+  it("give each puzzle its own guide that says what is wrong, and the same invitation to give a tool", () => {
+    expect(new Set(puzzles.map((p) => en.shed.puzzles[p].guide)).size).toBe(puzzles.length);
+    expect(new Set(puzzles.map((p) => ja.shed.puzzles[p].guide)).size).toBe(puzzles.length);
+    expect(new Set(puzzles.map((p) => en.shed.puzzles[p].lesson.split("\n")[1])).size).toBe(
+      puzzles.length,
+    );
+    for (const p of puzzles) {
+      expect(lines(en.shed.puzzles[p].guide)[1], p).toBe("Give the wisp a tool");
+    }
+  });
+
+  it("offer one tool at a time: the guides, pick and ready never suggest a second tool", () => {
     // Japanese for: both, two, one more, escaped.
     const secondJa =
       /\u308a\u3087\u3046\u307b\u3046|\u3075\u305f\u3064|\u3082\u3046\u3072\u3068\u3064/;
     const secondEn = /\b(both|two|second|another|more|and|tools)\b/i;
-    for (const key of ["guide", "pick", "ready"] as const) {
-      expect(ja.shed[key], key).not.toMatch(secondJa);
-      expect(en.shed[key], key).not.toMatch(secondEn);
+    const texts = [
+      ...puzzles.map((p) => ["guide " + p, ja.shed.puzzles[p].guide, en.shed.puzzles[p].guide]),
+      ["pick", ja.shed.pick, en.shed.pick],
+      ["ready", ja.shed.ready, en.shed.ready],
+    ] as const;
+    for (const [name, inJa, inEn] of texts) {
+      expect(inJa, name).not.toMatch(secondJa);
+      expect(inEn, name).not.toMatch(secondEn);
     }
-    expect(en.shed.guide).toMatch(/\ba tool\b/);
     expect(en.shed.ready).toMatch(/\bgive it the\b/i);
     expect(en.shed.pick).toMatch(/\bone tool\b/);
   });
@@ -189,6 +268,11 @@ describe("shed strings: the words say what the rules do (REQ-5.4, REQ-5.5, REQ-5
   it("invite the child to hand the tool over by tapping the wisp once a tool is picked", () => {
     expect(en.shed.ready).toMatch(/tap the wisp/i);
     expect(ja.shed.ready).toMatch(/\u30a6\u30a3\u30b9\u30d7/);
+  });
+
+  it("say on the title button that the shed has a 60-second clock", () => {
+    expect(en.shed.timeAttack).toMatch(/60 seconds/);
+    expect(ja.shed.timeAttack).toMatch(/^60/);
   });
 });
 

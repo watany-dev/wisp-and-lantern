@@ -9,8 +9,8 @@ import type { Lang } from "./state";
 export type LaneEvent = { type: "PickCard"; card: CardId } | { type: "Ask" } | { type: "Retry" };
 
 /**
- * Events of trial 2. `GiveTool` is the only way a tool is used. They have their own names so that no
- * trial 1 event can act on the shed, and no shed event on the lane.
+ * Events of trial 2. `GiveTool` is the only way a tool is used, and it scores. They have their own names
+ * so that no trial 1 event can act on the shed, and no shed event on the lane.
  */
 export type ShedEvent =
   | { type: "PickTool"; tool: ToolId }
@@ -34,8 +34,13 @@ export type GameEvent =
   | { type: "MoveHeroTo"; x: number; y: number }
   /** `ms` of play time passed. The only way time reaches the reducer (ADR 0001). */
   | { type: "Tick"; ms: number }
-  /** Opens the shed from the title: the only way into trial 2. */
-  | { type: "StartShed" }
+  /**
+   * Starts a 60-second run of the shed: from the title, or from the shed's own end screen to play again.
+   * `seed` picks the order of the puzzles; with none the order is the fixed one that starts with the lock.
+   */
+  | { type: "StartShed"; seed?: number }
+  /** Back to the title from the shed, in a run or on its end screen: the only way out of trial 2. */
+  | { type: "LeaveShed" }
   /** Opens the field from the title: the only way into trial 3. `seed` picks which stars are fake. */
   | { type: "StartField"; seed: number }
   /** Back to the title from the cleared field: the only way out of trial 3. */

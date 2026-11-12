@@ -86,7 +86,7 @@ export class FieldScene extends Phaser.Scene {
   private render(state: GameState): void {
     // Leaving the cleared trial returns to the title: that scene takes over.
     if (sceneFor(state) !== "field") {
-      this.scene.start(sceneFor(state), { fromField: true });
+      this.scene.start(sceneFor(state), { fromTrial: true });
       return;
     }
     this.hero.setPosition(state.hero.x, state.hero.y);
