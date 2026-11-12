@@ -26,8 +26,8 @@ export const toolRect = (tool: ToolId): Rect => ({ ...toolCenter(tool), ...cardS
 
 /** The title's button into the shed: a tap target of its own, below the title's wisp and hero. */
 export const titleShedButton: Rect = { x: 195, y: 736, width: 300, height: 80 };
-/** The title's wisp and hero end at about this y. The button sits below it. */
-export const titleArtBottom = 660;
+/** The title's wisp and hero end at about this y. The buttons sit below it (`titleArt` in `field-layout.ts`). */
+export const titleArtBottom = 606;
 
 /** Parts of the shed picture, as offsets from the center of `shedBox`. */
 export const shedParts = {

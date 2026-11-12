@@ -24,5 +24,8 @@ open an issue for each problem.
 - [ ] Color: trial 1 cards and targets are distinguishable in grayscale
 - [ ] Trial 2: children (5–8) finish The Locked Shed without verbal help, and say in their own words that the key was the one that worked (record verbatim); note whether they try the hammer again after the door stays shut, and how they read the closing line
 - [ ] Color: trial 2 tools are told apart by outline in grayscale, and the picked tool is told by its frame and tick
+- [ ] Trial 3: children (5–8) finish The Wisp Field (two rounds, then the result screen) without verbal help, and say in their own words how they knew a star was fake (record verbatim); note whether they say the wisp made a mistake or did it on purpose, whether they look at the glow and the edge before they press a button, whether they press both buttons without looking, how they react to "a fake got mixed in" after a wrong decision, and how they read the closing line
+- [ ] Trial 3: the title shows the 60 seconds only in trial 1's card; children do not say the shed or the field has a time limit
+- [ ] Color: trial 3 fake stars are told from real ones in grayscale, with the sound off, by their brighter glow and their ring of dots, and a sorted star by its word and tick
 - [ ] Stability: one full playthrough on iPhone Safari, Android Chrome and desktop Chrome
 - [ ] Performance: 60 fps target; if it stays under 30 fps, cut effects

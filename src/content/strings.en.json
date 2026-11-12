@@ -1,6 +1,7 @@
 {
   "title": "Wisp & Lantern",
   "start": "Tap to start",
+  "noClock": "No timer",
   "retry": "Let's tell it again",
   "lane": {
     "wish": "I want this one",
@@ -26,6 +27,27 @@
       "key": "key",
       "broom": "broom",
       "hammer": "hammer"
+    }
+  },
+  "field": {
+    "enter": "Check the stars",
+    "guide": "Look closely: real or fake?\nKeep only the real ones",
+    "start": "The wisp brought 5 stars\nTap one to look closer",
+    "look": "Check the glow and the edge\nReal or fake?",
+    "sortedReal": "Yes! This star is real",
+    "sortedFake": "Yes, that one is a fake!\nThe wisp mixed it up",
+    "missFake": "A fake got mixed in!\nLet's look again",
+    "missReal": "That one was real!\nLet's look again",
+    "kept": "You kept {0} real stars",
+    "clear": "Cleared!",
+    "lesson": "You looked closely and\nkept only the real ones",
+    "keep": "Keep the real stars",
+    "next": "Next stars",
+    "again": "Play again",
+    "leave": "Title",
+    "marks": {
+      "real": "real",
+      "fake": "fake"
     }
   },
   "run": {
