@@ -1,6 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
-import type { GameEvent } from "./events";
+import type { FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
+import { initialField, reduceField } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
 import { reduceShed } from "./shed";
@@ -18,6 +19,19 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return tick(state, event.ms);
     case "StartShed":
       return startShed(state);
+    case "StartField":
+      return startField(state, event.seed);
+    default:
+      return reduceTrial(state, event);
+  }
+}
+
+/** The events of one trial each: they act only in their own trial and return the state otherwise. */
+function reduceTrial(
+  state: GameState,
+  event: LaneEvent | ShedEvent | FieldEvent | { type: "LeaveField" },
+): GameState {
+  switch (event.type) {
     case "Ask":
       return inTrial(state, trials.lane) ? ask(state, event) : state;
     case "PickCard":
@@ -27,10 +41,19 @@ export function reduce(state: GameState, event: GameEvent): GameState {
     case "GiveTool":
     case "RetryShed":
       return inTrial(state, trials.shed) ? withShed(state, reduceShed(state.shed, event)) : state;
+    default:
+      return reduceFieldTrial(state, event);
   }
 }
 
-/** Trial 1 and trial 2 events act only inside their own trial (REQ-5.9). */
+/** The field's events act only in trial 3. The leave works only from the cleared trial. */
+function reduceFieldTrial(state: GameState, event: FieldEvent | { type: "LeaveField" }): GameState {
+  if (!inTrial(state, trials.field)) return state;
+  if (event.type !== "LeaveField") return withField(state, reduceField(state.field, event));
+  return state.field.stage === "cleared" ? leaveField(state) : state;
+}
+
+/** Each trial's events act only inside their own trial (REQ-5.9, REQ-6.8). */
 function inTrial(state: GameState, trial: number): boolean {
   return state.phase === "trial" && state.trial === trial;
 }
@@ -54,6 +77,25 @@ function startShed(state: GameState): GameState {
   return state.phase === "title" ? { ...state, phase: "trial", trial: trials.shed } : state;
 }
 
+/**
+ * The field opens from the title only, with a fresh round 0 for `seed`. It starts no run, as `startShed`
+ * does not. The seed is a whole number, so a stray value still gives the same rounds every time.
+ */
+function startField(state: GameState, seed: number): GameState {
+  if (state.phase !== "title") return state;
+  return {
+    ...state,
+    phase: "trial",
+    trial: trials.field,
+    field: { ...initialField, seed: seed >>> 0 },
+  };
+}
+
+/** The cleared field returns to the title with `field` initial again; nothing else changes. */
+function leaveField(state: GameState): GameState {
+  return { ...state, phase: "title", trial: 0, field: initialField };
+}
+
 /** Time passes only during a run of trial 1. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
   if (!inTrial(state, trials.lane) || !(ms > 0)) return state;
@@ -75,4 +117,8 @@ function withLane(state: GameState, lane: GameState["lane"]): GameState {
 
 function withShed(state: GameState, shed: GameState["shed"]): GameState {
   return shed === state.shed ? state : { ...state, shed };
+}
+
+function withField(state: GameState, field: GameState["field"]): GameState {
+  return field === state.field ? state : { ...state, field };
 }
