@@ -64,11 +64,48 @@ describe.each(["ja", "en"] as const)("overView after a run of the shed in %s", (
   it("offers play again for the shed, and the way back to the title", () => {
     expect(shedOver(lang).buttons).toEqual([
       { text: s.again, action: "playShed" },
-      { text: strings[lang].shed.leave, action: "leave" },
+      { text: strings[lang].shed.leave, action: "leaveShed" },
     ]);
   });
 
   it("does not call a run that scored nothing a record", () => {
     expect(shedOver(lang).record).toBeNull();
+  });
+});
+
+// The end screen of the field's run (spec 06-trial-verify-stars, revision 3, REQ-6.7.4): the same lines, and
+// two buttons, play again and back to the title.
+const fieldOver = (lang: Lang, ...events: GameEvent[]) =>
+  overView(
+    [{ type: "StartField", seed: 0 } as GameEvent, ...events, end].reduce(reduce, {
+      ...initialState,
+      lang,
+    }),
+  );
+
+describe.each(["ja", "en"] as const)("overView after a run of the field in %s", (lang) => {
+  const s = strings[lang].run;
+  const verdicts: GameEvent[] = [
+    { type: "InspectStar", index: 0 },
+    { type: "SortStar", verdict: "real" },
+  ];
+
+  it("says the time is up and shows the score and the best", () => {
+    const view = fieldOver(lang, ...verdicts);
+    expect(view.title).toBe(s.over);
+    expect(view.score).toBe(s.score.replace("{0}", "100"));
+    expect(view.best).toBe(s.best.replace("{0}", "100"));
+    expect(view.record).toBe(s.newBest);
+  });
+
+  it("offers play again for the field, and the way back to the title", () => {
+    expect(fieldOver(lang).buttons).toEqual([
+      { text: s.again, action: "playField" },
+      { text: strings[lang].shed.leave, action: "leaveField" },
+    ]);
+  });
+
+  it("does not call a run that scored nothing a record", () => {
+    expect(fieldOver(lang).record).toBeNull();
   });
 });

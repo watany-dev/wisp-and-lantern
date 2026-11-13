@@ -1,6 +1,8 @@
 // What trial 3 (The Wisp Field) shows for a game state: texts, how each star looks, the lens, the buttons.
-// Plain data in, plain data out, so the scene stays thin (ADR 0003). Child-facing text comes from
-// `src/content` only (REQ-6.11.1). Spec: .kiro/specs/06-trial-verify-stars/design.md
+// The clock, the bar and the score are the run's (`hudView` in `lane-view.ts`) and the way back to the
+// title is the shed's button, so they are not here. Plain data in, plain data out, so the scene stays thin
+// (ADR 0003). Child-facing text comes from `src/content` only (REQ-6.11.1).
+// Spec: .kiro/specs/06-trial-verify-stars/design.md
 
 import type { GameEvent } from "../domain/events";
 import {
@@ -18,6 +20,7 @@ import type { GameState, Lang } from "../domain/state";
 import en from "../content/strings.en.json";
 import ja from "../content/strings.ja.json";
 import type { ButtonSlot } from "./field-layout";
+import { leaveLabel } from "./shed-view";
 
 const strings = { ja, en };
 
@@ -36,7 +39,7 @@ type StarView = {
   alpha: number;
 };
 
-type ButtonId = "real" | "fake" | "keep" | "next" | "again" | "leave";
+type ButtonId = "real" | "fake" | "keep" | "next";
 
 type ButtonView = {
   id: ButtonId;
@@ -53,9 +56,11 @@ export type FieldView = {
   stars: StarView[];
   /** The star in the lens, shown larger. The same clue as in its slot. */
   lens: { shine: Shine } | null;
-  /** The cleared trial's word and closing line. They are their own texts, not part of `message`. */
-  clear: { title: string; lesson: string } | null;
+  /** The closing line, once a round is kept. It is its own text, not part of `message`. */
+  lesson: string | null;
   buttons: ButtonView[];
+  /** The label of the button back to the title, always shown (the shed's word). */
+  leave: string;
   /** The last verdict, for the scene's flourish: which star, and whether the verdict was right. */
   verdict: { star: number; right: boolean } | null;
   /** A round has just been kept (for the flourish). */
@@ -65,6 +70,11 @@ export type FieldView = {
 /** The label of the title's button into the field. */
 export function fieldEnterLabel(lang: Lang): string {
   return strings[lang].field.enter;
+}
+
+/** The caption under it: the field is a 60-second time attack. */
+export function fieldCaption(lang: Lang): string {
+  return strings[lang].field.timeAttack;
 }
 
 /**
@@ -118,12 +128,6 @@ function buttonsFor(state: GameState): ButtonView[] {
       { id: "next", text: s.next, event: { type: "RetryField" }, slot: "single", icon: "none" },
     ];
   }
-  if (field.stage === "cleared") {
-    return [
-      { id: "again", text: s.again, event: { type: "RetryField" }, slot: "left", icon: "none" },
-      { id: "leave", text: s.leave, event: { type: "LeaveField" }, slot: "right", icon: "none" },
-    ];
-  }
   return sortingButtons(field, s);
 }
 
@@ -163,8 +167,9 @@ export function fieldView(state: GameState): FieldView {
     message: messageFor(state),
     stars: starViews(state),
     lens: lensOf(field),
-    clear: field.stage === "cleared" ? { title: s.clear, lesson: s.lesson } : null,
+    lesson: field.stage === "kept" ? s.lesson : null,
     buttons: buttonsFor(state),
+    leave: leaveLabel(state.lang),
     verdict: verdictOf(field),
     finished: field.stage !== "sorting",
   };

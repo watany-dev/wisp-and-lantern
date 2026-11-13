@@ -1,7 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
 import type { FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
-import { initialField, reduceField } from "./field";
+import { initialField, reduceField, verdictRight } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
 import { initialShed, newShed, reduceShed, shedOutcome } from "./shed";
@@ -23,16 +23,15 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return leaveShed(state);
     case "StartField":
       return startField(state, event.seed);
+    case "LeaveField":
+      return leaveField(state);
     default:
       return reduceTrial(state, event);
   }
 }
 
 /** The events of one trial each: they act only in their own trial and return the state otherwise. */
-function reduceTrial(
-  state: GameState,
-  event: LaneEvent | ShedEvent | FieldEvent | { type: "LeaveField" },
-): GameState {
+function reduceTrial(state: GameState, event: LaneEvent | ShedEvent | FieldEvent): GameState {
   switch (event.type) {
     case "Ask":
       return inTrial(state, trials.lane) ? ask(state, event) : state;
@@ -49,11 +48,11 @@ function reduceTrial(
   }
 }
 
-/** The field's events act only in trial 3. The leave works only from the cleared trial. */
-function reduceFieldTrial(state: GameState, event: FieldEvent | { type: "LeaveField" }): GameState {
+/** The field's events act only in a run of trial 3. A verdict also scores. */
+function reduceFieldTrial(state: GameState, event: FieldEvent): GameState {
   if (!inTrial(state, trials.field)) return state;
-  if (event.type !== "LeaveField") return withField(state, reduceField(state.field, event));
-  return state.field.stage === "cleared" ? leaveField(state) : state;
+  if (event.type === "SortStar") return sortStar(state, event);
+  return withField(state, reduceField(state.field, event));
 }
 
 /** Each trial's events act only inside their own trial (REQ-5.9, REQ-6.8). */
@@ -73,6 +72,7 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     lane: initialLane,
     run: restartRun(state.run),
     shed: initialShed,
+    field: initialField,
   };
 }
 
@@ -103,27 +103,36 @@ function leaveShed(state: GameState): GameState {
 }
 
 /**
- * The field opens from the title only, with a fresh round 0 for `seed`. It starts no run, as `startShed`
- * does not. The seed is a whole number, so a stray value still gives the same rounds every time.
+ * The field's 60-second run starts from the title, or from the field's own end screen to play again. Like
+ * `startShed`, it gives a full clock and a score of 0 and keeps only the best; the lane and the shed are
+ * untouched. The seed is a whole number, so a stray value still gives the same rounds every time.
  */
 function startField(state: GameState, seed: number): GameState {
-  if (state.phase !== "title") return state;
+  const again = state.phase === "over" && state.trial === trials.field;
+  if (state.phase !== "title" && !again) return state;
   return {
     ...state,
     phase: "trial",
     trial: trials.field,
     field: { ...initialField, seed: seed >>> 0 },
+    run: restartRun(state.run),
   };
 }
 
-/** The cleared field returns to the title with `field` initial again; nothing else changes. */
+/**
+ * The way back to the title, from a run of the field or from its end screen (`trial` is 3 in both, and 0
+ * on the title). It keeps the language, the hero and the best score of the session, and drops the field
+ * and the run in progress.
+ */
 function leaveField(state: GameState): GameState {
-  return { ...state, phase: "title", trial: 0, field: initialField };
+  if (state.trial !== trials.field) return state;
+  return { ...state, phase: "title", trial: 0, field: initialField, run: restartRun(state.run) };
 }
 
-/** Time passes only during a run of trial 1 or trial 2. At zero the run is over and its score is final. */
+/** Time passes only during a run of trial 1, 2 or 3. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  const running = inTrial(state, trials.lane) || inTrial(state, trials.shed);
+  const running =
+    inTrial(state, trials.lane) || inTrial(state, trials.shed) || inTrial(state, trials.field);
   if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
@@ -142,6 +151,14 @@ function give(state: GameState): GameState {
   const shed = reduceShed(state.shed, { type: "GiveTool" });
   if (shed === state.shed) return state;
   return { ...state, shed, run: scoreSearch(state.run, shedOutcome(shed) === "freed") };
+}
+
+/** A verdict scores once, like the search of trial 1: a right one adds points, a wrong one ends the streak. */
+function sortStar(state: GameState, event: FieldEvent & { type: "SortStar" }): GameState {
+  const right = verdictRight(state.field, event.verdict);
+  if (right === null) return state;
+  const field = reduceField(state.field, event);
+  return { ...state, field, run: scoreSearch(state.run, right) };
 }
 
 function withLane(state: GameState, lane: GameState["lane"]): GameState {

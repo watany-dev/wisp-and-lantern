@@ -1,5 +1,5 @@
 // The end screen of a run: the time is up, the score, the best, and the buttons. Trial 1's has one button
-// (play again). The shed's has a second one back to the title. Draws `overView(state)` and turns a button
+// (play again). The shed's and the field's have a second one back to the title. Draws `overView(state)` and turns a button
 // tap into an event; it keeps no rules. Specs: .kiro/specs/04-score-attack/design.md,
 // .kiro/specs/05-trial-grant-tools/design.md
 
@@ -70,10 +70,16 @@ export class OverScene extends Phaser.Scene {
     button.setInteractive().on("pointerdown", () => this.press(action));
   }
 
-  /** The start of the shed needs a seed for the order of its puzzles; only the scene may draw one. */
+  /** The start of the shed and of the field needs a seed (the puzzles, the fake stars); only the scene may draw one. */
   private eventFor(action: OverAction): GameEvent {
-    if (action === "playShed") return { type: "StartShed", seed: newSeed() };
-    return action === "leave" ? { type: "LeaveShed" } : { type: "Start" };
+    const events: Record<OverAction, () => GameEvent> = {
+      play: () => ({ type: "Start" }),
+      playShed: () => ({ type: "StartShed", seed: newSeed() }),
+      playField: () => ({ type: "StartField", seed: newSeed() }),
+      leaveShed: () => ({ type: "LeaveShed" }),
+      leaveField: () => ({ type: "LeaveField" }),
+    };
+    return events[action]();
   }
 
   private press(action: OverAction): void {

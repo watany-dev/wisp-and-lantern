@@ -35,19 +35,15 @@ export const starBadge = { x: starSlot / 2 - 8, y: -starSlot / 2 + 8, radius: 15
 export const fieldMessage = { x: 195, y: 336, wrap: 340, height: 60 } as const;
 
 /**
- * The lens: the star being looked at, larger, with its glow and rim. After the trial is cleared the same
- * place holds the clear panel. It is below the star rows and above the buttons, so the stars stay in view.
+ * The lens: the star being looked at, larger, with its glow and rim. Once a round is kept the same place
+ * holds the closing line. It is below the star rows and above the buttons, so the stars stay in view.
  */
 export const lensRect: Rect = { x: 195, y: 428, width: 340, height: 124 };
 export const lensStar = { radius: 34 } as const;
-/** The clear panel's two texts: the big word, then the closing line, inside `lensRect`. */
-export const clearText = {
-  title: { x: 195, y: 392 },
-  lesson: { x: 195, y: 450 },
-  wrap: 320,
-} as const;
+/** The closing line, inside `lensRect`. */
+export const lessonText = { x: 195, y: 428, wrap: 320 } as const;
 
-/** Where the buttons are: one wide button, or two side by side. All are 80 high. */
+/** Where the buttons are: one wide button (the keep, "next stars"), or two side by side (the verdicts). All are 80 high. */
 export type ButtonSlot = "single" | "left" | "right";
 const buttonY = 534;
 export const buttonRects: Record<ButtonSlot, Rect> = {

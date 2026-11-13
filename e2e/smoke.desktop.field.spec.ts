@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { initialRun } from "../src/domain/run";
 import { starCenter } from "../src/game/field-layout";
 import { clicker, collectErrors, expectBundledFont, gameState } from "./helpers";
 import {
   enterField,
   expectButtons,
   expectCluesMatchRound,
-  expectClearPanel,
+  expectLesson,
   expectLens,
   expectTicks,
   fakesNow,
@@ -18,7 +17,7 @@ import {
   sortAll,
 } from "./field-helpers";
 
-test("REQ-6.9, REQ-6.13: plays the field with the mouse only: look, a wrong verdict, sort, keep, the second round, the clear and back, in English", async ({
+test("REQ-6.9, REQ-6.13: plays the field with the mouse only: look, a wrong verdict, sort, keep, the next round and back to the title, in English", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -30,7 +29,7 @@ test("REQ-6.9, REQ-6.13: plays the field with the mouse only: look, a wrong verd
 
   await enterField(page, click);
   expect(await gameState(page)).toMatchObject({ phase: "trial", trial: 3 });
-  expect((await gameState(page)).run).toEqual(initialRun);
+  expect((await gameState(page)).run).toMatchObject({ score: 0, streak: 0, best: 0 });
   await expectCluesMatchRound(page);
 
   // A wrong verdict on the first fake star, then the right ones.
@@ -44,12 +43,11 @@ test("REQ-6.9, REQ-6.13: plays the field with the mouse only: look, a wrong verd
   await page.screenshot({ path: "e2e/screenshots/desktop-field-ready.png" });
 
   await keepStars(page, click);
+  await expectLesson(page, true);
+  await expectButtons(page, ["single"]);
+  await page.screenshot({ path: "e2e/screenshots/desktop-field-kept.png" });
   await nextRound(page, click);
-  await sortAll(page, click);
-  await keepStars(page, click);
-  await expectClearPanel(page, true);
-  await expectButtons(page, ["left", "right"]);
-  await page.screenshot({ path: "e2e/screenshots/desktop-field-cleared.png" });
+  await expectLesson(page, false);
 
   await leaveToTitle(page, click);
   expect(await gameState(page)).toMatchObject({ phase: "title", trial: 0 });

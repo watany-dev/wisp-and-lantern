@@ -7,6 +7,7 @@ import ja from "../strings.ja.json";
 
 const keys = [
   "enter",
+  "timeAttack",
   "guide",
   "start",
   "look",
@@ -15,12 +16,9 @@ const keys = [
   "missFake",
   "missReal",
   "kept",
-  "clear",
   "lesson",
   "keep",
   "next",
-  "again",
-  "leave",
   "marks",
 ];
 const field = { ja: ja.field, en: en.field };
@@ -85,7 +83,6 @@ describe("field strings: keys and placeholders (REQ-6.11.1, REQ-6.11.3)", () => 
 describe("field strings: Japanese rules (REQ-6.11.2)", () => {
   it("obey hard rule 2 for every string, with the number inserted in the kept message", () => {
     for (const text of allRendered("ja")) expect(kidProblems(text), text).toEqual([]);
-    expect(kidProblems(ja.noClock)).toEqual([]);
   });
 
   it("obey hard rule 2 in the kept message template, where the gate counts {0} as three letters", () => {
@@ -106,19 +103,22 @@ describe("field strings: English length (REQ-6.11.2)", () => {
     expect(lines(ja.field.lesson)).toHaveLength(2);
   });
 
-  it("keeps the button labels on one line, short enough for the 146 px and 300 px buttons", () => {
+  it("keeps the button labels on one line, short enough for the 300 px buttons", () => {
     const wide = ["enter", "keep", "next"] as const;
-    const narrow = ["again", "leave"] as const;
-    for (const key of [...wide, ...narrow]) {
+    for (const key of wide) {
       expect(lines(ja.field[key]), key).toHaveLength(1);
       expect(ja.field[key].replace(/\s/gu, "").length, key).toBeLessThanOrEqual(12);
       expect(lines(en.field[key]), key).toHaveLength(1);
+      expect(en.field[key].length, key).toBeLessThanOrEqual(20);
     }
-    for (const key of narrow) {
-      expect(ja.field[key].replace(/\s/gu, "").length, key).toBeLessThanOrEqual(5);
-      expect(en.field[key].length, key).toBeLessThanOrEqual(12);
-    }
-    for (const key of wide) expect(en.field[key].length, key).toBeLessThanOrEqual(20);
+  });
+
+  it("keeps the word of the way back to the title short enough for its 80 px button", () => {
+    // The field's button is the shed's: one word, in 16 px letters.
+    expect(ja.shed.leave.replace(/\s/gu, "").length).toBeLessThanOrEqual(4);
+    expect(en.shed.leave.length).toBeLessThanOrEqual(5);
+    expect(lines(ja.shed.leave)).toHaveLength(1);
+    expect(lines(en.shed.leave)).toHaveLength(1);
   });
 
   it("keeps the star labels and the verdict words short enough for an 88 px slot", () => {
@@ -195,24 +195,17 @@ describe("field strings: the words say what the rules do (REQ-6.2 to REQ-6.6)", 
   });
 });
 
-describe("field strings: the words for the end of a round (REQ-6.5 to REQ-6.7)", () => {
+describe("field strings: the words for the end of a round (REQ-6.5, REQ-6.6)", () => {
   // The same escapes as above.
   const keepJa = /\u3046\u3051\u3068/;
   const realJa = /\u307b\u3093\u3082\u306e/;
   const lookJa = /\u307f\u3066/;
-  const againJa = /\u3082\u3046\u3044\u3061\u3069/;
   const fakeJa = /\u306b\u305b\u3082\u306e/;
-  const clearJa = /\u30af\u30ea\u30a2/;
 
   it("name the number kept, and the real stars", () => {
     expect(en.field.kept).toMatch(/\bkept\b.*\{0\}.*\breal\b/);
     expect(ja.field.kept).toMatch(realJa);
     expect(ja.field.kept).toMatch(keepJa);
-  });
-
-  it("say that the trial is cleared", () => {
-    expect(en.field.clear).toMatch(/\bcleared\b/i);
-    expect(ja.field.clear).toMatch(clearJa);
   });
 
   it("use the same words for a star on the picture, on the verdict buttons and in the messages", () => {
@@ -227,19 +220,15 @@ describe("field strings: the words for the end of a round (REQ-6.5 to REQ-6.7)",
     expect(ja.field.sortedFake).toContain(ja.field.marks.fake);
   });
 
-  it("make the buttons name the act: keep the real stars, the next stars, play again, the title", () => {
+  it("make the buttons name the act: keep the real stars, the next stars", () => {
     expect(en.field.keep).toMatch(/^Keep\b.*\breal\b/);
     expect(ja.field.keep).toMatch(realJa);
     expect(ja.field.keep).toMatch(keepJa);
     expect(en.field.next).toMatch(/\bnext\b/i);
     expect(en.field.next).not.toMatch(/again/i);
-    expect(en.field.again).toMatch(/\bplay again\b/i);
-    expect(ja.field.again).toMatch(againJa);
-    expect(en.field.leave).toBe("Title");
-    expect(ja.field.leave).toBe("\u30bf\u30a4\u30c8\u30eb\u3078");
   });
 
-  it("keep the closing line its own text: it looks back at looking closely and keeping, and shares no line with the kept message or the guide", () => {
+  it("keep the closing line its own text: it looks back at looking closely and keeping, and shares no line with the kept message or the guide (it is shown after every kept round)", () => {
     expect(en.field.lesson).toBe("You looked closely and\nkept only the real ones");
     expect(ja.field.lesson).toMatch(lookJa);
     expect(ja.field.lesson).toMatch(/\u3046\u3051\u3068\u308c\u305f/);
@@ -255,31 +244,30 @@ describe("field strings: the words for the end of a round (REQ-6.5 to REQ-6.7)",
   });
 });
 
-describe("the title's caption for the trials without a timer (REQ-6.1.6)", () => {
-  it("exists in both languages and says there is no timer, on one short line", () => {
-    expect(en.noClock).toMatch(/\bno timer\b/i);
-    // jikan (time), nai (none), escaped.
-    expect(ja.noClock).toMatch(/\u3058\u304b\u3093/);
-    expect(ja.noClock).toMatch(/\u306a\u3044/);
-    expect(lines(ja.noClock)).toHaveLength(1);
-    expect(lines(en.noClock)).toHaveLength(1);
-    expect(kidProblems(ja.noClock)).toEqual([]);
+describe("the title's caption under the field's button (REQ-6.1.6)", () => {
+  it("exists in both languages and says the field is a 60-second run, on one short line", () => {
+    expect(en.field.timeAttack).toMatch(/\b60 seconds\b/);
+    // 60 and byou (seconds), escaped.
+    expect(ja.field.timeAttack).toMatch(/60\u3073\u3087\u3046/);
+    expect(lines(ja.field.timeAttack)).toHaveLength(1);
+    expect(lines(en.field.timeAttack)).toHaveLength(1);
+    expect(kidProblems(ja.field.timeAttack)).toEqual([]);
   });
 
-  it("is the only text without a number of seconds that the trial 1 rule can be told apart from", () => {
-    // Trial 1's rule is the 60 seconds; nothing else on the title mentions seconds.
+  it("goes with the field's button, and the label of the button has no number in it", () => {
+    // Trial 1's rule and the two captions are the 60 seconds; the labels of the buttons are not.
     expect(ja.run.intro).toMatch(/60/);
     expect(en.run.intro).toMatch(/60 seconds/);
-    for (const text of [
-      ja.noClock,
-      en.noClock,
-      ja.field.enter,
-      en.field.enter,
-      ja.shed.enter,
-      en.shed.enter,
-    ]) {
+    for (const text of [ja.field.enter, en.field.enter, ja.shed.enter, en.shed.enter]) {
       expect(text).not.toMatch(/\d/);
     }
+    expect(ja.field.timeAttack).toMatch(/60/);
+    expect(en.field.timeAttack).toMatch(/60/);
+  });
+
+  it("does not leave the old no-timer caption behind", () => {
+    expect(Object.keys(ja)).not.toContain("noClock");
+    expect(Object.keys(en)).not.toContain("noClock");
   });
 });
 

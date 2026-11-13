@@ -3,13 +3,13 @@ import { initialState } from "../../domain/state";
 import { dotAngles, rim } from "../field-look";
 import {
   buttonRects,
-  clearText,
   fieldMessage,
   fieldWisp,
   fieldWispSize,
   lensProbes,
   lensRect,
   lensStar,
+  lessonText,
   probesFor,
   starArt,
   starBadge,
@@ -21,8 +21,8 @@ import {
   titleArt,
   titleFieldButton,
 } from "../field-layout";
-import { canvas, heroSize, heroStart, type Rect } from "../lane-layout";
-import { guideText, titleArtBottom, titleShedButton } from "../shed-layout";
+import { canvas, heroSize, heroStart, hudBar, hudScore, hudTime, type Rect } from "../lane-layout";
+import { guideText, leaveButton, titleArtBottom, titleShedButton } from "../shed-layout";
 import { titleCard, titleIntro, titlePrompt } from "../title-layout";
 
 const left = (r: Rect) => r.x - r.width / 2;
@@ -57,13 +57,15 @@ const guide = box(guideText);
 const message = box(fieldMessage);
 const wispAtBottom = square(fieldWisp, fieldWispSize);
 const starsByName = Object.fromEntries(indexes.map((i) => [`star ${i}`, starRect(i)]));
-const clearTitle = { ...clearText.title, width: clearText.wrap, height: 36 };
-const clearLesson = { ...clearText.lesson, width: clearText.wrap, height: 58 };
+const lessonLines = { ...lessonText, width: lessonText.wrap, height: 58 };
+/** The run's top row and the way back to the title are on screen in every stage. */
+const always = { clock: hudTime, bar: hudBar, score: hudScore, title: leaveButton };
 
-/** Each stage of the field on its own. The lens place is empty, holds the lens, or holds the clear panel. */
+/** Each stage of the field on its own. The lens place is empty, holds the lens, or holds the closing line. */
 const stages: Record<string, Record<string, Rect>> = {
-  idle: { guide, message, wisp: wispAtBottom, lens: lensRect, ...starsByName },
+  idle: { ...always, guide, message, wisp: wispAtBottom, lens: lensRect, ...starsByName },
   looking: {
+    ...always,
     guide,
     message,
     wisp: wispAtBottom,
@@ -73,6 +75,7 @@ const stages: Record<string, Record<string, Rect>> = {
     ...starsByName,
   },
   ready: {
+    ...always,
     guide,
     message,
     wisp: wispAtBottom,
@@ -81,21 +84,12 @@ const stages: Record<string, Record<string, Rect>> = {
     ...starsByName,
   },
   kept: {
+    ...always,
     guide,
     message,
     wisp: wispAtBottom,
     lens: lensRect,
     next: buttonRects.single,
-    ...starsByName,
-  },
-  cleared: {
-    guide,
-    message,
-    wisp: wispAtBottom,
-    "clear word": clearTitle,
-    "closing line": clearLesson,
-    again: buttonRects.left,
-    leave: buttonRects.right,
     ...starsByName,
   },
 };
@@ -121,7 +115,7 @@ describe("field layout (REQ-6.9)", () => {
 
   it("makes every star a square slot, and every target (star, button) at least 80 x 80", () => {
     for (const r of starRects) expect(r).toMatchObject({ width: 88, height: 88 });
-    for (const r of [...starRects, ...Object.values(buttonRects), titleFieldButton]) {
+    for (const r of [...starRects, ...Object.values(buttonRects), titleFieldButton, leaveButton]) {
       expect(r.width).toBeGreaterThanOrEqual(80);
       expect(r.height).toBeGreaterThanOrEqual(80);
     }
@@ -161,10 +155,20 @@ describe("field layout, order and spacing (REQ-6.9)", () => {
     }
   });
 
-  it("keeps the clear panel's texts inside the lens place, the word above the closing line", () => {
-    expect(inside(clearTitle, lensRect)).toBe(true);
-    expect(inside(clearLesson, lensRect)).toBe(true);
-    expect(bottom(clearTitle)).toBeLessThanOrEqual(top(clearLesson));
+  it("keeps the closing line inside the lens place, which it takes over once a round is kept", () => {
+    expect(inside(lessonLines, lensRect)).toBe(true);
+    expect(lessonText).toMatchObject({ x: lensRect.x, y: lensRect.y });
+  });
+
+  it("puts the run's top row above the guide, as in the shed, and the way back to the title where the shed has it (REQ-6.7.5)", () => {
+    for (const r of [hudTime, hudBar, hudScore]) {
+      expect(bottom(r)).toBeLessThanOrEqual(top(guide));
+      expect(top(r)).toBeGreaterThanOrEqual(0);
+    }
+    expect(leaveButton).toEqual({ x: 347, y: 788, width: 80, height: 80 });
+    expect(left(leaveButton)).toBeGreaterThanOrEqual(right(wispAtBottom));
+    expect(top(leaveButton)).toBeGreaterThanOrEqual(bottom(buttonRects.single));
+    expect(bottom(leaveButton)).toBeLessThanOrEqual(canvas.height);
   });
 
   it("puts two buttons side by side with a gap, and one wide button over both", () => {

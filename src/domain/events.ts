@@ -18,9 +18,9 @@ export type ShedEvent =
   | { type: "RetryShed" };
 
 /**
- * Events of trial 3. `InspectStar` only puts a star in the lens; `SortStar` is the child's verdict on it;
- * `KeepStars` is the only way a star is accepted. They have their own names so that no other trial's
- * event can act on the field, and no field event on another trial.
+ * Events of trial 3. `InspectStar` only puts a star in the lens; `SortStar` is the child's verdict on it,
+ * and it scores; `KeepStars` is the only way a star is accepted. They have their own names so that no
+ * other trial's event can act on the field, and no field event on another trial.
  */
 export type FieldEvent =
   | { type: "InspectStar"; index: number }
@@ -41,9 +41,12 @@ export type GameEvent =
   | { type: "StartShed"; seed?: number }
   /** Back to the title from the shed, in a run or on its end screen: the only way out of trial 2. */
   | { type: "LeaveShed" }
-  /** Opens the field from the title: the only way into trial 3. `seed` picks which stars are fake. */
+  /**
+   * Starts a 60-second run of the field: from the title, or from the field's own end screen to play
+   * again. `seed` picks which stars are fake.
+   */
   | { type: "StartField"; seed: number }
-  /** Back to the title from the cleared field: the only way out of trial 3. */
+  /** Back to the title from the field, in a run or on its end screen: the only way out of trial 3. */
   | { type: "LeaveField" }
   | LaneEvent
   | ShedEvent
