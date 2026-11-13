@@ -121,8 +121,16 @@ export const pressLeave = (page: Page, press: Press) =>
 /**
  * The average color of a 5 x 5 patch of the screenshot around each game point. Only the game rectangle
  * `area` is photographed, which keeps a poll cheap on a slow runner.
+ *
+ * With `reach`, the patch reaches that many game pixels from the point instead (at least one screen pixel),
+ * so it covers the same part of the picture whatever the screen's pixel density and the canvas's scale.
  */
-export async function colorsAt(page: Page, area: Rect, points: Point[]): Promise<Rgb[]> {
+export async function colorsAt(
+  page: Page,
+  area: Rect,
+  points: Point[],
+  reach?: number,
+): Promise<Rgb[]> {
   const { box, scale } = await canvasFrame(page);
   const left = area.x - area.width / 2;
   const top = area.y - area.height / 2;
@@ -134,16 +142,18 @@ export async function colorsAt(page: Page, area: Rect, points: Point[]): Promise
   };
   const image = await look(page, clip);
   const ratio = image.width / clip.width;
+  const half = reach === undefined ? 2 : Math.max(1, Math.round(reach * scale * ratio));
+  const count = (2 * half + 1) ** 2;
   return points.map((point) => {
     const cx = (point.x - left) * scale * ratio;
     const cy = (point.y - top) * scale * ratio;
     const sum = [0, 0, 0];
-    for (let dx = -2; dx <= 2; dx += 1) {
-      for (let dy = -2; dy <= 2; dy += 1) {
+    for (let dx = -half; dx <= half; dx += 1) {
+      for (let dy = -half; dy <= half; dy += 1) {
         pixelAt(image, cx + dx, cy + dy).forEach((v, i) => (sum[i] = sum[i]! + v));
       }
     }
-    return [sum[0]! / 25, sum[1]! / 25, sum[2]! / 25];
+    return [sum[0]! / count, sum[1]! / count, sum[2]! / count];
   });
 }
 

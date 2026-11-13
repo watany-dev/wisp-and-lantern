@@ -132,6 +132,13 @@ const clueOf = (colors: Rgb[]): Clue => {
 const probeList = (p: Probes) => [p.center, p.glow, p.dot, p.gap];
 /** The area of the star rows, big enough for every probe. */
 const starArea = { x: canvas.width / 2, y: 210, width: canvas.width, height: 260 };
+/**
+ * How far, in game pixels, a clue probe averages around its point. A rim dot is small, so a patch of a fixed
+ * number of screen pixels (the default) covers dot and gap together where the canvas has few screen pixels
+ * per game pixel (the desktop project), and a fake star's rim then reads as unbroken. This reach gives the
+ * same 5 x 5 patch as before on the mobile project and 3 x 3 on the desktop one.
+ */
+const clueReach = 0.7;
 
 /** The five clues as the screen shows them right now. */
 export async function seeClues(page: Page): Promise<Clue[]> {
@@ -139,13 +146,14 @@ export async function seeClues(page: Page): Promise<Clue[]> {
     page,
     starArea,
     stars.flatMap((i) => probeList(starProbes(i))),
+    clueReach,
   );
   return stars.map((i) => clueOf(colors.slice(4 * i, 4 * i + 4)));
 }
 
 /** The clue of the star in the lens. */
 async function seeLens(page: Page): Promise<Clue> {
-  return clueOf(await colorsAt(page, lensRect, probeList(lensProbes)));
+  return clueOf(await colorsAt(page, lensRect, probeList(lensProbes), clueReach));
 }
 
 /**
@@ -153,7 +161,9 @@ async function seeLens(page: Page): Promise<Clue> {
  * much brighter, and the rim has gaps (the dots are brighter than the spaces between them). The thresholds
  * sit between the measured values (a real star in its slot: halo 93, rim break about 0; a fake star: halo 167,
  * rim break 99; in the lens the halo is shrunk to fit, so 71 and 115) and apply to the brightness of the
- * picture, so a grayscale screen reads the same.
+ * picture, so a grayscale screen reads the same. The probes read about the same reach of the picture on both
+ * projects (`clueReach`), so the values hold on the desktop one too: rim break 82 to 105 for a fake star in
+ * its slot, -12 to -3 for a real one.
  */
 const glowBright = { slot: 130, lens: 93 } as const;
 const rimBroken = 55;

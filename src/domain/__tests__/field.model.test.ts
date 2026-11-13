@@ -15,7 +15,7 @@ import { reduce } from "../reducer";
 import { initialRun, runDown } from "../run";
 import { initialShed } from "../shed";
 import { initialState, type GameState } from "../state";
-import { checkModel } from "./support/model-check";
+import { modelChecker } from "./support/model-check";
 
 /**
  * This test's own copy of the fake stars of the two seeds the alphabet uses, written from the spec and not
@@ -83,7 +83,24 @@ function note(record: Done | null, event: GameEvent): Done | null {
   return record;
 }
 
+/** Explores each state space once for this file; see `modelChecker`. */
+const checkModel = modelChecker<Wrapped, GameEvent>();
+
+/**
+ * One wrapped step per game step, so that every check of the same game reuses one explored graph
+ * (`checkModel` shares a graph between models with the same functions).
+ */
+const advanced = new Map<Step, (w: Wrapped, event: GameEvent) => Wrapped>();
 function advance(step: Step) {
+  let wrapped = advanced.get(step);
+  if (!wrapped) {
+    wrapped = wrapStep(step);
+    advanced.set(step, wrapped);
+  }
+  return wrapped;
+}
+
+function wrapStep(step: Step) {
   return (w: Wrapped, event: GameEvent): Wrapped => {
     const game = step(w.game, event);
     const clearedNow = game.field.stage === "cleared" && w.game.field.stage !== "cleared";
@@ -199,7 +216,7 @@ type Options = {
 };
 
 const model = (goal: ((w: Wrapped) => boolean) | undefined, options: Options = {}) =>
-  checkModel<Wrapped, GameEvent>({
+  checkModel({
     initial: options.initial ?? start,
     events: options.events ?? alphabet,
     step: advance(options.step ?? reduce),
