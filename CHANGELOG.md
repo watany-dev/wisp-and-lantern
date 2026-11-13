@@ -27,21 +27,25 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
-- Trial 3, The Wisp Field ("check it", learning goal L3): the wisp brings five stars and one or two are
-  fakes. A fake shines brighter than a real star and its rim is a ring of dots instead of one line, so the
-  child can tell by looking, from the first screen, with no color and no sound. The child taps a star to look
-  at it closely (it is shown larger), then decides "real" or "fake". A right decision sorts the star. A wrong
-  one sorts nothing, says kindly what happened ("a fake got mixed in", "that one was real") and asks for
-  another look; it can be tried again without limit. When all five are sorted, a button keeps the real stars
-  (and only those). Two rounds (one fake, then two) clear the trial: a result screen shows "Cleared!", the
-  closing line, "Play again" and "Title". The fake stars come from a seed the game draws when the field opens,
-  so the same seed plays the same. No clock or score. The child opens it from a new star button on the title
-  (above the key button; the title's wisp and hero moved up to make room); a tap elsewhere on the title still
-  starts trial 1. On the title, trial 1's way in and its 60 seconds now sit in their own card, and the two
-  buttons say they have no timer. Japanese and English, one finger or a mouse, drawn in code, no network
-  after the first load. Spec in `.kiro/specs/06-trial-verify-stars/` (revision 2: the first build, a tap that
-  showed the answer, was replaced after three preview rounds); invariants INV-26 to INV-39 (25 retired). The
-  other trials' events and the clock still act only in their own trial.
+- Trial 3, The Wisp Field ("check it", learning goal L3) is now a 60-second time attack with a score. The wisp
+  brings five stars and one or two are fakes. A fake shines brighter than a real star and its rim is a ring of
+  dots instead of one line, so the child can tell by looking, from the first screen, with no color and no sound.
+  The child taps a star to look at it closely (it is shown larger), then decides "real" or "fake". A right
+  decision sorts the star and scores 100 (plus 50 for each right decision in a row, up to 4). A wrong one sorts
+  nothing, scores nothing, ends the streak, says kindly what happened ("a fake got mixed in", "that one was
+  real") and asks for another look; it can be tried again without limit and costs no time. When all five are
+  sorted, a button keeps the real stars (and only those), the closing line looks back at what the child did, and
+  "Next stars" brings the next five. The clock, the score and the end screen are trial 1's: when the 60 seconds
+  are up the end screen shows the score and the best, with "Play again" and "Title". A "Title" button is also on
+  the field's screen in every stage, so the child can always go back. The fake stars come from a seed the game
+  draws when a run starts, so the same seed plays the same. The child opens it from the star button on the
+  title (above the key button), which now says "How many in 60 seconds?" like the key button; a tap elsewhere on
+  the title still starts trial 1. Japanese and English, one finger or a mouse, drawn in code, no network after
+  the first load. Spec in `.kiro/specs/06-trial-verify-stars/` (revision 3: revision 2 had two rounds, a
+  cleared trial and no clock, and got three comments; revision 2 itself replaced a first build that showed
+  the answer on a tap); invariants INV-26 to INV-36 and INV-39 kept, INV-15 to INV-17 widened to the field,
+  INV-27, INV-29 to INV-32 and INV-38 reworded, INV-37 retired, INV-44 and INV-45 added. The lane's and the
+  shed's events still act only in their own trial.
 
 - Trial 2, The Locked Shed ("hand over the tools", learning goal L2) is now a 60-second time attack with five
   puzzles. A cat is stuck in a different way each round: a padlock, a heap of leaves, boards nailed over
