@@ -4,7 +4,8 @@
 > "Trials 3 to 6 stay out" below describes this spec's scope. Trial 3 (The Wisp Field) is added by `06`,
 > which also moves the title's wisp and hero up and puts its button above the shed button. Revision 2 of
 > this spec (below) removes the sentence "no way back from the shed" and gives the shed a clock; `06` is
-> otherwise unchanged by it.
+> otherwise unchanged by it. Revision 3 of `06` then gives the field a clock too, so wherever this file says
+> that the field's button says "No timer", the field's button now says "How many in 60 seconds?" as well.
 
 Spec `05-trial-grant-tools`, **revision 2**. Teaches learning goal L2 (`docs/learning-design.md`): a helper
 can only act with the tools it is given, so hand over the one it needs. Requirement ids are `REQ-5.n`.
@@ -156,7 +157,7 @@ without a grown-up.
 1. The title screen shows one extra tap target for trial 2: a button with a picture, a short label and a
    short caption, in the child's language, at least 80 x 80 game pixels. Its picture shows the key and its
    label says it is about the cat. Its caption says that the shed has the 60 seconds ("How many in 60
-   seconds?"), and the field's button keeps saying that it has no timer (REQ-6.1.6 of `06`).
+   seconds?"), and the field's button keeps saying that it has no timer (REQ-6.1.6 of `06`; revision 3 of `06` changed that: it says the 60 seconds too).
 2. Tapping the button opens the shed and begins its run. The state moves from `title` to `trial` with
    `trial` 2, round 0 of a new order of puzzles (REQ-5.2.3), a full clock of 60 seconds, a score of 0 and a
    streak of 0. The best score of the session carries over. The lane is untouched.

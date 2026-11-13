@@ -271,7 +271,7 @@ letters, 12 characters, 2 lines). `lane` and `run` strings are not changed.
 
 - `TitleScene`'s shed button dispatches `StartShed` with `newSeed()`. A press that hit no object still starts
   trial 1. Under the shed's label the button's caption is `titleView(lang).shedCaption` (the 60 seconds); under
-  the field's it is `noClock`. After a trial sends the child back, the title ignores taps for 700 ms
+  the field's it is `noClock` (removed by `06` revision 3: it is `field.timeAttack`, the same words). After a trial sends the child back, the title ignores taps for 700 ms
   (`fromTrial`, which was `fromField`).
 - `route.ts`: `sceneFor(state)` is unchanged: `title`, `lane`, `shed`, `field` or `over` from `phase` and
   `trial`. The shed scene starts `sceneFor(state)` when the state is no longer the shed's (the end screen, or the
