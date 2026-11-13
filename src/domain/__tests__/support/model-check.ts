@@ -86,9 +86,7 @@ function stuckStates<S, E>(nodes: Map<string, Node<S, E>>, goal: (s: S) => boole
   return [...nodes.keys()].filter((k) => !canFinish.has(k));
 }
 
-export function checkModel<S, E>(model: Model<S, E>): ModelReport<S, E> {
-  const key = model.key ?? ((s: S) => JSON.stringify(s));
-  const nodes = explore(model, key);
+function report<S, E>(model: Model<S, E>, nodes: Map<string, Node<S, E>>): ModelReport<S, E> {
   const violations: Violation<S, E>[] = [];
   for (const [name, holds] of Object.entries(model.invariants)) {
     const bad = [...nodes].find(([, n]) => !holds(n.state));
@@ -109,4 +107,36 @@ export function checkModel<S, E>(model: Model<S, E>): ModelReport<S, E> {
     }
   }
   return { states: nodes.size, violations };
+}
+
+export function checkModel<S, E>(model: Model<S, E>): ModelReport<S, E> {
+  return report(model, explore(model, model.key ?? ((s: S) => JSON.stringify(s))));
+}
+
+/** The parts of a model that decide its graph; invariants and goal are checked on the graph. */
+const sameSpace = <S, E>(a: Model<S, E>, b: Model<S, E>) =>
+  a.initial === b.initial &&
+  a.events === b.events &&
+  a.step === b.step &&
+  a.key === b.key &&
+  a.maxStates === b.maxStates;
+
+/**
+ * `checkModel` that explores each state space once. A model test checks many goals and shortest
+ * traces over the same graph; exploring it once instead of once per check keeps the test fast, and
+ * so every mutant run that includes it (static mutants run every related test file). Models share a
+ * graph when `initial`, `events`, `step`, `key` and `maxStates` are the same values or function
+ * objects, so the functions must be pure (the reducer is, ADR 0001). Make one checker per test file:
+ * Vitest isolates files, and Stryker reruns them for each mutant, so a graph never outlives its run.
+ */
+export function modelChecker<S, E>(): (model: Model<S, E>) => ModelReport<S, E> {
+  const graphs: { model: Model<S, E>; nodes: Map<string, Node<S, E>> }[] = [];
+  return (model) => {
+    let graph = graphs.find((g) => sameSpace(g.model, model));
+    if (!graph) {
+      graph = { model, nodes: explore(model, model.key ?? ((s: S) => JSON.stringify(s))) };
+      graphs.push(graph);
+    }
+    return report(model, graph.nodes);
+  };
 }

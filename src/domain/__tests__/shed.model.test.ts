@@ -17,7 +17,7 @@ import { reduce } from "../reducer";
 import { pointsFor, type Run } from "../run";
 import { answerOf, initialShed, puzzleAt, puzzles, shedOutcome, tools, type ToolId } from "../shed";
 import { initialState, type GameState } from "../state";
-import { checkModel } from "./support/model-check";
+import { modelChecker } from "./support/model-check";
 
 /**
  * The real game state plus three things the game has no use for. They are an independent record of
@@ -56,8 +56,25 @@ function freedNow(before: GameState, game: GameState): boolean {
   return handed && shedOutcome(game.shed) === "freed";
 }
 
-/** The wrapper's own bookkeeping, written from the spec and not from the reducer. */
+/** Explores each state space once for this file; see `modelChecker`. */
+const checkModel = modelChecker<Wrapped, GameEvent>();
+
+/**
+ * One wrapped step per game step, so that every check of the same game reuses one explored graph
+ * (`checkModel` shares a graph between models with the same functions).
+ */
+const advanced = new Map<Step, (w: Wrapped, event: GameEvent) => Wrapped>();
 function advance(step: Step) {
+  let wrapped = advanced.get(step);
+  if (!wrapped) {
+    wrapped = wrapStep(step);
+    advanced.set(step, wrapped);
+  }
+  return wrapped;
+}
+
+/** The wrapper's own bookkeeping, written from the spec and not from the reducer. */
+function wrapStep(step: Step) {
   return (w: Wrapped, event: GameEvent): Wrapped => {
     const before = w.game;
     const game = step(before, event);
@@ -177,7 +194,7 @@ const model = (
   checks = invariants,
   events: (w: Wrapped) => readonly GameEvent[] = withClock,
 ) =>
-  checkModel<Wrapped, GameEvent>({
+  checkModel({
     initial,
     events,
     step: advance(step),
