@@ -154,9 +154,14 @@ async function seeLens(page: Page): Promise<Clue> {
  * sit between the measured values (a real star in its slot: halo 93, rim break about 0; a fake star: halo 167,
  * rim break 99; in the lens the halo is shrunk to fit, so 71 and 115) and apply to the brightness of the
  * picture, so a grayscale screen reads the same.
+ *
+ * The rim break depends on the screen: the probe averages 5 x 5 device pixels, so on the desktop project
+ * (canvas drawn smaller than 1:1) it covers more of the dot and the gap. Measured there: a fake star in its
+ * slot 53 to 61 (53 for the middle star), a real one -11 to -6; in the lens 170 and 10. The threshold sits
+ * between those as well, not just below the mobile 99.
  */
 const glowBright = { slot: 130, lens: 93 } as const;
-const rimBroken = 55;
+const rimBroken = 30;
 export function clueReads(
   clue: Clue,
   where: "slot" | "lens" = "slot",
