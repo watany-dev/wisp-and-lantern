@@ -350,7 +350,7 @@ test("REQ-6.2.2, REQ-6.10: the clue works without color and without sound: on a 
   expect(errors).toEqual([]);
 });
 
-test("REQ-6.1.3, REQ-6.1.6: a tap elsewhere on the title still starts trial 1; the 60 seconds sit in trial 1's card, and the buttons say they have no timer, in both languages", async ({
+test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts trial 1; the 60 seconds sit in trial 1's card and the shed's caption, and the field's button says it has no timer, in both languages", async ({
   page,
 }) => {
   const tap = tapper(page);
@@ -362,6 +362,7 @@ test("REQ-6.1.3, REQ-6.1.6: a tap elsewhere on the title still starts trial 1; t
     await expect.poll(() => textPixels(page, prompt)).toBeGreaterThan(minTextPixels);
     await expect.poll(() => textPixels(page, intro)).toBeGreaterThan(minTextPixels);
     // Each button has its label and its caption, drawn under it.
+    const captions: string[] = [];
     for (const button of [titleFieldButton, titleShedButton]) {
       const label = {
         x: button.x + buttonLabel.x,
@@ -377,7 +378,10 @@ test("REQ-6.1.3, REQ-6.1.6: a tap elsewhere on the title still starts trial 1; t
       };
       await expect.poll(() => inkPixels(page, label)).toBeGreaterThan(minTextPixels);
       await expect.poll(() => inkPixels(page, caption)).toBeGreaterThan(minTextPixels);
+      captions.push(await fingerprint(page, caption));
     }
+    // The shed's caption (the 60 seconds) and the field's (no timer) are different words.
+    expect(captions[0]).not.toBe(captions[1]);
     // The card is separate from the buttons: no light text between the card and the buttons' region.
     expect(titleCard.y + titleCard.height / 2).toBeLessThan(titleFieldButton.y - 40);
     await page.screenshot({ path: `e2e/screenshots/mobile-field-${lang}-title.png` });

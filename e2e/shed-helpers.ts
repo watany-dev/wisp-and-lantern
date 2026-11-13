@@ -1,22 +1,33 @@
 // Helpers for the trial 2 (The Locked Shed) smoke. Presses are real taps or clicks; the picture is read
-// from a screenshot, because it is drawn on the canvas and a state that says `open` would pass even if
-// the door never drew. Spec: .kiro/specs/05-trial-grant-tools/design.md, "How the smoke sees the picture".
+// from a screenshot, because it is drawn on the canvas and a state that says `freed` would pass even if
+// the obstacle never went away. Spec: .kiro/specs/05-trial-grant-tools/design.md, "How the smoke sees the
+// picture".
 
 import { createHash } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
-import { tools, type ToolId } from "../src/domain/shed";
+import { answerOf, puzzleAt, tools, type PuzzleId, type ToolId } from "../src/domain/shed";
 import {
   buttonRect,
   canvas,
   cardSize,
+  hudScore,
+  hudTime,
   lessonBox,
   messageText,
   resultText,
   wisp,
   type Rect,
 } from "../src/game/lane-layout";
-import { probes, shedBox, titleShedButton, toolCenter } from "../src/game/shed-layout";
-import { shedColors } from "../src/game/shed-palette";
+import {
+  guideText,
+  leaveButton,
+  obstacleProbes,
+  probes,
+  shedBox,
+  titleShedButton,
+  toolCenter,
+} from "../src/game/shed-layout";
+import { shedColors, shedLook } from "../src/game/shed-palette";
 import type { Point } from "../src/game/steer";
 import {
   canvasFrame,
@@ -28,7 +39,7 @@ import {
   type GameState,
   type Press,
 } from "./helpers";
-import { near, pixelAt, type Rgb } from "./pixels";
+import { countMatching, near, pixelAt, type Rgb } from "./pixels";
 
 const rgb = (hex: number): Rgb => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
 const asRect = (t: { x: number; y: number; wrap: number; height: number }) => ({
@@ -38,13 +49,49 @@ const asRect = (t: { x: number; y: number; wrap: number; height: number }) => ({
   height: t.height,
 });
 
-/** The initial shed: nothing picked, nothing tried. */
-export const freshShed = { stage: "choosing", pick: null } as const;
+/** The idle shed: round 0 of seed 0, nothing picked. It is what the state holds outside trial 2. */
+export const freshShed = { stage: "choosing", seed: 0, round: 0, pick: null } as const;
+
+/** Round `round` of `seed`, choosing, nothing picked. */
+export const shedAt = (seed: number, round: number) =>
+  ({ stage: "choosing", seed, round, pick: null }) as const;
+
+/** The puzzle of the round the game is in. */
+const puzzleNow = (s: GameState): PuzzleId => puzzleAt(s.shed.seed, s.shed.round);
+
+/** The tool that answers the round the game is in, and a tool that does not. */
+export const rightTool = (s: GameState): ToolId => answerOf(puzzleNow(s));
+export const wrongTool = (s: GameState): ToolId => tools.find((t) => t !== rightTool(s))!;
 
 const picked = (s: GameState, tool: ToolId) => s.shed.stage === "choosing" && s.shed.pick === tool;
 
+type SeedWindow = Window & { __nextSeed?: number | undefined };
+
+/**
+ * Makes the next seed the game draws for the order of the puzzles a number of the test's choosing. The
+ * game draws one with `Math.random` when a button on the title or the end screen starts a run; this lets
+ * the smoke play a known order with real taps. Call it before `page.goto`.
+ */
+export async function rigSeed(page: Page) {
+  await page.addInitScript(() => {
+    const real = Math.random;
+    Math.random = () => {
+      const w = window as SeedWindow;
+      const next = w.__nextSeed;
+      if (next === undefined) return real();
+      w.__nextSeed = undefined;
+      return next / 2 ** 32;
+    };
+  });
+}
+
+/** The next run starts with this seed. */
+export const nextSeed = (page: Page, seed: number) =>
+  page.evaluate((n) => ((window as SeedWindow).__nextSeed = n), seed);
+
 /** Taps the title's shed button until the shed is open (the scene registers its input after loading). */
-export async function enterShed(page: Page, press: Press) {
+export async function enterShed(page: Page, press: Press, seed = 0) {
+  await nextSeed(page, seed);
   await pressUntil(
     page,
     press,
@@ -63,9 +110,13 @@ export async function pickTool(page: Page, press: Press, tool: ToolId) {
 export const giveToWisp = (page: Page, press: Press) =>
   pressUntil(page, press, wisp, (s) => s.shed.stage === "tried");
 
-/** Taps the button after a result (try another tool, or play again). */
+/** Taps the button after a result (try another tool, or the next puzzle). */
 export const pressShedButton = (page: Page, press: Press) =>
   pressUntil(page, press, { x: buttonRect.x, y: buttonRect.y }, (s) => s.shed.stage === "choosing");
+
+/** Taps the button back to the title until the game is on the title screen. */
+export const pressLeave = (page: Page, press: Press) =>
+  pressUntil(page, press, { x: leaveButton.x, y: leaveButton.y }, (s) => s.phase === "title");
 
 /**
  * The average color of a 5 x 5 patch of the screenshot around each game point. Only the game rectangle
@@ -96,24 +147,38 @@ export async function colorsAt(page: Page, area: Rect, points: Point[]): Promise
   });
 }
 
-type Picture = { door: "shut" | "open"; cat: "inside" | "outside"; star: boolean };
+/** What the picture should show: the puzzle of the round, and whether the cat is free. */
+type Picture = { puzzle: PuzzleId; solved: boolean };
 type Seen = {
-  door: Picture["door"] | "?";
+  door: "shut" | "open" | "?";
   window: "cat" | "empty" | "?";
   outside: boolean;
+  roofCat: boolean;
   star: boolean;
+  obstacle: boolean;
 };
 
 const brightness = ([r, g, b]: Rgb) => (r + g + b) / 3;
 
-/** What the four probe points of the picture show right now (REQ-5.14.2). */
-async function seen(page: Page): Promise<Seen> {
-  const [door, window, outside, star] = await colorsAt(page, shedBox, [
+/** The color of each obstacle at its probe point (`obstacleProbes`). The lock is part of the door. */
+const obstacleColor: Partial<Record<PuzzleId, number>> = {
+  leaves: shedLook.leafOrange,
+  boards: shedLook.plank,
+  rope: shedLook.rope,
+};
+
+/** What the probe points of the picture show right now for this puzzle (REQ-5.14.2). */
+async function seen(page: Page, puzzle: PuzzleId): Promise<Seen> {
+  const spot = obstacleProbes[puzzle as keyof typeof obstacleProbes] ?? probes.door;
+  const [door, window, outside, roofCat, star, obstacle] = await colorsAt(page, shedBox, [
     probes.door,
     probes.window,
     probes.catOutside,
+    probes.catRoof,
     probes.star,
+    spot,
   ]);
+  const wanted = obstacleColor[puzzle];
   return {
     door: near(door!, rgb(shedColors.door), 30)
       ? "shut"
@@ -126,35 +191,50 @@ async function seen(page: Page): Promise<Seen> {
         ? "empty"
         : "?",
     outside: near(outside!, rgb(shedColors.fur), 45),
+    roofCat: near(roofCat!, rgb(shedColors.fur), 45),
     star: brightness(star!) > 150,
+    obstacle: wanted !== undefined && near(obstacle!, rgb(wanted), 45),
   };
 }
 
 /**
- * The picture on the screen is the expected one: the door shut or open, the cat in the window or by the
- * shed (in one place only), and the star. A state that says `open` with a shut door fails here.
+ * The picture on the screen is the expected one for this puzzle. While the cat is stuck: the door shut, the
+ * cat in the window (or on the roof, in the roof puzzle), and the obstacle there (leaves, boards, rope).
+ * Once it is free: the obstacle gone, the cat by the shed in one place only, the star, and the door open
+ * (not in the roof puzzle, where the door was never shut for a reason). A state that says `freed` with the
+ * obstacle still on the screen fails here.
  */
 export async function expectPicture(page: Page, expected: Picture) {
-  const inside = expected.cat === "inside";
+  const { puzzle, solved } = expected;
+  const opens = solved && puzzle !== "roof";
+  const inside = !solved && puzzle !== "roof";
   await expect
-    .poll(() => seen(page), { timeout: 5_000 })
+    .poll(() => seen(page, puzzle), { timeout: 5_000 })
     .toEqual({
-      door: expected.door,
+      door: opens ? "open" : "shut",
       window: inside ? "cat" : "empty",
-      outside: !inside,
-      star: expected.star,
+      outside: solved,
+      roofCat: puzzle === "roof" && !solved,
+      star: solved,
+      obstacle: !solved && puzzle in obstacleColor,
     });
 }
 
-/** The tool cards whose "picked" mark (a gold disc at the top right) is drawn. */
+/** The picture for the round the game is in right now, stuck or free. */
+export async function expectPictureNow(page: Page, solved: boolean) {
+  await expectPicture(page, { puzzle: puzzleNow(await gameState(page)), solved });
+}
+
+/** The tool cards whose "picked" mark (a gold frame and a gold disc at the top right) is drawn. */
 async function markedTools(page: Page): Promise<ToolId[]> {
   const spots = tools.map((tool) => {
     const c = toolCenter(tool);
-    // The gold disc of the mark, at its upper edge: clear of the tick drawn across its middle.
-    return { x: c.x + cardSize.width / 2 - 8, y: c.y - cardSize.height / 2 - 4 };
+    // On the frame at the disc's upper left: gold when picked, clear of the tick drawn across the disc's
+    // middle, and (in the lower row) clear of the frame of the card above.
+    return { x: c.x + cardSize.width / 2 - 16, y: c.y - cardSize.height / 2 + 2 };
   });
-  const row = { x: canvas.width / 2, y: toolCenter("key").y - 6, width: canvas.width, height: 120 };
-  const colors = await colorsAt(page, row, spots);
+  const area = { x: canvas.width / 2, y: 730, width: canvas.width, height: 200 };
+  const colors = await colorsAt(page, area, spots);
   return tools.filter((_, i) => near(colors[i]!, rgb(shedColors.star), 40));
 }
 
@@ -187,3 +267,38 @@ async function print(page: Page, rect: { x: number; y: number; width: number; he
 
 export const resultMessagePrint = (page: Page) => print(page, resultBox);
 export const closingLinePrint = (page: Page) => print(page, lessonBox);
+
+/** The clock's number is drawn in the top row: the run is on the screen (REQ-5.7.1). */
+export async function expectClockShown(page: Page) {
+  await expect
+    .poll(() => textPixels(page, hudTime), { timeout: 5_000 })
+    .toBeGreaterThan(minTextPixels);
+}
+
+/** Gold pixels in a game rectangle, counted in CSS pixels. The score is drawn in the star's gold. */
+async function goldPixels(page: Page, rect: Rect): Promise<number> {
+  const { box, scale } = await canvasFrame(page);
+  const clip = {
+    x: box.x + (rect.x - rect.width / 2) * scale,
+    y: box.y + (rect.y - rect.height / 2) * scale,
+    width: rect.width * scale,
+    height: rect.height * scale,
+  };
+  const image = await look(page, clip);
+  const ratio = image.width / clip.width;
+  const gold = rgb(shedColors.star);
+  return countMatching(image, (pixel) => near(pixel, gold, 40)) / (ratio * ratio);
+}
+
+/** The score is drawn in the top row, in gold, from the start ("Score 0"). */
+export async function expectScoreDrawn(page: Page) {
+  await expect
+    .poll(() => goldPixels(page, hudScore), { timeout: 5_000 })
+    .toBeGreaterThan(minTextPixels);
+}
+
+/** A fingerprint of the score: it changes when a cat is freed. */
+export const scorePrint = (page: Page) => print(page, hudScore);
+
+/** A fingerprint of the guide: a different puzzle, different words, a different fingerprint. */
+export const guidePrint = (page: Page) => print(page, asRect(guideText));

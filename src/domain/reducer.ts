@@ -4,7 +4,7 @@ import type { FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
 import { initialField, reduceField } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
-import { reduceShed } from "./shed";
+import { initialShed, newShed, reduceShed, shedOutcome } from "./shed";
 import { trials, type GameState, type Lang } from "./state";
 
 export function reduce(state: GameState, event: GameEvent): GameState {
@@ -18,7 +18,9 @@ export function reduce(state: GameState, event: GameEvent): GameState {
     case "Tick":
       return tick(state, event.ms);
     case "StartShed":
-      return startShed(state);
+      return startShed(state, event.seed ?? 0);
+    case "LeaveShed":
+      return leaveShed(state);
     case "StartField":
       return startField(state, event.seed);
     default:
@@ -38,9 +40,10 @@ function reduceTrial(
     case "Retry":
       return inTrial(state, trials.lane) ? withLane(state, reduceLane(state.lane, event)) : state;
     case "PickTool":
-    case "GiveTool":
     case "RetryShed":
       return inTrial(state, trials.shed) ? withShed(state, reduceShed(state.shed, event)) : state;
+    case "GiveTool":
+      return inTrial(state, trials.shed) ? give(state) : state;
     default:
       return reduceFieldTrial(state, event);
   }
@@ -69,12 +72,34 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     lang: next,
     lane: initialLane,
     run: restartRun(state.run),
+    shed: initialShed,
   };
 }
 
-/** The shed opens from the title only, with `shed` still initial. It starts no run: `run` and `lane` stay as they were. */
-function startShed(state: GameState): GameState {
-  return state.phase === "title" ? { ...state, phase: "trial", trial: trials.shed } : state;
+/**
+ * The shed's 60-second run starts from the title, or from the shed's own end screen to play again. Like
+ * trial 1's `Start`, it gives a full clock and a score of 0 and keeps only the best; the lane is untouched.
+ */
+function startShed(state: GameState, seed: number): GameState {
+  const again = state.phase === "over" && state.trial === trials.shed;
+  if (state.phase !== "title" && !again) return state;
+  return {
+    ...state,
+    phase: "trial",
+    trial: trials.shed,
+    shed: newShed(seed),
+    run: restartRun(state.run),
+  };
+}
+
+/**
+ * The way back to the title, from a run of the shed or from its end screen (`trial` is 2 in both, and 0 on
+ * the title). It keeps the language, the hero and the best score of the session, and drops the shed and the
+ * run in progress.
+ */
+function leaveShed(state: GameState): GameState {
+  if (state.trial !== trials.shed) return state;
+  return { ...state, phase: "title", trial: 0, shed: initialShed, run: restartRun(state.run) };
 }
 
 /**
@@ -96,9 +121,10 @@ function leaveField(state: GameState): GameState {
   return { ...state, phase: "title", trial: 0, field: initialField };
 }
 
-/** Time passes only during a run of trial 1. At zero the run is over and its score is final. */
+/** Time passes only during a run of trial 1 or trial 2. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  if (!inTrial(state, trials.lane) || !(ms > 0)) return state;
+  const running = inTrial(state, trials.lane) || inTrial(state, trials.shed);
+  if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
   return { ...state, phase: "over", run: finishRun(run) };
@@ -109,6 +135,13 @@ function ask(state: GameState, event: GameEvent & { type: "Ask" }): GameState {
   const lane = reduceLane(state.lane, event);
   if (lane === state.lane) return state;
   return { ...state, lane, run: scoreSearch(state.run, outcome(lane) === "right") };
+}
+
+/** The hand-over scores once, like the search of trial 1: a tool that frees the cat adds points, any other ends the streak. */
+function give(state: GameState): GameState {
+  const shed = reduceShed(state.shed, { type: "GiveTool" });
+  if (shed === state.shed) return state;
+  return { ...state, shed, run: scoreSearch(state.run, shedOutcome(shed) === "freed") };
 }
 
 function withLane(state: GameState, lane: GameState["lane"]): GameState {

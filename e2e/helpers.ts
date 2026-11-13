@@ -23,7 +23,9 @@ export type GameState = {
   hero: { x: number; y: number };
   lane: { wish: number; pick: Pick; asked: boolean };
   run: { remainingMs: number; score: number; streak: number; best: number; record: boolean };
-  shed: { stage: "choosing"; pick: string | null } | { stage: "tried"; tool: string };
+  shed:
+    | { stage: "choosing"; seed: number; round: number; pick: string | null }
+    | { stage: "tried"; seed: number; round: number; tool: string };
   field:
     | {
         stage: "sorting";

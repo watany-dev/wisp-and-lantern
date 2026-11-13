@@ -15,7 +15,7 @@ export const shedColors = {
   star: 0xffd54a,
 } as const;
 
-/** The colors of the shed that nothing reads: its wall, roof, frame, ground and lock. */
+/** The colors of the shed that nothing reads: its wall, roof, frame, ground, lock and the puzzles' obstacles. */
 export const shedLook = {
   wall: 0x8a5a32,
   wallLine: 0x6a4224,
@@ -26,4 +26,13 @@ export const shedLook = {
   ground: 0x241d3c,
   lock: 0xe5b93c,
   lockDark: 0x8a6a1a,
+  plank: 0xb98a52,
+  plankEdge: 0x6a4a28,
+  nail: 0x2b2b3a,
+  rope: 0xd8bd86,
+  ropeDark: 0x8c6d3c,
+  leafRed: 0xb5432e,
+  leafOrange: 0xd9792b,
+  leafGold: 0xe0b23a,
+  leafBrown: 0x7a4a24,
 } as const;

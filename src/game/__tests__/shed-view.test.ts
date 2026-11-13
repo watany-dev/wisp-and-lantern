@@ -1,35 +1,51 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../../domain/events";
 import { reduce } from "../../domain/reducer";
-import { tools, type ToolId } from "../../domain/shed";
+import { answerOf, puzzles, tools, type PuzzleId, type ToolId } from "../../domain/shed";
 import { initialState, type Lang } from "../../domain/state";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import { messageText, resultText, wisp } from "../lane-layout";
 import { wispWork } from "../shed-layout";
-import { justTried, shedEnterLabel, shedView, toolName } from "../shed-view";
+import {
+  justTried,
+  leaveLabel,
+  shedCaption,
+  shedEnterLabel,
+  shedView,
+  toolName,
+} from "../shed-view";
 
 const strings = { ja, en };
-const enter: GameEvent = { type: "StartShed" };
+// Seed `n` starts its order at puzzle `n`: lock, leaves, boards, rope, roof. With no seed it is the lock.
+const enter = (seed?: number): GameEvent =>
+  seed === undefined ? { type: "StartShed" } : { type: "StartShed", seed };
 const pick = (tool: ToolId): GameEvent => ({ type: "PickTool", tool });
 const give: GameEvent = { type: "GiveTool" };
 const retry: GameEvent = { type: "RetryShed" };
 const view = (lang: Lang, ...events: GameEvent[]) =>
-  shedView([enter, ...events].reduce(reduce, { ...initialState, lang }));
+  shedView([enter(), ...events].reduce(reduce, { ...initialState, lang }));
+const viewOf = (lang: Lang, seed: number, ...events: GameEvent[]) =>
+  shedView([enter(seed), ...events].reduce(reduce, { ...initialState, lang }));
 const name = (tool: ToolId, lang: Lang) => strings[lang].shed.tools[tool];
-
-/** The picture the table in design.md gives for each result. */
-const shutPicture = { door: "shut", cat: "inside", star: false } as const;
-const openPicture = { door: "open", cat: "outside", star: true } as const;
+const other = (puzzle: PuzzleId): ToolId => tools.find((t) => t !== answerOf(puzzle))!;
+const firstOf = (seed: number): PuzzleId => puzzles[seed]!;
 
 describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => {
   const s = strings[lang].shed;
 
-  it("shows the guide in every stage (REQ-5.2.1)", () => {
+  it("shows the round's guide in every stage (REQ-5.2.1)", () => {
     for (const events of [[], [pick("key")], [pick("key"), give], [pick("hammer"), give]]) {
-      expect(view(lang, ...events).guide).toBe(s.guide);
+      expect(view(lang, ...events).guide).toBe(s.puzzles.lock.guide);
     }
   });
+
+  it.each([0, 1, 2, 3, 4])(
+    "shows the guide of the puzzle that seed %i starts with (REQ-5.2.3)",
+    (seed) => {
+      expect(viewOf(lang, seed).guide).toBe(s.puzzles[firstOf(seed)].guide);
+    },
+  );
 
   describe("choosing with nothing picked (REQ-5.2.3, REQ-5.4.3)", () => {
     const v = view(lang);
@@ -47,14 +63,18 @@ describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => 
       expect(v.messageAt).toEqual({ x: messageText.x, y: messageText.y });
     });
 
-    it("shows the shed locked with the cat inside and no tool tried", () => {
-      expect(v.picture).toEqual({ ...shutPicture, tool: null });
+    it("shows the puzzle unsolved with no tool tried and no star", () => {
+      expect(v.picture).toEqual({ puzzle: "lock", solved: false, tool: null, star: false });
     });
 
-    it("marks no tool, fades none, and labels all three in order", () => {
-      expect(v.tools.map((t) => t.id)).toEqual(["key", "broom", "hammer"]);
+    it("marks no tool, fades none, and labels all five in order", () => {
+      expect(v.tools.map((t) => t.id)).toEqual([...tools]);
       expect(v.tools.map((t) => t.label)).toEqual(tools.map((t) => name(t, lang)));
       expect(v.tools.every((t) => !t.picked && t.alpha === 1)).toBe(true);
+    });
+
+    it("always offers the way back to the title", () => {
+      expect(v.leave).toBe(s.leave);
     });
   });
 
@@ -74,8 +94,8 @@ describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => 
       expect(v.tools.every((t) => t.alpha === 1)).toBe(true);
     });
 
-    it("does not use the tool: the picture is the locked shed with no tool on it, and no closing line", () => {
-      expect(v.picture).toEqual({ ...shutPicture, tool: null });
+    it("does not use the tool: the puzzle is as it was, no tool on it, no closing line", () => {
+      expect(v.picture).toEqual({ puzzle: "lock", solved: false, tool: null, star: false });
       expect(v.lesson).toBeNull();
       expect(v.wispTarget).toEqual(wisp);
     });
@@ -88,71 +108,92 @@ describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => 
   });
 });
 
-describe.each(["ja", "en"] as const)("shedView after the hand-over in %s", (lang) => {
-  const s = strings[lang].shed;
+describe.each(["ja", "en"] as const)(
+  "shedView after the right tool in %s (REQ-5.5, REQ-5.8)",
+  (lang) => {
+    const s = strings[lang].shed;
 
-  describe("the key handed over (REQ-5.5, REQ-5.8)", () => {
-    const v = view(lang, pick("key"), give);
+    describe.each([0, 1, 2, 3, 4])("seed %i, whose first puzzle has its own answer", (seed) => {
+      const puzzle = firstOf(seed);
+      const tool = answerOf(puzzle);
+      const v = viewOf(lang, seed, pick(tool), give);
 
-    it("opens the door, lets the cat out and shows the star, with the key on the lock", () => {
-      expect(v.picture).toEqual({ ...openPicture, tool: "key" });
+      it("frees the cat: the obstacle is gone, the star shows, the tried tool is on the puzzle", () => {
+        expect(v.picture).toEqual({ puzzle, solved: true, tool, star: true });
+      });
+
+      it("names the tool in the message, and shows the puzzle's closing line as its own text", () => {
+        expect(v.message).toBe(s.free.replace("{0}", name(tool, lang)));
+        expect(v.lesson).toBe(s.puzzles[puzzle].lesson.replace("{0}", name(tool, lang)));
+        expect(v.lesson).toContain(name(tool, lang));
+        expect(v.message).not.toContain(v.lesson!);
+      });
+
+      it("offers the next-puzzle button, and puts the wisp and the message in the result places", () => {
+        expect(v.button).toEqual({ text: s.next, event: { type: "RetryShed" } });
+        expect(v.wispTarget).toEqual(wispWork);
+        expect(v.messageAt).toEqual({ x: resultText.x, y: resultText.y });
+      });
+
+      it("locks the wisp and keeps the tool marked while the others fade", () => {
+        expect(v.armed).toBe(false);
+        expect(v.wispAlpha).toBe(1);
+        expect(v.tools.map((t) => [t.id, t.picked, t.alpha])).toEqual(
+          tools.map((id) => [id, id === tool, id === tool ? 1 : 0.45]),
+        );
+      });
+
+      it("goes on to the next puzzle after the button, with a new guide and nothing picked", () => {
+        const next = viewOf(lang, seed, pick(tool), give, retry);
+        expect(next.guide).toBe(s.puzzles[puzzles[(seed + 1) % 5]!].guide);
+        expect(next.guide).not.toBe(v.guide);
+        expect(next.message).toBe(s.pick);
+        expect(next.picture.solved).toBe(false);
+      });
     });
+  },
+);
 
-    it("names the key in the message, and shows the closing line as its own text", () => {
-      expect(v.message).toBe(s.open.replace("{0}", name("key", lang)));
-      expect(v.lesson).toBe(s.lesson.replace("{0}", name("key", lang)));
-      expect(v.lesson).toContain(name("key", lang));
-      expect(v.message).not.toContain(v.lesson!);
+describe.each(["ja", "en"] as const)(
+  "shedView after another tool in %s (REQ-5.5, REQ-5.6)",
+  (lang) => {
+    const s = strings[lang].shed;
+
+    describe.each([0, 1, 2, 3, 4])("seed %i", (seed) => {
+      const puzzle = firstOf(seed);
+      const tool = other(puzzle);
+      const v = viewOf(lang, seed, pick(tool), give);
+
+      it("leaves the puzzle as it was, with the tried tool on it and no star", () => {
+        expect(v.picture).toEqual({ puzzle, solved: false, tool, star: false });
+      });
+
+      it("says which tool the wisp used and what is still there, with no closing line", () => {
+        expect(v.message).toBe(s.puzzles[puzzle].stuck.replace("{0}", name(tool, lang)));
+        expect(v.message).toContain(name(tool, lang));
+        expect(v.lesson).toBeNull();
+      });
+
+      it("invites the child to try another tool, with the same retry event as the success", () => {
+        expect(v.button).toEqual({ text: s.retry, event: { type: "RetryShed" } });
+        expect(v.armed).toBe(false);
+        expect(v.wispTarget).toEqual(wispWork);
+        expect(v.messageAt).toEqual({ x: resultText.x, y: resultText.y });
+      });
+
+      it("keeps only the handed-over tool marked, and fades the other four", () => {
+        expect(v.tools.filter((t) => t.picked).map((t) => t.id)).toEqual([tool]);
+        expect(v.tools.filter((t) => t.alpha === 0.45)).toHaveLength(4);
+      });
+
+      it("stays on the same puzzle after the button, with the same guide", () => {
+        const again = viewOf(lang, seed, pick(tool), give, retry);
+        expect(again).toEqual(viewOf(lang, seed));
+        expect(again.guide).toBe(v.guide);
+      });
     });
-
-    it("offers the play-again button, and puts the wisp and the message in the result places", () => {
-      expect(v.button).toEqual({ text: s.again, event: { type: "RetryShed" } });
-      expect(v.wispTarget).toEqual(wispWork);
-      expect(v.messageAt).toEqual({ x: resultText.x, y: resultText.y });
-    });
-
-    it("locks the wisp and keeps the key marked while the others fade", () => {
-      expect(v.armed).toBe(false);
-      expect(v.wispAlpha).toBe(1);
-      expect(v.tools.map((t) => [t.id, t.picked, t.alpha])).toEqual([
-        ["key", true, 1],
-        ["broom", false, 0.45],
-        ["hammer", false, 0.45],
-      ]);
-    });
-  });
-
-  describe.each(["broom", "hammer"] as const)("the %s handed over (REQ-5.5, REQ-5.6)", (tool) => {
-    const v = view(lang, pick(tool), give);
-
-    it("leaves the door shut and the cat inside, with the tried tool on the lock and no star", () => {
-      expect(v.picture).toEqual({ ...shutPicture, tool });
-    });
-
-    it("says which tool the wisp used and that the door stayed shut, with no closing line", () => {
-      expect(v.message).toBe(s.shut.replace("{0}", name(tool, lang)));
-      expect(v.message).toContain(name(tool, lang));
-      expect(v.lesson).toBeNull();
-    });
-
-    it("invites the child to try another tool, with the same retry event as the success", () => {
-      expect(v.button).toEqual({ text: s.retry, event: { type: "RetryShed" } });
-      expect(v.armed).toBe(false);
-      expect(v.wispTarget).toEqual(wispWork);
-      expect(v.messageAt).toEqual({ x: resultText.x, y: resultText.y });
-    });
-
-    it("keeps only the handed-over tool marked", () => {
-      expect(v.tools.filter((t) => t.picked).map((t) => t.id)).toEqual([tool]);
-      expect(v.tools.filter((t) => t.alpha === 0.45)).toHaveLength(2);
-    });
-  });
-
-  it("goes back to the first view after a retry, from a shut and from an open result", () => {
-    expect(view(lang, pick("broom"), give, retry)).toEqual(view(lang));
-    expect(view(lang, pick("key"), give, retry)).toEqual(view(lang));
-  });
-});
+  },
+);
 
 /** The view without its words, to compare two languages. */
 const strip = (v: ReturnType<typeof shedView>) => ({
@@ -162,44 +203,50 @@ const strip = (v: ReturnType<typeof shedView>) => ({
   lesson: v.lesson === null ? null : "",
   button: v.button && { ...v.button, text: "" },
   tools: v.tools.map((t) => ({ ...t, label: "" })),
+  leave: "",
 });
 
-describe("shedView, the three results agree with each other (REQ-5.5.3)", () => {
-  it.each(tools)("the %s: tried tool, picture, message and button name the same tool", (tool) => {
-    for (const lang of ["ja", "en"] as const) {
-      const v = view(lang, pick(tool), give);
-      expect(v.picture.tool).toBe(tool);
-      expect(v.message).toContain(name(tool, lang));
-      expect(v.tools.find((t) => t.picked)?.id).toBe(tool);
-      // The door is open exactly when the key was handed over.
-      expect(v.picture.door === "open").toBe(tool === "key");
-      expect(v.picture.cat === "outside").toBe(tool === "key");
-      expect(v.picture.star).toBe(tool === "key");
-      expect(v.lesson !== null).toBe(tool === "key");
-      expect(v.button?.text).toBe(
-        tool === "key" ? strings[lang].shed.again : strings[lang].shed.retry,
-      );
-    }
-  });
+describe("shedView, the results agree with each other (REQ-5.5.3)", () => {
+  it.each(tools)(
+    "the %s in the first puzzle: tried tool, picture, message and button name the same tool",
+    (tool) => {
+      for (const lang of ["ja", "en"] as const) {
+        const v = view(lang, pick(tool), give);
+        const freed = tool === answerOf("lock");
+        expect(v.picture.tool).toBe(tool);
+        expect(v.message).toContain(name(tool, lang));
+        expect(v.tools.find((t) => t.picked)?.id).toBe(tool);
+        expect(v.picture.solved).toBe(freed);
+        expect(v.picture.star).toBe(freed);
+        expect(v.lesson !== null).toBe(freed);
+        expect(v.button?.text).toBe(freed ? strings[lang].shed.next : strings[lang].shed.retry);
+      }
+    },
+  );
 
   it("changes only the words when the language changes, never the tool or the result (REQ-5.12.4)", () => {
     for (const events of [[], [pick("hammer")], [pick("broom"), give], [pick("key"), give]]) {
       expect(strip(view("ja", ...events))).toEqual(strip(view("en", ...events)));
     }
-    const asJa = [enter, pick("key"), give, { type: "SetLang", lang: "ja" } as const];
+    const asJa = [enter(), pick("key"), give, { type: "SetLang", lang: "ja" } as const];
     expect(shedView(asJa.reduce(reduce, initialState)).picture).toEqual(
       view("en", pick("key"), give).picture,
     );
   });
 });
 
-describe("toolName and shedEnterLabel", () => {
-  it("name every tool and the title's button in the child's language", () => {
+describe("the words of the title and the end screen", () => {
+  it("name every tool, the title's button and its caption, and the way back, in the child's language", () => {
     expect(toolName("key", "en")).toBe("key");
-    expect(toolName("broom", "en")).toBe("broom");
+    expect(toolName("scissors", "en")).toBe("scissors");
     expect(toolName("hammer", "ja")).toBe(ja.shed.tools.hammer);
+    expect(toolName("ladder", "ja")).toBe(ja.shed.tools.ladder);
     expect(shedEnterLabel("en")).toBe("Free the cat");
     expect(shedEnterLabel("ja")).toBe(ja.shed.enter);
+    expect(shedCaption("en")).toBe(en.shed.timeAttack);
+    expect(shedCaption("ja")).toBe(ja.shed.timeAttack);
+    expect(leaveLabel("en")).toBe("Title");
+    expect(leaveLabel("ja")).toBe(ja.shed.leave);
   });
 });
 

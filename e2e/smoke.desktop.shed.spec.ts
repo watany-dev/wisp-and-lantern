@@ -1,57 +1,61 @@
 import { expect, test } from "@playwright/test";
-import { initialRun } from "../src/domain/run";
 import { toolCenter } from "../src/game/shed-layout";
 import { clicker, collectErrors, expectBundledFont, expectClosingLine, gameState } from "./helpers";
 import {
   enterShed,
+  expectClockShown,
   expectMarked,
   expectMessage,
   expectPicture,
   freshShed,
   giveToWisp,
   pickTool,
+  pressLeave,
   pressShedButton,
+  rigSeed,
+  shedAt,
 } from "./shed-helpers";
 
-const shut = { door: "shut", cat: "inside", star: false } as const;
-const open = { door: "open", cat: "outside", star: true } as const;
-
-test("REQ-5.10, REQ-5.14: plays the shed with the mouse only: broom, hammer, key, in English", async ({
+test("REQ-5.10, REQ-5.14: plays the shed with the mouse only: a wrong tool, the answer, the next puzzle, the way back, in English", async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   const errors = collectErrors(page);
   const click = clicker(page);
+  await rigSeed(page);
   await page.goto("./?lang=en");
   await expect(page.locator("canvas")).toBeVisible();
   await expectBundledFont(page);
 
-  await enterShed(page, click);
+  // Seed 0: the lock first, then the leaves.
+  await enterShed(page, click, 0);
   expect(await gameState(page)).toMatchObject({ phase: "trial", trial: 2, shed: freshShed });
-  expect((await gameState(page)).run).toEqual(initialRun);
-  await expectPicture(page, shut);
+  expect((await gameState(page)).run).toMatchObject({ score: 0, streak: 0 });
+  await expectClockShown(page);
+  await expectPicture(page, { puzzle: "lock", solved: false });
 
-  await pickTool(page, click, "broom");
-  await expectMarked(page, ["broom"]);
+  await pickTool(page, click, "scissors");
+  await expectMarked(page, ["scissors"]);
   await giveToWisp(page, click);
   await expectMessage(page, "result");
-  await expectPicture(page, shut);
-  await page.screenshot({ path: "e2e/screenshots/desktop-shed-broom.png" });
-
-  await pressShedButton(page, click);
-  await pickTool(page, click, "hammer");
-  await giveToWisp(page, click);
-  await expectPicture(page, shut);
+  await expectPicture(page, { puzzle: "lock", solved: false });
+  await page.screenshot({ path: "e2e/screenshots/desktop-shed-scissors.png" });
 
   await pressShedButton(page, click);
   await pickTool(page, click, "key");
   await giveToWisp(page, click);
   await expectMessage(page, "result");
-  await expectPicture(page, open);
+  await expectPicture(page, { puzzle: "lock", solved: true });
   await expectClosingLine(page, true);
-  await page.screenshot({ path: "e2e/screenshots/desktop-shed-open.png" });
+  expect((await gameState(page)).run).toMatchObject({ score: 100, streak: 1 });
+  await page.screenshot({ path: "e2e/screenshots/desktop-shed-freed.png" });
 
   await pressShedButton(page, click);
-  expect((await gameState(page)).shed).toEqual(freshShed);
+  expect((await gameState(page)).shed).toEqual(shedAt(0, 1));
+  await expectPicture(page, { puzzle: "leaves", solved: false });
+
+  await pressLeave(page, click);
+  expect(await gameState(page)).toMatchObject({ phase: "title", trial: 0, shed: freshShed });
   expect(errors).toEqual([]);
 });
 
@@ -59,6 +63,7 @@ test("REQ-5.10.3: a press that starts on a tool does not walk the hero, and a pr
   page,
 }) => {
   const click = clicker(page);
+  await rigSeed(page);
   await page.goto("./?lang=en");
   await expect(page.locator("canvas")).toBeVisible();
   await enterShed(page, click);
@@ -73,7 +78,7 @@ test("REQ-5.10.3: a press that starts on a tool does not walk the hero, and a pr
   await page.mouse.down();
   await expect
     .poll(async () => (await gameState(page)).shed)
-    .toEqual({ stage: "choosing", pick: "key" });
+    .toMatchObject({ stage: "choosing", pick: "key" });
   await page.waitForTimeout(500);
   expect((await gameState(page)).hero).toEqual(before);
   await page.mouse.up();

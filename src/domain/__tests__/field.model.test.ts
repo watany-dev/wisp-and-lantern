@@ -122,6 +122,7 @@ const common: readonly GameEvent[] = [
   { type: "PickTool", tool: "key" },
   { type: "GiveTool" },
   { type: "RetryShed" },
+  { type: "LeaveShed" },
 ];
 const insideTheField: readonly GameEvent[] = [
   ...common,

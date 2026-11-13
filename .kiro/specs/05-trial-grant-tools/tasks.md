@@ -1,5 +1,8 @@
 # Tasks: Trial 2, The Locked Shed
 
+> **Revision 2** adds section 9 (a 60-second time attack with five puzzles and a way back to the title). Sections 1
+> to 8 are the first build and are kept as they were written; their Result lines describe that build.
+
 One task per branch and per pull request (`AGENTS.md`). Branch `05-trial-grant-tools/<task>`, cut from
 `main` after the previous task is merged. Every task leaves the game working and passes `npm run check`;
 tasks 6.1, 7.1 and 8.1 also pass `npm run build` followed by `npm run smoke`. Sized for review on a
@@ -29,6 +32,20 @@ need to change, it is named here with its new test and why trial 1's guarantee i
 | old test | file | replaced in | by | why trial 1 is not weaker |
 |---|---|---|---|---|
 | (none) | | | | |
+
+Revision 2 (section 9) does change tests of the shed itself, because the shed's rules changed (five tools, a
+puzzle per round, a clock). The tests that changed, and the one test of another trial:
+
+| old test | file | replaced in | by | why the guarantee is not weaker |
+|---|---|---|---|---|
+| the three tools and "only the key opens"; every `Shed` literal | `shed.test.ts` | 9.2 | five tools, five puzzles with one answer each, `puzzleAt` for several seeds, the retry after stuck and freed | the same rules are tested for every puzzle; nothing of trial 1 |
+| INV-18 to INV-24 (the first wording); INV-24 "no clock, no score" | `shed.pbt.test.ts` | 9.2 | INV-18 to INV-24 reworded, INV-15 to INV-17 for the shed, INV-40 to INV-43 | INV-24's "no clock, no score" is the thing the maintainer asked to remove; the rest keeps its idea |
+| the 84-state model, its six breaks | `shed.model.test.ts` | 9.3 | the 9,400-state model with the run, seeds, the title and eight breaks | every old goal is still a goal; two goals are checked with the clock stopped |
+| "StartShed ... starts no run", "the clock never runs in the shed", "StartShed is ignored ... on the end screen" | `reducer.test.ts` (trial 2 block) | 9.2 | StartShed starts a 60-second run, Tick runs the shed's clock, StartShed on the shed's end screen plays again | these are the changed rules; trial 1's `reducer.test.ts` cases are untouched |
+| INV-32: `after.run` equals the initial run in the field | `field.pbt.test.ts` | 9.2 | the same with `best` allowed to differ | a run of the shed can set the best before the child comes to the field; the clock and the score are still checked |
+| "offers one button that starts a new run" (trial 1's end screen) | `over-view.test.ts` | 9.5 | `buttons` equals one button with action `play`, the same text | the view now has a list of buttons; trial 1's has the same one |
+| the shed's strings, view, layout, palette and title tests | `shed-content`, `shed-view`, `shed-layout`, `shed-palette`, `title-view` tests | 9.4, 9.5 | the same checks for five tools and five puzzles, plus the new ones | no check is removed; the title test now expects the shed's 60-second caption |
+| the shed smoke, the title caption test | `smoke.mobile.shed.spec.ts`, `smoke.desktop.shed.spec.ts`, `smoke.mobile.field.spec.ts` | 9.7 | the revised paths, with the seed set by the test | the field's own smoke is untouched but for one assertion on the captions |
 
 ## 1. Spec
 
@@ -268,3 +285,90 @@ need to change, it is named here with its new test and why trial 1's guarantee i
     not work. **Still not verified:** no real phone, no real child (the weekly pass in
     `docs/device-checklist.md` and the next playtest do that); the `reviewer` and `kid-reader` agents
     were never run, only their rubrics applied by hand; the shed has no way back to the title (reload).
+
+## 9. Revision 2: a 60-second time attack, five puzzles, a way back
+
+One pull request for the whole revision, on the branch `05-trial-grant-tools/r2`, because the maintainer asked
+for the three changes together and each would leave the game half-changed without the others (the order of
+the rules, the words, the screen and the smoke depends on the new `Shed`). Each task below says which files
+it is. The tasks were done in this order, `npm run check` green after 9.7.
+
+- [x] 9.1 Update the spec: `requirements.md` (revision 2, REQ-5.16), `design.md`, this file, the Japanese
+      translation of all three, the invariants file.
+  - Requirements: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-5.9, REQ-5.10, REQ-5.12, REQ-5.13, REQ-5.14, REQ-5.16
+  - Tests: none (documents); `check-trace` and the Japanese-text gate run in `npm run verify`.
+  - Result: `npm run verify` passes (`check-trace: 40 invariants, 0 without tests`). The pointer notes of `04` and
+    `06` are unchanged: `05` points to `06`, and the sentences about "no way back" are now marked in `05`'s own
+    note. The kid-reader and reviewer agents were not run; their rubrics were applied by hand.
+
+- [x] 9.2 Domain: `shed.ts` (five tools, five puzzles, `puzzleAt`, `newShed`, the retry that goes on),
+      `events.ts` (`StartShed` with a seed, `LeaveShed`), `reducer.ts` (the shed's clock, score, start, leave).
+  - Requirements: REQ-5.1.2, REQ-5.2.3, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.9, REQ-5.13, REQ-5.16
+  - Invariants: INV-15 to INV-17 (widened), INV-18 to INV-24 (reworded), INV-40 to INV-43 (new)
+  - Tests: `shed.test.ts`, `shed.pbt.test.ts`, `reducer.test.ts`; `field.pbt.test.ts` and `field.model.test.ts` gain `LeaveShed`
+    as another trial's event.
+  - Done when: `npm run check` passes with no surviving mutant.
+  - Result: Node 26.13.0. Tests 832 in 41 files, coverage 100% in every measure. Mutation: the first run had
+    two survivors in `reducer.ts` (`leaveShed` tested "not the title" as well as "`trial` is 2", which the title
+    can never tell apart); the condition was removed, and `reducer.ts` is at 100% (152 killed). The whole run:
+    1,126 killed, 1 timeout, 0 survived (final run, 15 min 41 s). Seven runtime errors are the mutants that break a module at load time (`field-view.ts`, `shed-view.ts`), which
+    Stryker reports as errors and not as survivors, as in the earlier tasks.
+
+- [x] 9.3 Model check: `shed.model.test.ts` for the run, the seeds, the end screen and the title.
+  - Requirements: REQ-5.6, REQ-5.13.4, REQ-5.16
+  - Tests: `shed.model.test.ts`
+  - Result: 9,400 states, every invariant holds. Goals: a freed cat (with each of the five tools), the title and the end
+    screen are reachable from every state; with neither `Tick` nor `LeaveShed` in the alphabet, a fresh
+    choosing, the next round and a second freed cat are reachable from every state. Witnesses: a freed cat with
+    each tool is three events (the seed that starts with its puzzle, the pick, the hand-over), a stuck result
+    with each tool is three events. Eight deliberate breaks fail with these counterexamples: the answer's
+    hand-over ignored (the start state, empty trace); `RetryShed` ignored (`StartShed, PickTool broom,
+    GiveTool`, with the clock and the leave taken out); `RetryShed` ignored after a freed cat (the start state);
+    the key handed over whatever was picked (`StartShed, PickTool broom, GiveTool`); `PickTool` keeps the first pick
+    (`StartShed, PickTool key, PickTool broom`); `Tick` does nothing (the start state); `LeaveShed` ignored
+    (`StartShed`); a stuck hand-over also scores (`StartShed, PickTool broom, GiveTool`). The test takes about 10 s.
+
+- [x] 9.4 Content: `strings.ja.json`, `strings.en.json` (a guide, a stuck message and a closing line per puzzle, the
+      tool names, `next`, `leave`, `timeAttack`), the subset font.
+  - Requirements: REQ-5.6.1, REQ-5.8, REQ-5.12
+  - Tests: `shed-content.test.ts`; `npm run kid`, `npm run font`
+  - Result: `npm run kid` and `check-font-coverage` pass (the font was regenerated: 352 code points). The English lines are
+    at most 26 characters (`The wisp used the scissors`), up from 24 and 20. The `kid-reader` agent was not run;
+    its rubric was applied by hand, which shortened the rope guide to `とびらが ロープで ぐるぐる`.
+
+- [x] 9.5 Game logic: `shed-layout.ts`, `shed-view.ts`, `over-view.ts`, `title-view.ts`, `shed-palette.ts`.
+  - Requirements: REQ-5.1.1, REQ-5.2, REQ-5.3, REQ-5.5, REQ-5.7.5, REQ-5.10, REQ-5.16
+  - Tests: `shed-layout.test.ts`, `shed-view.test.ts`, `over-view.test.ts`, `title-view.test.ts`, `shed-palette.test.ts`
+  - Result: all pass; coverage 100%. The guide moved to y 68 (height 56) to make room for the clock row; the layout
+    test checks that nothing overlaps in the choosing, stuck and freed stages and that every target is at
+    least 80 x 80.
+
+- [x] 9.6 Scenes and art: `ShedScene.ts` (clock, score, leave button, five cards), `OverScene.ts` (two buttons),
+      `TitleScene.ts` (the seed, the caption, the return lock), `ui/tools.ts` (scissors, ladder), `ui/shed-art.ts`
+      (leaves, boards, rope, the cat on the roof), `ui/hud.ts`, `ui/leave-button.ts`.
+  - Requirements: REQ-5.2, REQ-5.3, REQ-5.5, REQ-5.7, REQ-5.11, REQ-5.16
+  - Tests: none of its own (scenes are outside coverage and mutation, ADR 0003); the smoke in 9.7
+  - Result: built (`npm run build`); looked at in the screenshots of 9.7: the lock, the rope, the cat on the roof, the freed
+    cat with the open door, the star and the closing line. The Japanese `タイトル` label did not fit the 80 px button at 18 px
+    and is drawn at 16 px.
+
+- [x] 9.7 Smoke: `e2e/shed-helpers.ts`, `smoke.mobile.shed.spec.ts`, `smoke.desktop.shed.spec.ts`, and the title caption
+      assertion in `smoke.mobile.field.spec.ts`.
+  - Requirements: REQ-5.1 to REQ-5.14, REQ-5.16
+  - Tests: `npm run build`, then the smoke
+  - Result: **Chromium with the iPhone 13 touch profile, not WebKit** (WebKit cannot start in the sandbox; a
+    local config in `.cache/` points Playwright at the installed Chromium). `--workers=1`: 31 passed (trial 1 and
+    trial 3, 21 of them, unchanged but for the one caption assertion; the shed, 10: 8 mobile and 2 desktop). With two workers
+    seven tests timed out on the slow shared machine, including trial 1's and trial 3's, so the shed's
+    tests were given 90 s and the clock check was loosened from 58.8 s to 59.5 s. The five puzzles were each
+    seen in the pixels, stuck and freed: obstacle there or gone, door shut or open, cat inside, on the roof or by the
+    shed, star. CI's WebKit run is what counts and has not been seen yet.
+
+- [x] 9.8 Record the change: `CHANGELOG.md`, `docs/learning-design.md`, `docs/device-checklist.md`,
+      `docs/evidence/didnt-work.md`, and the Result lines of this file.
+  - Requirements: REQ-5.15
+  - Tests: `npm run check`, `npm run build`, `npm run smoke`
+  - Result: see the pull request for `npm run check` and CI. **Still not verified:** no real phone, no real child (the
+    weekly pass in `docs/device-checklist.md` and the next playtest do that); the `reviewer` and `kid-reader`
+    agents were never run, only their rubrics applied by hand; whether children tell the five puzzles apart in
+    60 seconds, and whether the Title button in the lower row is tapped by accident.

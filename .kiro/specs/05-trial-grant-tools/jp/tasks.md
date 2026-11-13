@@ -2,6 +2,8 @@
 
 > 和訳です。**正本は英語版** [`../tasks.md`](../tasks.md) です。英語版を変えたら、同じPRでこのファイルも直します。識別子・パス・コマンド・要件ID（`REQ-5.n`）・不変条件ID（`INV-n`）は原文のままです。
 
+> **改訂2**で節9（60秒のタイムアタック、5つの問題、タイトルへ戻る手段）を足しました。節1〜8は最初のビルドで、書いたとおりに残してあり、その Result 行は最初のビルドについて書いています。
+
 1ブランチ・1プルリクエストにつき1タスク（`AGENTS.md`）。ブランチは `05-trial-grant-tools/<task>`。前のタスクがマージされたあとの `main` から切ります。どのタスクもゲームが動く状態で終わり、`npm run check` を通します。タスク 6.1、7.1、8.1 は `npm run build` に続けて `npm run smoke` も通します。スマホで差分を追える大きさにします: テスト込みで数百行を目安にし、それより大きいタスクはプルリクエストで理由を書きます。
 
 状態: `[ ]` 未完、`[x]` 完了。**Result** 行はそのタスクのプルリクエストで、実行したことと見たことを書いて埋めます。実行していないことは、実行したと記録しません。
@@ -17,6 +19,19 @@
 | 旧テスト | ファイル | 置き換えるタスク | 置き換え先 | 試練1が弱まらない理由 |
 |---|---|---|---|---|
 | （なし） | | | | |
+
+改訂2（節9）では、小屋の規則そのものが変わったため（道具5つ、ラウンドごとの問題、時計）、小屋のテストは変わります。変わったテストと、ほかの試練のテスト1件は次のとおりです。
+
+| 旧テスト | ファイル | 置き換えるタスク | 置き換え先 | 保証が弱まらない理由 |
+|---|---|---|---|---|
+| 道具3つと「鍵だけが開ける」、すべての `Shed` リテラル | `shed.test.ts` | 9.2 | 道具5つ、答えが1つずつの問題5つ、いくつかの種での `puzzleAt`、stuck と freed のあとのやり直し | 同じ規則を全問題で検査する。試練1には関係しない |
+| INV-18〜INV-24（最初の文言）、INV-24「時計も得点もない」 | `shed.pbt.test.ts` | 9.2 | 文言を改めた INV-18〜INV-24、小屋向けの INV-15〜INV-17、INV-40〜INV-43 | INV-24 の「時計も得点もない」は、依頼者が外してほしいと言った点。残りは考え方を保つ |
+| 84状態のモデルと6つの意図的な破壊 | `shed.model.test.ts` | 9.3 | プレイ、種、タイトルを含む9,400状態のモデルと8つの破壊 | 古いゴールはすべて残る。2つのゴールは時計を止めて検査する |
+| 「StartShed ... は run を始めない」「小屋では時計が動かない」「終了画面で StartShed は無視される」 | `reducer.test.ts`（試練2のブロック） | 9.2 | StartShed は60秒のプレイを始める、Tick は小屋の時計を進める、小屋の終了画面での StartShed は遊び直し | 変わった規則そのもの。試練1の `reducer.test.ts` のケースは触らない |
+| INV-32: 野原で `after.run` が初期値と等しい | `field.pbt.test.ts` | 9.2 | `best` だけ違ってよいことにした同じ検査 | 野原に来る前に小屋のプレイでベストが付くことがある。時計と得点は今も検査する |
+| 「新しいプレイを始めるボタンを1つ出す」（試練1の終了画面） | `over-view.test.ts` | 9.5 | `buttons` が、同じ文言で動作 `play` の1つのボタンと等しい | ビューがボタンの一覧を持つようになった。試練1のボタンは同じ1つ |
+| 小屋の文字列・ビュー・レイアウト・パレット・タイトルのテスト | `shed-content`、`shed-view`、`shed-layout`、`shed-palette`、`title-view` | 9.4, 9.5 | 道具5つ・問題5つでの同じ検査と、新しい検査 | 検査は何も減らない。タイトルのテストは小屋の「60びょう」の一言を期待するようになる |
+| 小屋のスモーク、タイトルの一言のテスト | `smoke.mobile.shed.spec.ts`、`smoke.desktop.shed.spec.ts`、`smoke.mobile.field.spec.ts` | 9.7 | 改めた経路。種はテストが決める | 野原自身のスモークは、一言の検査1か所を除き触らない |
 
 ## 1. Spec
 
@@ -89,3 +104,49 @@
   - テスト: `npm run check`、`npm run build`、`npm run smoke`、`npm run mutation`。試練1のスモーク（スコアアタックを含む）は変わらず緑。
   - 完了の条件: 最終プルリクエストで CI の `smoke`（WebKit）が緑。それまでは完了と呼ばない。
   - Result: #67 のマージ後の `main` にこの変更を足した状態で、Node 26.13.0 で `npm run check` が通る（テスト473件、カバレッジ100%、ミューテーションスコア100%・599件・生き残りなし、`check-trace: 22 invariants, 0 without tests`、サイズ予算 359.0 KB / 1,024 KB）。`npm run bench` は動く。`npm run build` のあと iPhone 13 タッチプロファイルの Chromium でスモーク19件通過（試練1とスコアアタックは変わらず11件、小屋は8件）。この最後のプルリクエストの CI はここには書かない（記録は自分自身の結果を含められないため）。プルリクエストにある。`CHANGELOG.md` に項目を足し、`docs/learning-design.md` の2行目に、試練の内容と規則が演出であることを書き、`docs/device-checklist.md` に試練2のプレイテストの2行を足し、`docs/evidence/didnt-work.md` にうまくいかなかった3件を足した。**未検証のまま:** 実機も実際の子どももない（`docs/device-checklist.md` の週次確認と次のプレイテストが担う）。`reviewer` と `kid-reader` のエージェントは一度も実行しておらず、ルーブリックを手で当てただけ。小屋にはタイトルへ戻る手段がない（再読み込み）。
+
+## 9. 改訂2: 60秒のタイムアタック、5つの問題、タイトルへ戻る手段
+
+改訂全体を1つのプルリクエスト（ブランチ `05-trial-grant-tools/r2`）にします。依頼者が3つの変更をまとめて求めたことと、どれも単独ではゲームが中途半端な状態になる（規則・言葉・画面・スモークが新しい `Shed` に依存する）ためです。各タスクに対象のファイルを書きます。タスクはこの順に行い、9.7 のあとで `npm run check` は緑でした。
+
+- [x] 9.1 spec を更新する: `requirements.md`（改訂2、REQ-5.16）、`design.md`、このファイル、3つの日本語訳、不変条件のファイル。
+  - 要件: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-5.9, REQ-5.10, REQ-5.12, REQ-5.13, REQ-5.14, REQ-5.16
+  - テスト: なし（文書）。`npm run verify` に `check-trace` と日本語テキストゲートが含まれる。
+  - Result: `npm run verify` が通る（`check-trace: 40 invariants, 0 without tests`）。`04` と `06` の注記は変えていない。`reviewer` と `kid-reader` は実行せず、ルーブリックを手で当てた。
+
+- [x] 9.2 ドメイン: `shed.ts`（道具5つ、問題5つ、`puzzleAt`、`newShed`、先へ進むやり直し）、`events.ts`（種つきの `StartShed`、`LeaveShed`）、`reducer.ts`（小屋の時計・得点・開始・退出）。
+  - 要件: REQ-5.1.2, REQ-5.2.3, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.9, REQ-5.13, REQ-5.16
+  - 不変条件: INV-15〜INV-17（広げた）、INV-18〜INV-24（文言を改めた）、INV-40〜INV-43（新規）
+  - テスト: `shed.test.ts`、`shed.pbt.test.ts`、`reducer.test.ts`。`field.pbt.test.ts` と `field.model.test.ts` は `LeaveShed` を他の試練のイベントとして足す。
+  - 完了の条件: ミュータントの生き残りなしで `npm run check` が通る。
+  - Result: Node 26.13.0。テスト832件・41ファイル、カバレッジはすべての指標で100%。ミューテーション: 最初の実行で `reducer.ts` に2件生き残り（`leaveShed` が「`trial` が2」に加えて「タイトルでない」も見ていたが、タイトルでは区別できない）。条件を外し、`reducer.ts` は100%（152件撃破）。全体の実行: 1,126件撃破、タイムアウト1件、生き残り0（最終実行、15分41秒）。実行時エラー7件は、読み込み時にモジュールが落ちるミュータント（`field-view.ts`、`shed-view.ts`）で、Stryker は生き残りではなくエラーとして報告する（前のタスクと同じ）。
+
+- [x] 9.3 モデル検査: `shed.model.test.ts`（プレイ、種、終了画面、タイトル）。
+  - 要件: REQ-5.6, REQ-5.13.4, REQ-5.16
+  - テスト: `shed.model.test.ts`
+  - Result: 9,400状態、すべての不変条件が成り立つ。ゴール: 猫が出られる状態（5つの道具それぞれで）、タイトル、終了画面がすべての状態から到達できる。`Tick` も `LeaveShed` もないアルファベットでは、新しい選択中・次のラウンド・2回目の成功がすべての状態から到達できる。証拠: 各道具で猫が出られるまで3イベント（その問題から始まる種、選択、受け渡し）、各道具での stuck も3イベント。8つの意図的な破壊が次の反例で失敗する: 正解の受け渡しを無視（開始状態、空のトレース）、`RetryShed` を無視（`StartShed, PickTool broom, GiveTool`、時計と退出を外して）、freed のあとの `RetryShed` を無視（開始状態）、選んだ道具に関わらず鍵を渡す（`StartShed, PickTool broom, GiveTool`）、`PickTool` が最初の選択を保つ（`StartShed, PickTool key, PickTool broom`）、`Tick` が何もしない（開始状態）、`LeaveShed` を無視（`StartShed`）、stuck の受け渡しも得点する（`StartShed, PickTool broom, GiveTool`）。テストは約10秒。
+
+- [x] 9.4 内容: `strings.ja.json`、`strings.en.json`（問題ごとの案内・失敗メッセージ・締めの文、道具の名前、`next`、`leave`、`timeAttack`）、サブセットフォント。
+  - 要件: REQ-5.6.1, REQ-5.8, REQ-5.12
+  - テスト: `shed-content.test.ts`、`npm run kid`、`npm run font`
+  - Result: `npm run kid` と `check-font-coverage` が通る（フォントを再生成: 352コードポイント）。英語の行は最長26文字（`The wisp used the scissors`）で、24と20から広げた。`kid-reader` は実行せず、ルーブリックを手で当てた。その結果、ロープの案内を `とびらが ロープで ぐるぐる` に縮めた。
+
+- [x] 9.5 ゲームのロジック: `shed-layout.ts`、`shed-view.ts`、`over-view.ts`、`title-view.ts`、`shed-palette.ts`。
+  - 要件: REQ-5.1.1, REQ-5.2, REQ-5.3, REQ-5.5, REQ-5.7.5, REQ-5.10, REQ-5.16
+  - テスト: `shed-layout.test.ts`、`shed-view.test.ts`、`over-view.test.ts`、`title-view.test.ts`、`shed-palette.test.ts`
+  - Result: すべて通る。カバレッジ100%。時計の行の分、案内を y 68（高さ56）へ動かした。レイアウトのテストが、選択中・stuck・freed の各段階で重ならないことと、すべての対象が80 x 80以上であることを確かめる。
+
+- [x] 9.6 シーンと絵: `ShedScene.ts`（時計・得点・戻るボタン・5枚のカード）、`OverScene.ts`（2つのボタン）、`TitleScene.ts`（種、一言、戻ったあとのロック）、`ui/tools.ts`（はさみ、はしご）、`ui/shed-art.ts`（落ち葉、板、ロープ、屋根の猫）、`ui/hud.ts`、`ui/leave-button.ts`。
+  - 要件: REQ-5.2, REQ-5.3, REQ-5.5, REQ-5.7, REQ-5.11, REQ-5.16
+  - テスト: 専用のテストなし（シーンはカバレッジとミューテーションの対象外、ADR 0003）。9.7 のスモーク。
+  - Result: ビルド済み（`npm run build`）。9.7 のスクリーンショットで確認: 錠、ロープ、屋根の猫、扉が開いて出てきた猫・星・締めの文。日本語の `タイトル` は18pxだと80pxのボタンに収まらず、16pxで描く。
+
+- [x] 9.7 スモーク: `e2e/shed-helpers.ts`、`smoke.mobile.shed.spec.ts`、`smoke.desktop.shed.spec.ts`、`smoke.mobile.field.spec.ts` のタイトルの一言の検査。
+  - 要件: REQ-5.1〜REQ-5.14, REQ-5.16
+  - テスト: `npm run build`、続けてスモーク
+  - Result: **iPhone 13 のタッチプロファイルの Chromium。WebKit ではない**（この環境では WebKit が起動できない。`.cache/` のローカル設定で、入っている Chromium を Playwright に指す）。`--workers=1` で31件通過（試練1と試練3の21件は、一言の検査1か所を除き変更なし。小屋は10件: モバイル8、デスクトップ2）。ワーカー2つでは、遅い共有マシンで7件がタイムアウトした（試練1と試練3のものも含む）ため、小屋のテストには90秒を与え、時計の検査を58.8秒から59.5秒に緩めた。5つの問題を、stuck と freed のそれぞれで画素から確認した（障害物の有無、扉の開閉、猫が中・屋根・小屋のそば、星）。CIの WebKit が正で、まだ見ていない。
+
+- [x] 9.8 変更を記録する: `CHANGELOG.md`、`docs/learning-design.md`、`docs/device-checklist.md`、`docs/evidence/didnt-work.md`、このファイルの Result 行。
+  - 要件: REQ-5.15
+  - テスト: `npm run check`、`npm run build`、`npm run smoke`
+  - Result: `npm run check` とCIはプルリクエストを参照。**まだ確かめていないこと:** 実機も本物の子どももない（毎週のパスと次のプレイテストが担う）。`reviewer` と `kid-reader` は一度も実行せず、ルーブリックを手で当てただけ。子どもが60秒で5つの問題を見分けられるか、下段の「タイトル」ボタンを間違って押さないか。
