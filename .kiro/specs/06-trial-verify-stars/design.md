@@ -1,6 +1,6 @@
 # Design: Trial 3, The Wisp Field
 
-Implements `requirements.md` (REQ-6.n), revision 2. Follows ADR 0001 (pure reducer), ADR 0003 (gates) and the
+Implements `requirements.md` (REQ-6.n), revision 3. Follows ADR 0001 (pure reducer), ADR 0003 (gates) and the
 layout rules in `.kiro/steering/structure.md`. No new dependency, no new asset, no new ADR: the reducer stays
 pure and the scenes stay thin, which is what ADR 0001 and 0003 already say. The module layout copies trial 2's
 (`05-trial-grant-tools`), so a reviewer who knows the shed knows the field.
@@ -8,6 +8,35 @@ pure and the scenes stay thin, which is what ADR 0001 and 0003 already say. The 
 Revision 2 replaces the design of the first build (a tap showed what a star was; five identical stars; no end).
 What the preview showed is in the table at the top of `requirements.md`. The old design is in the history of
 this file (commit `9a69287`).
+
+## Revision 3: a time attack with a score, and a way back
+
+The comments on revision 2 (see `requirements.md`) are answered by copying what `05-trial-grant-tools` revision 2 did
+for the shed, so a reviewer who knows the shed knows the field:
+
+- **The run is trial 1's.** `reducer.ts` gives `StartField` a fresh `restartRun` (a full clock, a score of 0, the best
+  kept), `Tick` acts in trial 3 too, and a verdict goes through `scoreSearch` like the shed's `give`. No new
+  state in `Run`, no new phase: time up sets `phase` `over` and leaves `trial` 3, so the end screen (`OverScene`)
+  is shared. `LeaveField` is a top-level event beside `LeaveShed`, valid whenever `trial` is 3.
+- **The "cleared" stage is gone**, with `roundsPerRun`, `isLastRound`, the clear word and the clear panel. A keep
+  always gives `kept`; "Next stars" starts the next round for as long as the clock lasts. Only the clock ends the trial.
+  `verdictRight(field, verdict)` is the one place where a verdict is graded for the score (`true`, `false`, or
+  `null` when there is nothing to decide); `sort` uses the same `says` helper.
+- **Where each thing is drawn.** The top row is the shed's (`createHud`, `paintHud`, `hudView`). The "Title" button is
+  the shed's (`createLeaveButton`, `leaveButton`, 80 x 80 at (347, 788), beside nothing: the wisp is at (195, 720)).
+  The closing line takes the place of the lens after a keep, with a gold edge on the panel (it used to hold the clear
+  word and the line). A right verdict pops "+150" from its star. The end screen's second button comes from
+  `overView`, which now names the action per trial (`playField`, `leaveField`).
+- **The title.** Both buttons say "How many in 60 seconds?" (`field.timeAttack`, new; `noClock` removed). Taps are
+  ignored for 0.7 s after a trial sends the child back (the scene data is `fromTrial`, as the shed's change made it).
+- **Tests.** `field.model.test.ts` now carries the clock (60 000, 30 000, 0), the score as "none or some", and an
+  independent score check in the wrapper; it has 9,904 states (the language and the hero are left out of a state's
+  identity) and 12 deliberate breaks. `field.pbt.test.ts` has INV-15 to INV-17 for the field, INV-38, INV-44 and
+  INV-45 and no INV-37. The smoke plays each test well under half of the real clock.
+
+Everything below that talks about "the cleared trial", "a run of two rounds", "no clock" or "no score" describes
+revision 2 and is kept for the record; where a statement is false now, the section on revision 3 above and
+`requirements.md` win.
 
 ## What the child does
 
@@ -18,15 +47,18 @@ sorting --SortStar v, v is true of the star--> sorting, the star is sorted, the 
 sorting --SortStar v, v is false of the star--> sorting, nothing sorted, the lens closes (message: look again)
 sorting --SortStar with no star in the lens--> same state
 sorting --KeepStars, some star unsorted--> same state
-sorting --KeepStars, all five sorted, not the last round--> kept
-sorting --KeepStars, all five sorted, the last round of the run--> cleared
+sorting --KeepStars, all five sorted--> kept
 kept    --RetryField--> sorting, the next round
-cleared --RetryField--> sorting, the next round (a new run)
-cleared --LeaveField--> title
+any     --Tick, the clock reaches zero--> over (the end screen; the field is kept as it was)
+over    --StartField--> sorting, round 0, a new run (a full clock, a score of 0, the best kept)
+any     --LeaveField (a run or the end screen)--> title
 ```
 
-`cleared` is the success of the trial. A run is two rounds, and the table has four rounds, so "play again"
-starts rounds 2 and 3, and then 0 and 1 again. The keep button is on screen only when all five are sorted; the
+Revision 3: each `SortStar` that has a star in the lens also scores (a right verdict adds 100 + 50 per right verdict in a
+row, up to 4; a wrong one ends the streak). The diagram of revision 2 had a `cleared` stage after the second round;
+it is gone.
+
+(Revision 2 had a `cleared` stage here: the success of the trial after two rounds. Revision 3 has none.) The keep button is on screen only when all five are sorted; the
 reducer still refuses `KeepStars` earlier, so the rule does not rest on the button. A tap on the title anywhere
 else still starts trial 1.
 
@@ -39,14 +71,12 @@ else still starts trial 1.
 ```ts
 // field.ts
 export const starCount = 5;
-export const roundsPerRun = 2;   // keeping the second round clears the trial
-export const roundCount = 4;     // rounds before the sets start again (two runs)
+export const roundCount = 4;     // rounds before the sets start again (even, so neighbours differ in size)
 export type Verdict = "real" | "fake";
 export type Note = { star: number; said: Verdict };
 export type Field =
   | { stage: "sorting"; seed: number; round: number; sorted: readonly boolean[]; looking: number | null; note: Note | null }
-  | { stage: "kept"; seed: number; round: number }
-  | { stage: "cleared"; seed: number; round: number };
+  | { stage: "kept"; seed: number; round: number };
 export const initialField: Field = { stage: "sorting", seed: 0, round: 0, sorted: [false x5], looking: null, note: null };
 
 // state.ts
@@ -69,9 +99,8 @@ Why this shape:
 - **`note` is for the message.** The view is a function of the state only, so the state remembers the last
   verdict. `InspectStar` clears it; `SortStar` sets it. A wrong verdict also closes the lens, so the child has
   to tap the star again: looking again is a step they take.
-- **`kept` and `cleared` have no more fields.** They are reached with all five sorted, so every mark is known
-  and equals the truth; storing the marks again would be a second copy. They are two members of the union so
-  that the types tell them apart.
+- **`kept` has no more fields.** It is reached with all five sorted, so every mark is known
+  and equals the truth; storing the marks again would be a second copy.
 - **`phase` stays `title | trial | over`.** The field is `phase` `trial` with `trial` 3; the scene follows
   `trial`. **`field` is always present** and is `initialField` everywhere except while `trial` is 3 (INV-31).
 - **`round` is bounded.** It is always 0 to 3, so the state space is finite for the model check and
@@ -79,8 +108,7 @@ Why this shape:
 
 ### The fake stars: a seed, not a table
 
-`fakesOf(seed, round)` gives the fake stars of a round, ascending: one in the first round of a run and two in the
-second. It is a small linear congruential step on integers (`Math.imul`, no `Math.random`, no clock), seeded by
+`fakesOf(seed, round)` gives the fake stars of a round, ascending: one in the even rounds and two in the odd ones. It is a small linear congruential step on integers (`Math.imul`, no `Math.random`, no clock), seeded by
 `seed` and `round`, picking distinct stars from the five. The same seed always gives the same four rounds.
 
 - **Why a seed.** The first build had a fixed table of four rounds. A child who plays twice would learn that
@@ -96,7 +124,7 @@ second. It is a small linear congruential step on integers (`Math.imul`, no `Mat
   the unit test checks that no star is always real).
 
 Functions (`field.ts`): `fakesOf`, `isFake`, `shineOf`, `markOf`, `noteWasRight`, `isReady`, `keptStars`,
-`isLastRound`, `reduceField` (returns `field` itself when nothing changes).
+`verdictRight`, `reduceField` (returns `field` itself when nothing changes).
 
 `reduceField`:
 
@@ -104,8 +132,8 @@ Functions (`field.ts`): `fakesOf`, `isFake`, `shineOf`, `markOf`, `noteWasRight`
   already in the lens: `looking` becomes `index` and `note` becomes `null`. Otherwise no change.
 - `SortStar { verdict }`: while sorting, with a star in the lens. If the verdict is true of the star, that star
   becomes sorted. Either way `looking` becomes `null` and `note` becomes `{ star, said: verdict }`.
-- `KeepStars`: when all five are sorted: `kept`, or `cleared` when the round is the last of its run.
-- `RetryField`: from `kept` or `cleared`, a fresh `sorting` of the next round (`(round + 1) % 4`), same seed.
+- `KeepStars`: when all five are sorted: `kept`.
+- `RetryField`: from `kept`, a fresh `sorting` of the next round (`(round + 1) % 4`), same seed.
 
 There is no branch that sorts two stars, sorts a star on a wrong verdict, keeps a star that is not sorted, or
 keeps a fake.
@@ -125,22 +153,25 @@ Where each event applies ("same" means the same state object is returned):
 
 | event | `title` | trial 1 | trial 2 (shed) | trial 3 (field) | `over` |
 |---|---|---|---|---|---|
-| `Start` | begins a run (trial 1) | language only | language only | language only | begins a run |
-| `StartField { seed }` | `phase` `trial`, `trial` 3; `field` fresh for the seed; `run`, `lane`, `shed` untouched | same | same | same | same |
-| `StartShed` | opens the shed | same | same | same | same |
-| `Tick`, `Ask`, `PickCard`, `Retry` | same | the lane rule | same | same | same |
+| `Start` | begins a run (trial 1) | language only | language only | language only | begins a run (trial 1; the field is dropped) |
+| `StartField { seed }` | begins a run of the field (`trial` 3, a fresh field, a full clock) | same | same | same | begins a new run if the end screen is the field's, otherwise same |
+| `StartShed` | opens the shed | same | same | same | the shed's own end screen only |
+| `Tick` | same | the clock | the clock | the clock | same |
+| `Ask`, `PickCard`, `Retry` | same | the lane rule | same | same | same |
 | `PickTool`, `GiveTool`, `RetryShed` | same | same | `reduceShed` | same | same |
-| `InspectStar`, `SortStar`, `KeepStars`, `RetryField` | same | same | same | `reduceField` | same |
-| `LeaveField` | same | same | same | the title, from `cleared` only; otherwise same | same |
+| `InspectStar`, `KeepStars`, `RetryField` | same | same | same | `reduceField` | same |
+| `SortStar` | same | same | same | `reduceField`, and scores | same |
+| `LeaveField` | same | same | same | the title | the title if the end screen is the field's, otherwise same |
 | `SetLang`, `MoveHeroTo` | as before | as before | as before | as before | as before |
 
-`reducer.ts` adds `StartField` (`phase` `title` only, like `startShed`), and one function `reduceFieldTrial` for
-the five field events, guarded by `inTrial(state, trials.field)`. `reduceTrial` hit the complexity limit with the
+`reducer.ts` has `StartField` (the title or the field's own end screen, like `startShed`), `LeaveField` (any state with
+`trial` 3, like `leaveShed`), and one function `reduceFieldTrial` for the four field events, guarded by
+`inTrial(state, trials.field)`; `SortStar` goes to `sortStar`, which grades the verdict with `verdictRight` and scores it. `reduceTrial` hit the complexity limit with the
 field cases inline, so they moved there (no behavior change). Every earlier guard already tests its own trial
 number, so trials 1 and 2 need no code change to ignore trial 3.
 
-`LeaveField` is the one field event that changes more than `field`: it sets `phase` `title`, `trial` 0 and
-`field` initial. That is why INV-31 names it as the exception and INV-38 has its own rule.
+`LeaveField` and `StartField` change more than `field`: they set `phase`, `trial`, `field` and restart `run` (only
+the best is kept). That is why INV-31 leaves them out and INV-38 and INV-45 have their own rules.
 
 ### Why the clue is visible and a verdict is judged at one tap (REQ-6.6.4)
 
@@ -182,35 +213,40 @@ The new ones are in `requirements.md`. Their scope with respect to the existing 
 
 ### Model check (`field.model.test.ts`)
 
-Scope: the entrance from the title by the field button with two seeds, every state after it, and the leave back
-to the title. It is not "every state of trial 1 or 2 can reach the field" (the child gets to the field only
-from the title), and it does not remove any state of the field to pass. The model checks of trials 1 and 2 are
-not changed.
+Scope: the entrance from the title by the field button with two seeds, every state after it (the run, the rounds, the
+end screen), and the leave back to the title. It is not "every state of trial 1 or 2 can reach the field" (the
+child gets to the field only from the title), and it does not remove any state of the field to pass. The model
+checks of trials 1 and 2 are not changed.
 
-The alphabet is finite and includes events that must not matter: `StartField` for seeds 0 and 1, `SetLang`
-(ja, en), `MoveHeroTo` (two positions), `InspectStar` for each star and for two indexes that do not exist, both
-verdicts (at any time, with or without a star in the lens), `KeepStars`, `RetryField`, `LeaveField`, `Tick`
-(short and run-ending), one trial 1 card, `Ask`, `Retry`, and the shed's events. Inside the field also `Start`,
-`Start` with a language, and `StartShed`.
+The alphabet is finite and includes events that must not matter: `StartField` for seeds 0 and 1, `SetLang` (ja, en),
+`MoveHeroTo` (two positions), `InspectStar` for each star and for two indexes that do not exist, both verdicts (at
+any time, with or without a star in the lens), `KeepStars`, `RetryField`, `LeaveField`, a half-run `Tick` (30,000 ms) and
+a run-ending one, one trial 1 card, `Ask`, `Retry`, and the shed's events (`LeaveShed` included). Inside a run also
+`Start`, `Start` with a language, and `StartShed`.
 
-The model wraps the real reducer's state with an independent record of what the child did, written from the
-spec and not from the reducer (`record`: the stage, seed, round, the sorted set, the star in the lens and the
-last verdict; `null` on the title), and `clears`, the number of cleared trials so far, capped at 2 and counted
-from what the game did so that a broken game cannot fake a replay. The test has its own copy of the fake stars of
-seeds 0 and 1, so changing `fakesOf` fails the test.
+The model wraps the real reducer's state with an independent record written from the spec and not from the reducer
+(`record`: the stage, seed, round, the sorted set, the star in the lens and the last verdict; `null` on the title),
+`left` (the milliseconds on the clock: 60,000, 30,000 or 0), and `scoreOk`, which turns false at the first step that
+moved the score or the streak other than the spec says (a right verdict adds `pointsFor(streak)` and extends the
+streak, a wrong one sets the streak to 0, only a new run or the leave resets the score). The test has its own copy of
+the fake stars of seeds 0 and 1, so changing `fakesOf` fails the test. A state's identity leaves out the language and
+the hero, keeps the clock exactly, and keeps the score and the best only as "none" or "some".
 
 | check | what |
 |---|---|
-| invariants | the title and the record agree (a field state iff the record exists); `field` is initial outside trial 3; lane, run and shed stay initial; the field equals the record in full; no star is sorted that the record has not sorted; a round is finished only when the record says so; the stars kept are the table's real stars and none is a fake |
-| goal 1 | from every state the cleared trial is reachable (no soft-lock) |
+| invariants | the title and the record agree; the clock agrees with the record and the run is over exactly when it is zero; `field` is initial outside trial 3; the lane and the shed stay initial; the field equals the record in full; no star is sorted that the record has not sorted; a round is finished only when the record says so; the stars kept are the table's real stars; the score moves only as the spec says |
+| goal 1 | from every state a kept round is reachable (no soft-lock) |
 | goal 2 | from every state the title is reachable |
-| goal 3 | from every state a fresh round (nothing sorted, nothing in the lens) is reachable |
-| goal 4 | from every state a second cleared trial is reachable: the replay and the leave and in again |
-| witnesses | the shortest trace to a wrong verdict (3 events), to the cleared trial (the entrance, 2 x 10 look and verdict events, 2 keeps and a retry), and to the title after a clear |
-| number of states | 19,356, recorded in the test: per seed and round, 241 states in progress (80 with a star in the lens, 160 with the last verdict and none in the lens, 1 untouched) and one finished state, times 4 for the language and the hero, plus the title, times the cleared count |
+| goal 3 | from every state the end screen is reachable |
+| goal 4 | from every state a fresh round (nothing sorted, nothing in the lens) is reachable |
+| goal 5 | from every state a score is reachable |
+| goal 6 | from every state a second kept round (round 1 or later) is reachable, which includes the end screen, the leave and in again |
+| goal 7 | without `Tick` and the two leaves, a kept round and a second kept round are still reachable: the field's own buttons give a way on |
+| witnesses | the shortest trace to a wrong verdict (3 events), to a score (the entrance, a look, a right verdict), to a kept round (the entrance, ten look and verdict events, the keep), to the end screen (the entrance and a run-ending tick), and the way back from a run and from the end screen (one event each) |
+| number of states | 9,904, recorded in the test |
 
-It must fail when the rules are broken on purpose, and the counterexamples are kept in the test (each break is
-a wrapper `step` around the real `reduce`; no source is edited):
+It must fail when the rules are broken on purpose, and the counterexamples are kept in the test (each break is a wrapper
+`step` around the real `reduce`; no source is edited):
 
 | deliberate break | which check fails |
 |---|---|
@@ -218,26 +254,27 @@ a wrapper `step` around the real `reduce`; no source is edited):
 | a verdict works with no star in the lens | the field differs from the record: `StartField`, `SortStar` |
 | a wrong verdict leaves the star in the lens | the field differs from the record |
 | `KeepStars` works with a star unsorted | the finished-too-early invariant: `StartField`, `KeepStars` |
-| the last round does not clear the trial | the field differs from the record at the keep |
-| `LeaveField` works before the clear | the place invariant: `StartField`, `LeaveField` |
+| a wrong verdict scores | the score invariant, after 3 events |
+| a wrong verdict keeps the streak | the score invariant, after 5 events |
+| a right verdict scores nothing | the score invariant at the first right verdict |
 | `KeepStars` is ignored | goal 1 is stuck in every state, from the start |
-| `RetryField` is ignored | goal 1 is stuck (the second round is unreachable); goal 3 is stuck once a star is looked at |
+| `RetryField` is ignored | goal 6 is stuck (the second round is unreachable); a fresh round stays reachable by the leave |
 | `LeaveField` is ignored | goal 2 is stuck once the field is entered |
-| `Tick` runs the clock in the field | the run invariant: `StartField`, `Tick` |
+| `Tick` is ignored in the field | goal 3 is stuck from the start (there is no time attack) |
+| the end screen takes nothing | goal 2 is stuck once the time is up |
 
 A broken game drifts away from the record, and the two together have far more states than the real game. The
-broken checks therefore use one seed, a small alphabet, a state identity without the language and the hero, and
-(for an invariant check) one state for all states that already break an invariant. The real checks use the
-whole state.
+broken checks therefore use one seed, a small alphabet, and (for an invariant check, and for the goals that drift)
+one state for all states that already break an invariant. The real checks use the whole identity above.
 
 ## Content (`src/content/`)
 
-A `field` group is added to `strings.ja.json` and `strings.en.json` under the same keys, and one new top-level
-key `noClock`. `{0}` is a number (a digit, so the kid gate accepts it). `⏎` is a line break.
+A `field` group is added to `strings.ja.json` and `strings.en.json` under the same keys. (Revision 2 also added the
+top-level key `noClock`; revision 3 removes it and adds `field.timeAttack`.) `{0}` is a number (a digit, so the kid gate accepts it). `⏎` is a line break.
 
 | key | ja | en | used |
 |---|---|---|---|
-| `noClock` | じかんは ないよ | No timer | caption on the field and shed buttons |
+| `field.timeAttack` | 60びょうで いくつ？ | How many in 60 seconds? | caption on the field button (the shed's is `shed.timeAttack`) |
 | `field.enter` | ほしを たしかめよう | Check the stars | the title's field button |
 | `field.guide` | よく みて ほんものか⏎にせものか わけよう | Look closely: real or fake?⏎Keep only the real ones | the top, always |
 | `field.start` | ウィスプの ほし 5こ⏎タップして みてみよう | The wisp brought 5 stars⏎Tap one to look closer | nothing sorted yet |
@@ -247,12 +284,9 @@ key `noClock`. `{0}` is a number (a digit, so the kid gate accepts it). `⏎` is
 | `field.missFake` | にせものが まざってた⏎もういちど みてみよう | A fake got mixed in!⏎Let's look again | said real of a fake star |
 | `field.missReal` | ほんものだったよ⏎もういちど みてみよう | That one was real!⏎Let's look again | said fake of a real star |
 | `field.kept` | ほんものの ほしを⏎{0}こ うけとったよ | You kept {0} real stars | a round is kept (3 or 4) |
-| `field.clear` | クリア！ | Cleared! | the clear panel's word |
-| `field.lesson` | よく みて えらんだから⏎ほんものを うけとれたね | You looked closely and⏎kept only the real ones | closing line, cleared only |
+| `field.lesson` | よく みて えらんだから⏎ほんものを うけとれたね | You looked closely and⏎kept only the real ones | closing line, after every keep |
 | `field.keep` | ほんものを うけとる | Keep the real stars | the keep button |
 | `field.next` | つぎの ほしを みる | Next stars | after the first round |
-| `field.again` | もういちど | Play again | cleared, left button |
-| `field.leave` | タイトルへ | Title | cleared, right button |
 | `field.marks.real` | ほんもの | real | the word under a sorted real star; the verdict button |
 | `field.marks.fake` | にせもの | fake | the word under a sorted fake star; the verdict button |
 
@@ -271,8 +305,8 @@ Why these words:
 - **The closing line** looks back at what the child did, in the order they did it (looked closely, then kept),
   and shares no sentence with the kept message or the guide.
 - **The buttons say what happens.** `Keep the real stars` names the act and the object. `Next stars` does not say
-  "again" because the stars are different. `Play again` and `Title` are on the cleared trial only.
-- **`noClock`** is a caption, not a rule of the game's: it says what is true of those two trials.
+  "again" because the stars are different. `Play again` and `Title` are on the end screen (`run.again` and the shed's `shed.leave`, shared), and `Title` is on the field's screen too (the shed's word, which fits an 80 px button at 16 px).
+- **`field.timeAttack`** is a caption, not a rule of the game's: it says what is true of that trial. It has the same words as the shed's, in its own key so that the two can change apart.
 - **No claim about real AI.** No string says a helper is always wrong or always right, that it lies, that
   checking always works, or that it is a friend. A content test checks this with word lists of its own.
 - **Not run:** the `kid-reader` agent was not run from this session; its rubric was applied by hand (see the
@@ -308,7 +342,7 @@ the picture") show the margin.
   `StartField { seed: newSeed() }`. The existing "a press that hit no object starts trial 1" guard covers it: the
   button is an object, so a press on it reaches `StartField` only.
 - `route.ts`: `sceneFor(state)` returns `"field"` for `trial` 3. `SceneKey` gains `"field"`. The field scene
-  starts `sceneFor(state)` when the state leaves trial 3 (after `LeaveField`), passing `fromField: true`.
+  starts `sceneFor(state)` when the state leaves the field (after `LeaveField`, or at time up), passing `fromTrial: true`.
 - `boot.ts` registers `FieldScene`.
 
 Scene transitions:
@@ -319,7 +353,9 @@ Scene transitions:
 | title | `StartShed` | shed (as before) |
 | title | `StartField` (tap the field button) | field |
 | field | `InspectStar`, `SortStar`, `KeepStars`, `RetryField` | field (the same scene re-renders) |
-| field (cleared) | `LeaveField` | title (taps are ignored there for 0.7 s) |
+| field (a run) | `Tick` reaches zero | over (the end screen) |
+| over (field) | `StartField` (play again) | field |
+| field, over (field) | `LeaveField` (the "Title" button) | title (taps are ignored there for 0.7 s) |
 
 ### The title (`title-layout.ts`, `title-view.ts`, `TitleScene.ts`)
 
@@ -328,11 +364,10 @@ title's rule. Now:
 
 - **Trial 1's card** (a framed panel at (195, 372), 340 x 144) holds the way in ("Tap to start") and the rule (the
   60 seconds). A tap on the card still starts trial 1: it is not an object.
-- **The two buttons** each have a label and a caption under it, `No timer` / `じかんは ないよ`, which is true: the
-  shed has no clock (INV-24) and the field has none (INV-32). Their label is 22 px so that it clears the picture.
-- A test proves the layout: the card holds both texts and touches neither button; the art lies between; the
-  60-second string appears in no other title text.
-- **The lock.** After `LeaveField` the scene restarts with `fromField: true`, and the tap-anywhere start is ignored
+- **The two buttons** each have a label and a caption under it. Revision 3: both trials are 60-second runs, so both
+  captions say so (`How many in 60 seconds?` / `60びょうで いくつ？`); revision 2 said `No timer` under both. Their label is 22 px so that it clears the picture.
+- A test proves the layout: the card holds both texts and touches neither button; the art lies between; no button's label has a number in it.
+- **The lock.** After `LeaveField` (or the shed's `LeaveShed`) the scene restarts with `fromTrial: true`, and the tap-anywhere start is ignored
   for 0.7 s of game time (`Game.getTime()`; `Clock.now` is not set yet in `create`, which the smoke showed). A
   child who double-taps "Title" would otherwise start trial 1 with the second tap.
 - **The touch guard.** The title adds its `touchmove` guard (no scrolling or zooming of the page) once per scene
@@ -341,9 +376,9 @@ title's rule. Now:
 
 ### Buttons (`button-lock.ts`, `ui/field-buttons.ts`)
 
-The wide button (keep, "next stars") covers the place of the two narrow ones (the verdicts, "play again" and
-"title"), so a child's quick double tap lands on the button that replaces the first. Without a guard it would skip
-the screen between them (the sorted star, the kept result, the clear panel). A set of buttons therefore ignores
+The wide button (keep, "next stars") covers the place of the two narrow ones (the verdicts), so a child's quick
+double tap lands on the button that replaces the first. Without a guard it would skip the screen between them (the
+sorted star, the kept result). Revision 3 has no "play again / title" pair here any more (they are on the end screen). A set of buttons therefore ignores
 presses for 450 ms after it appears (`pressable`, game time); the set is identified by the ids it holds
 (`setChanged`), so a repaint of the same buttons (a language change) does not restart the lock. The smoke does a
 real quick double tap on the keep button and requires the kept result to stay. Taps that fall in the lock are
@@ -359,15 +394,17 @@ All numbers are game pixels on the 390 x 844 canvas.
 | stars 0, 1, 2 | (75, 160), (195, 160), (315, 160) | 88 x 88 |
 | stars 3, 4 | (135, 256), (255, 256) | 88 x 88 |
 | message | (195, 336) | wrap 340, height 60 |
-| lens (and the clear panel) | (195, 428) | 340 x 124 |
+| lens (and the closing line after a keep) | (195, 428) | 340 x 124 |
 | one wide button (keep, next) | (195, 534) | 300 x 80 |
 | two buttons (verdicts, play again / title) | (118, 534) and (272, 534) | 146 x 80 each, 8 apart |
 | the wisp (not a target) | (195, 720) | art 60 |
+| top row: seconds, bar, score | the lane's (`hudTime`, `hudBar`, `hudScore`) | y 8 to 40 |
+| "Title" button (revision 3) | (347, 788), the shed's `leaveButton` | 80 x 80 |
 | title's field button | (195, 648) | 300 x 80 |
 
 The hero starts at (195, 612); the buttons end at y 574, above its top (580). The star rows are 8 apart. The lens
-and the clear panel are one place: the lens star (radius 34) while looking, the panel's word and closing line when
-cleared, a faint ring when empty, so the layout does not jump between stages.
+and the closing line are one place: the lens star (radius 34) while looking, the panel's word and closing line when
+the closing line (with a gold edge) after a keep, a faint ring when empty, so the layout does not jump between stages.
 
 Inside a star's slot (offsets from its center): the star at (0, -12) with radius 20, the rim at 1.5 radii, the
 word at (0, +31) in 18 px, and the badge disc at (+36, -36), the shape `drawPickedMark` already draws.
@@ -388,7 +425,8 @@ type StarView = { index; shine: "normal" | "bright"; mark: "unsorted" | "real" |
 type FieldView = {
   guide: string; message: string; stars: StarView[];
   lens: { shine } | null;                       // the star in the lens
-  clear: { title: string; lesson: string } | null;   // the cleared trial only
+  lesson: string | null;                        // the closing line, once a round is kept
+  leave: string;                                // the word on the "Title" button
   buttons: { id; text; event; slot: "single" | "left" | "right"; icon: "tick" | "dots" | "none" }[];
   verdict: { star: number; right: boolean } | null;  // for the flourish
   finished: boolean;
@@ -401,7 +439,7 @@ the message is still about that star, so a fake star sorted last keeps the wisp'
 says what to do next (an earlier draft had a `ready` message that replaced it, and the review found that the
 honest-mistake line was then lost whenever the fake star was sorted last).
 Buttons: the two verdicts while a star is in the lens; the keep when all are sorted; `next` after the first
-round; `again` and `leave` when cleared; none otherwise. Helpers `justSorted` and `justFinished` compare the view
+round; none otherwise (the "Title" button and the end screen's buttons are not in this view). Helpers `justSorted` and `justFinished` compare the view
 before and after for the scene's flourish; they compare by value, so a change of language does not replay it.
 
 ### Scene (`scenes/FieldScene.ts`) and art (`ui/`)
@@ -413,7 +451,7 @@ reuses the scene object. The hero floor drag is the shed's: a press that hit no 
 
 Painting is code only: `ui/field-art.ts` (the slot, and `drawClueStar`: halo, body, rim), `ui/star-card.ts` (the
 slot widget: star, word, tick, and the white frame of the star in the lens), `ui/field-lens.ts` (the lens and the
-clear panel), `ui/field-buttons.ts` (one widget per slot, hidden when not used; a tick or a ring of dots on the
+closing line), `ui/field-buttons.ts` (one widget per slot, hidden when not used; a tick or a ring of dots on the
 verdict buttons). The stars pop in once and then stay still: the first build's bob moved the rim under the
 smoke's probes and carried no meaning. The lens halo is shrunk to fit its panel (`haloLimit`), so it never
 covers the message. The flourish: a right verdict ripples at the star and, for a real star, sparks (for a fake
@@ -444,10 +482,10 @@ from every kept star. No red, no shake of the screen, no sound.
 | model (`field.model.test.ts`) | the state space and goals above; deliberate breaks | REQ-6.5, 6.7, 6.12 |
 | content (`field-content.test.ts`) | same keys; one `{0}` where it belongs; Japanese rules; English lengths; no blame words; no claims about real AI; the closing line is its own text; the title caption | REQ-6.1.6, 6.4, 6.6, 6.11 |
 | look (`field-look.test.ts`) | the clue: brightness, halo reach, rim kind, in a grayscale measure | REQ-6.2, 6.10.4 |
-| view (`field-view.test.ts`, `title-view.test.ts`) | per stage and language: message, buttons, stars, labels, ticks, alpha, lens, clear panel only when cleared, the message follows the last verdict; the title's words | REQ-6.2 to 6.7, 6.1.6 |
+| view (`field-view.test.ts`, `title-view.test.ts`) | per stage and language: message, buttons, stars, labels, ticks, alpha, lens, the closing line only after a keep, the message follows the last verdict; the title's words | REQ-6.2 to 6.7, 6.1.6 |
 | layout (`field-layout.test.ts`, `route.test.ts`, `seed.test.ts`) | inside the canvas, no overlap in each stage, targets of 80 or more, the hero strip free, the probes where they say, the title's card and buttons apart; the scene follows `trial`; the seed | REQ-6.1, 6.8, 6.9 |
 | mutation | any surviving mutant fails | REQ-6.12, 6.14 |
-| mobile smoke (`smoke.mobile.field.spec.ts`) | real taps; the paths in REQ-6.13; pixels for the clue, the lens, the ticks, the buttons and the clear panel; grayscale and silence; ja and en screenshots; the title; offline | REQ-6.1 to 6.13 |
+| mobile smoke (`smoke.mobile.field.spec.ts`) | real taps; the paths in REQ-6.13; pixels for the clue, the lens, the ticks, the buttons, the clock, the score and the closing line; grayscale and silence; ja and en screenshots; the title; offline | REQ-6.1 to 6.13 |
 | desktop smoke (`smoke.desktop.field.spec.ts`) | the same with the mouse; a held press on a star leaves the hero still | REQ-6.9, 6.13 |
 
 `tasks.md` carries the requirement, test and result for each task.
@@ -463,7 +501,7 @@ mix fails. The measured values (Chromium, iPhone 13 profile, 3x): a real star in
 break about 0 (between -22 and 14); a fake star halo 167 and rim break 99; in the lens 71 and 0, and 115 and 178.
 The grayscale test adds `canvas { filter: grayscale(1) }` and gets the same numbers within 1. Ticks are the badge
 point (gold only for a sorted real star); the buttons are their gold faces (the wide button covers the gap between
-the narrow ones, so a gold gap means the wide button); the clear panel is its gold word. Text is counted as light
+the narrow ones, so a gold gap means the wide button); the closing line's panel has a gold edge (read along its top). Text is counted as light
 pixels in the message and closing-line boxes, as trial 1 and 2's smoke do. The pixel reading uses `node:zlib` only.
 "Silent" is checked by wrapping `AudioContext.createOscillator`, `createBufferSource` and `HTMLMediaElement.play`
 before the page loads and requiring that none is called during a whole sort.
@@ -486,7 +524,23 @@ before the page loads and requiring that none is called during a whole sort.
   the smoke could not read it); a label on fake stars (it would remove the looking).
 - **A seed, not a table.** See "The fake stars". Alternative kept in mind: a fixed table is simpler and was the
   first build; it lets a child memorize positions. The cost of the seed is one event field and pinned unit tests.
-- **A run of two rounds, then the clear.** The first round has one fake and the second two, so there is a
+- **Revision 3: a 60-second score attack around the same look-and-decide step.** The comment asked for "more game,
+  as far as the learning point still comes across". What must not change: the verdict is given only to a star that
+  was looked at (INV-33), the game never corrects the child (INV-35), the clue is always visible (INV-36), and a
+  wrong verdict costs no time. What is added: the clock, the score, a streak, and rounds without end. Why the
+  score does not teach "tap fast": a right verdict is worth 100 to 300 depending on the streak, and a wrong one
+  ends the streak, so a child who guesses (right half the time) scores about a third as much as one who looks
+  (the worked case: five right in a row is 1,000; five alternating right and wrong is 500) and loses the
+  streak bonus; a child who taps without looking pays for it in the score and not in the clock. The alternatives
+  considered: a time penalty for a wrong verdict (a fear of being wrong, the opposite of the lesson, REQ-6.3.5);
+  a bonus for a perfect round (more state and more strings, and the streak already pays it); fewer taps per round
+  (the lens step is the lesson); several fake clues of growing difficulty (new art and new probes for the smoke).
+  A round is about 12 taps, so a careful child gets through two to four rounds in a minute. If playtests show
+  that is too few, the lever is the number of stars per round, not the verdict step.
+- **Revision 3: a quick child scores more, and that is allowed.** The speed is rewarded only through the number of
+  right verdicts, and a right verdict needs a look first. A child who looks closely and fast scores the most; the
+  design does not claim that checking real AI work is as fast.
+- **(Revision 2, replaced) A run of two rounds, then the clear.** The first round has one fake and the second two, so there is a
   small step up. Alternatives: one round (too short to feel a trial; no step), three or more (more taps for a
   6-year-old: a round is 10 taps and a keep). The table has four rounds so that "play again" is new.
 - **The keep is a button, after all five are sorted.** Alternatives: keep each star by a second tap (ten taps
@@ -507,7 +561,11 @@ before the page loads and requiring that none is called during a whole sort.
 - **Trial 1's card and the buttons' caption** (REQ-6.1.6) change three title strings' places and add one key.
   The alternative of a heading ("Other games") over the buttons adds a string that says nothing about the rules;
   the caption states the fact (no timer) where the child looks.
-- **The way back is on the cleared trial only.** A "back" button during play needs a `Leave` that is valid in
+- **Revision 3: the way back is on the screen in every stage** (the shed's button, same place and size), and on the end
+  screen. The reasons below against it were weighed in revision 2 and the comment overruled them: a child who
+  could not leave said so. There is no confirmation: the score of a run is not saved, only the best of the session
+  is kept, and leaving a run costs nothing the child cannot get back in a minute. Revision 2's text follows.
+- **(Revision 2, replaced) The way back is on the cleared trial only.** A "back" button during play needs a `Leave` that is valid in
   every stage, a confirmation for a child who taps it by accident, and a decision about progress. The cleared
   trial is the natural end; a reload covers the rest. A child stuck mid-round loses nothing by reloading.
 - **The title ignores taps for 0.7 s after the leave.** A double tap would start trial 1. Game time

@@ -1,10 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { initialLane } from "../src/domain/lane";
-import { initialRun } from "../src/domain/run";
 import { buttonRects, fieldMessage, starCenter } from "../src/game/field-layout";
 import { titleFieldButton } from "../src/game/field-layout";
 import { canvas } from "../src/game/lane-layout";
-import { titleShedButton } from "../src/game/shed-layout";
+import { leaveButton, titleShedButton } from "../src/game/shed-layout";
 import {
   buttonCaption,
   buttonLabel,
@@ -25,20 +24,21 @@ import {
   textPixels,
 } from "./helpers";
 import {
-  clearTextAreas,
   clueReads,
   enterField,
   expectButtons,
   expectCluesMatchRound,
-  expectClearPanel,
   expectLens,
+  expectLesson,
   expectTicks,
   fakesNow,
   freshField,
   giveVerdict,
   inkPixels,
   keepStars,
+  leaveFromEnd,
   leaveToTitle,
+  lessonArea,
   lookAt,
   nextRound,
   playAgain,
@@ -47,11 +47,12 @@ import {
   sortRight,
   truth,
 } from "./field-helpers";
-import { freshShed } from "./shed-helpers";
+import { expectClockShown, expectScoreDrawn, freshShed, scorePrint } from "./shed-helpers";
 
-// Trial 3, The Wisp Field (.kiro/specs/06-trial-verify-stars, revision 2): every press is a real touch tap on
-// the canvas. The clue, the lens, the buttons, the ticks and the clear panel are read from the pixels, not the
-// state. `dispatch` is used only for the language, time, and a keep that no button offers.
+// Trial 3, The Wisp Field (.kiro/specs/06-trial-verify-stars, revision 3): every press is a real touch tap on
+// the canvas. The clue, the lens, the buttons, the ticks, the clock, the score and the closing line are read
+// from the pixels, not the state. The field is a 60-second run on the real clock, so each test plays well under
+// a minute. `dispatch` is used only for the language, time up (`Tick`), and a keep that no button offers.
 
 async function openGame(page: Page, lang: "ja" | "en") {
   await page.goto(`./?lang=${lang}`);
@@ -68,7 +69,7 @@ const messageBox = {
 const messagePrint = (page: Page) => fingerprint(page, messageBox);
 const stars = [0, 1, 2, 3, 4];
 
-test("REQ-6.1, REQ-6.2: the title's button opens the field, and the clue is on every star before any tap, with no button yet, in Japanese", async ({
+test("REQ-6.1, REQ-6.2, REQ-6.7.1: the title's button opens the field and starts a 60-second run; the clock, the score and the way back are on screen; the clue is on every star before any tap, with no button yet, in Japanese", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -79,10 +80,15 @@ test("REQ-6.1, REQ-6.2: the title's button opens the field, and the clue is on e
   expect(entered).toMatchObject({ phase: "trial", trial: 3, lang: "ja" });
   expect(entered.field).toMatchObject({ ...freshField(entered.field.seed, 0) });
   expect(entered.lane).toEqual(initialLane);
-  expect(entered.run).toEqual(initialRun);
   expect(entered.shed).toEqual(freshShed);
-  await page.waitForTimeout(600);
-  expect((await gameState(page)).run.remainingMs).toBe(60_000);
+  expect(entered.run).toMatchObject({ score: 0, streak: 0, best: 0, record: false });
+
+  // REQ-6.7.1: the clock runs from the first frame, the top row is drawn, and the way back to the title is there.
+  await expect.poll(async () => (await gameState(page)).run.remainingMs).toBeLessThan(59_900);
+  await expectClockShown(page);
+  await expectScoreDrawn(page);
+  const leaveLabel = { x: leaveButton.x, y: leaveButton.y, width: 70, height: 22 };
+  await expect.poll(() => inkPixels(page, leaveLabel)).toBeGreaterThan(minTextPixels);
 
   // REQ-6.2.3: before any tap, the fake stars shine brighter and have a dotted rim; the others do not.
   await expectCluesMatchRound(page);
@@ -96,13 +102,13 @@ test("REQ-6.1, REQ-6.2: the title's button opens the field, and the clue is on e
   }
   await expectLens(page, "empty");
   await expectButtons(page, []);
-  await expectClearPanel(page, false);
+  await expectLesson(page, false);
   await expect.poll(() => textPixels(page, messageBox)).toBeGreaterThan(minTextPixels);
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-start.png" });
   expect(errors).toEqual([]);
 });
 
-test("REQ-6.3: a tap looks and sorts nothing; a wrong verdict in either direction tells what happened and is tried again; the right one sorts", async ({
+test("REQ-6.3, REQ-6.7.3: a tap looks and sorts nothing; a wrong verdict in either direction tells what happened, scores nothing and ends the streak; the right one sorts and scores", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -114,37 +120,45 @@ test("REQ-6.3: a tap looks and sorts nothing; a wrong verdict in either directio
   const fake = (await fakesNow(page))[0]!;
   const real = stars.find((i) => i !== fake)!;
   const start = await messagePrint(page);
+  const scoreAtStart = await scorePrint(page);
 
-  // A tap on a real star puts it in the lens, shows both verdict buttons, and sorts nothing.
+  // A tap on a real star puts it in the lens, shows both verdict buttons, and sorts and scores nothing.
   await lookAt(page, tap, real);
   await expectLens(page, "normal");
   await expectButtons(page, ["left", "right"]);
   await expectTicks(page, []);
   await expect.poll(() => messagePrint(page)).not.toBe(start);
   const looking = await messagePrint(page);
+  expect((await gameState(page)).run).toMatchObject({ score: 0, streak: 0 });
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-look.png" });
 
-  // REQ-6.3.4: called fake, it is real: nothing is sorted, the lens closes, the message tells what happened.
+  // REQ-6.3.4: called fake, it is real: nothing is sorted, the lens closes, the message tells what happened,
+  // and the score stays where it was.
   await giveVerdict(page, tap, "fake");
   expect((await gameState(page)).field).toMatchObject({
     sorted: [false, false, false, false, false],
     looking: null,
     note: { star: real, said: "fake" },
   });
+  expect((await gameState(page)).run).toMatchObject({ score: 0, streak: 0 });
   await expectLens(page, "empty");
   await expectButtons(page, []);
   await expectTicks(page, []);
   await expect.poll(() => messagePrint(page)).not.toBe(looking);
   const missedReal = await messagePrint(page);
+  expect(await scorePrint(page)).toBe(scoreAtStart);
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-miss-real.png" });
 
-  // The same star again, with the right verdict: it is sorted and ticked.
+  // The same star again, with the right verdict: it is sorted and ticked, and 100 points are scored.
   await lookAt(page, tap, real);
   await giveVerdict(page, tap, "real");
   await expectTicks(page, [real]);
   await expect.poll(() => messagePrint(page)).not.toBe(missedReal);
+  expect((await gameState(page)).run).toMatchObject({ score: 100, streak: 1 });
+  await expect.poll(() => scorePrint(page)).not.toBe(scoreAtStart);
 
-  // A fake star: its lens shows the bright star with the dotted rim. Called real, it is not accepted.
+  // A fake star: its lens shows the bright star with the dotted rim. Called real, it is not accepted, and the
+  // streak ends.
   await lookAt(page, tap, fake);
   await expectLens(page, "bright");
   await giveVerdict(page, tap, "real");
@@ -152,6 +166,7 @@ test("REQ-6.3: a tap looks and sorts nothing; a wrong verdict in either directio
     looking: null,
     note: { star: fake, said: "real" },
   });
+  expect((await gameState(page)).run).toMatchObject({ score: 100, streak: 0 });
   await expectTicks(page, [real]);
   const missedFake = await messagePrint(page);
   expect(missedFake).not.toBe(missedReal);
@@ -162,21 +177,26 @@ test("REQ-6.3: a tap looks and sorts nothing; a wrong verdict in either directio
   await expectTicks(page, [real]);
   const field = (await gameState(page)).field;
   expect(field).toMatchObject({ note: { star: fake, said: "fake" } });
+  expect((await gameState(page)).run).toMatchObject({ score: 200, streak: 1 });
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-sorted-fake.png" });
 
-  // A tap on a sorted star changes nothing.
+  // A tap on a sorted star changes nothing but the clock.
   const before = await gameState(page);
   await tap(starCenter(real));
   await tap(starCenter(fake));
   await page.waitForTimeout(300);
-  expect(await gameState(page)).toEqual(before);
+  const after = await gameState(page);
+  expect({ ...after, run: { ...after.run, remainingMs: 0 } }).toEqual({
+    ...before,
+    run: { ...before.run, remainingMs: 0 },
+  });
   expect(errors).toEqual([]);
 });
 
-test("REQ-6.5 to REQ-6.7: sorting all five shows the keep button; keeping two rounds clears the trial; the title button returns to the title", async ({
+test("REQ-6.5, REQ-6.6, REQ-6.7.2: sorting all five shows the keep button; the keep shows the closing line and the next stars, and the trial goes on with two fake stars", async ({
   page,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(90_000);
   const errors = collectErrors(page);
   const tap = tapper(page);
   await openGame(page, "ja");
@@ -191,17 +211,19 @@ test("REQ-6.5 to REQ-6.7: sorting all five shows the keep button; keeping two ro
   await sortRight(page, tap, 0);
   const sorted = await gameState(page);
   expect(sorted.field).toMatchObject({ sorted: [true, true, true, true, true], looking: null });
+  // Five right verdicts in a row: 100 + 150 + 200 + 250 + 300.
+  expect(sorted.run).toMatchObject({ score: 1000, streak: 5 });
   const fakes = await fakesNow(page);
   await expectTicks(
     page,
     stars.filter((i) => !fakes.includes(i)),
   );
   await expectButtons(page, ["single"]);
-  expect((await gameState(page)).field.stage).toBe("sorting");
+  await expectLesson(page, false);
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-ready.png" });
 
-  // REQ-6.5.3: the keep accepts the real stars; more rounds are to come, so there is no clear panel. A quick
-  // double tap on the keep button must not also press "Next stars", which takes its place (REQ-6.9.5).
+  // REQ-6.5.3: the keep accepts the real stars and shows the closing line. A quick double tap on the keep
+  // button must not also press "Next stars", which takes its place (REQ-6.9.5).
   const { box: frame, scale: pixels } = await canvasFrame(page);
   const keepAt = {
     x: frame.x + buttonRects.single.x * pixels,
@@ -213,82 +235,98 @@ test("REQ-6.5 to REQ-6.7: sorting all five shows the keep button; keeping two ro
   await expect.poll(async () => (await gameState(page)).field.stage).toBe("kept");
   await page.waitForTimeout(500);
   expect((await gameState(page)).field).toMatchObject({ stage: "kept", round: 0 });
-  await expectClearPanel(page, false);
+  expect((await gameState(page)).run.score).toBe(1000);
+  await expectLesson(page, true);
   await expectButtons(page, ["single"]);
   await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-kept.png" });
+  const japanese = await fingerprint(page, lessonArea);
+  await dispatch(page, { type: "SetLang", lang: "en" });
+  await expect.poll(() => fingerprint(page, lessonArea)).not.toBe(japanese);
+  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-kept.png" });
 
-  // Round 2: two fake stars; every unsorted star's clue matches the round.
+  // Round 2: two fake stars, the closing line is gone, and every unsorted star's clue matches the round.
   await nextRound(page, tap);
+  expect((await gameState(page)).phase).toBe("trial");
   expect((await fakesNow(page)).length).toBe(2);
   await expectCluesMatchRound(page);
-  await sortAll(page, tap);
-  await expectButtons(page, ["single"]);
-  await keepStars(page, tap);
+  await expectLesson(page, false);
+  await expectLens(page, "empty");
+  await expectButtons(page, []);
+  expect((await gameState(page)).run.score).toBe(1000);
+  expect(errors).toEqual([]);
+});
 
-  // REQ-6.7: the trial is cleared: the clear panel, its word and closing line, and the two buttons.
-  expect((await gameState(page)).field).toMatchObject({ stage: "cleared", round: 1 });
-  await expectClearPanel(page, true);
-  await expectButtons(page, ["left", "right"]);
-  await expect.poll(() => textPixels(page, clearTextAreas.lesson)).toBeGreaterThan(minTextPixels);
-  await page.screenshot({ path: "e2e/screenshots/mobile-field-ja-cleared.png" });
-  const japanese = await fingerprint(page, clearTextAreas.lesson);
-  await dispatch(page, { type: "SetLang", lang: "en" });
-  await expect.poll(() => fingerprint(page, clearTextAreas.lesson)).not.toBe(japanese);
-  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-cleared.png" });
+test("REQ-6.7.4, REQ-6.7.5: time up shows the end screen; play again starts a new run; the title button goes back, in a run and on the end screen; the best is kept", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const errors = collectErrors(page);
+  const tap = tapper(page);
+  await openGame(page, "en");
+  await enterField(page, tap);
+  await sortRight(page, tap, 0);
+  expect((await gameState(page)).run.score).toBe(100);
 
-  // Nothing times out or changes the result by itself.
+  // The clock ran out: the end screen replaces the field, with the score and the best.
   await dispatch(page, { type: "Tick", ms: 60_000 });
-  await page.waitForTimeout(800);
-  expect((await gameState(page)).field.stage).toBe("cleared");
-  await expectClearPanel(page, true);
+  await expect.poll(async () => (await gameState(page)).phase).toBe("over");
+  expect(await gameState(page)).toMatchObject({ phase: "over", trial: 3 });
+  expect((await gameState(page)).run).toMatchObject({ score: 100, best: 100, record: true });
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-over.png" });
 
-  // REQ-6.7.4: the title button returns to the title. A child's quick second tap lands on the title, where a
-  // tap anywhere starts trial 1, so the title ignores taps for a moment after the field sent the child back.
+  // Play again: a full clock, a score of 0, round 0 of a new seed, the best kept.
+  await playAgain(page, tap);
+  const again = await gameState(page);
+  expect(again).toMatchObject({ phase: "trial", trial: 3 });
+  expect(again.field).toMatchObject({ ...freshField(again.field.seed, 0) });
+  expect(again.run).toMatchObject({ score: 0, streak: 0, best: 100 });
+  await expectCluesMatchRound(page);
+  await expectClockShown(page);
+
+  // The way back, in the middle of a run: the title, with the best score kept and nothing of the run. A
+  // child's quick second tap lands on the title, where a tap anywhere starts trial 1, so the title ignores
+  // taps for a moment after the field sent the child back.
+  await sortRight(page, tap, 1);
   const { box, scale } = await canvasFrame(page);
-  const leave = { x: box.x + buttonRects.right.x * scale, y: box.y + buttonRects.right.y * scale };
+  const leave = { x: box.x + leaveButton.x * scale, y: box.y + leaveButton.y * scale };
   await page.touchscreen.tap(leave.x, leave.y);
   await page.touchscreen.tap(leave.x, leave.y);
   await expect.poll(async () => (await gameState(page)).phase).toBe("title");
   await page.waitForTimeout(300);
+  const left = await gameState(page);
+  expect(left).toMatchObject({ phase: "title", trial: 0, field: freshField(0, 0) });
+  expect(left.run).toMatchObject({ remainingMs: 60_000, score: 0, best: 100 });
+  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-back.png" });
+
+  // The lock is short: a tap elsewhere on the title starts trial 1 once it has passed.
+  await page.waitForTimeout(900);
+  await startTrial(page, tap);
+  expect(await gameState(page)).toMatchObject({ phase: "trial", trial: 1 });
+  expect((await gameState(page)).field).toEqual(freshField(0, 0));
+  expect(errors).toEqual([]);
+});
+
+test("REQ-6.7.5: from the end screen the title button goes back to the title, and the field opens again from there", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const tap = tapper(page);
+  await openGame(page, "ja");
+  await enterField(page, tap);
+  await dispatch(page, { type: "Tick", ms: 60_000 });
+  await expect.poll(async () => (await gameState(page)).phase).toBe("over");
+  await leaveFromEnd(page, tap);
   expect(await gameState(page)).toMatchObject({
     phase: "title",
     trial: 0,
     field: freshField(0, 0),
   });
-  expect((await gameState(page)).run).toEqual(initialRun);
-  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-back.png" });
-
-  // The lock is short: a tap elsewhere on the title starts trial 1 again once it has passed.
+  expect((await gameState(page)).run).toMatchObject({ remainingMs: 60_000, score: 0, best: 0 });
   await page.waitForTimeout(900);
-  await startTrial(page, tap);
-  expect(await gameState(page)).toMatchObject({ phase: "trial", trial: 1 });
-  expect(errors).toEqual([]);
-});
-
-test("REQ-6.7.2: after the clear, play again starts a new run with its own fake stars, and the clue follows the round", async ({
-  page,
-}) => {
-  test.setTimeout(150_000);
-  const errors = collectErrors(page);
-  const tap = tapper(page);
-  await openGame(page, "en");
   await enterField(page, tap);
-  const seed = (await gameState(page)).field.seed;
-  await sortAll(page, tap);
-  await keepStars(page, tap);
-  await nextRound(page, tap);
-  await sortAll(page, tap);
-  await keepStars(page, tap);
-  await expectClearPanel(page, true);
-
-  await playAgain(page, tap);
-  const again = (await gameState(page)).field;
-  expect(again).toMatchObject({ ...freshField(seed, 2) });
-  await expectClearPanel(page, false);
-  await expectButtons(page, []);
-  await expectCluesMatchRound(page);
-  await expectLens(page, "empty");
-  await page.screenshot({ path: "e2e/screenshots/mobile-field-en-run2.png" });
+  expect(await gameState(page)).toMatchObject({ phase: "trial", trial: 3 });
+  await leaveToTitle(page, tap);
   expect(errors).toEqual([]);
 });
 
@@ -350,7 +388,7 @@ test("REQ-6.2.2, REQ-6.10: the clue works without color and without sound: on a 
   expect(errors).toEqual([]);
 });
 
-test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts trial 1; the 60 seconds sit in trial 1's card and the shed's caption, and the field's button says it has no timer, in both languages", async ({
+test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts trial 1; the 60 seconds sit in trial 1's card and in the captions of the shed's and the field's buttons, in both languages", async ({
   page,
 }) => {
   const tap = tapper(page);
@@ -362,7 +400,6 @@ test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts
     await expect.poll(() => textPixels(page, prompt)).toBeGreaterThan(minTextPixels);
     await expect.poll(() => textPixels(page, intro)).toBeGreaterThan(minTextPixels);
     // Each button has its label and its caption, drawn under it.
-    const captions: string[] = [];
     for (const button of [titleFieldButton, titleShedButton]) {
       const label = {
         x: button.x + buttonLabel.x,
@@ -378,10 +415,7 @@ test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts
       };
       await expect.poll(() => inkPixels(page, label)).toBeGreaterThan(minTextPixels);
       await expect.poll(() => inkPixels(page, caption)).toBeGreaterThan(minTextPixels);
-      captions.push(await fingerprint(page, caption));
     }
-    // The shed's caption (the 60 seconds) and the field's (no timer) are different words.
-    expect(captions[0]).not.toBe(captions[1]);
     // The card is separate from the buttons: no light text between the card and the buttons' region.
     expect(titleCard.y + titleCard.height / 2).toBeLessThan(titleFieldButton.y - 40);
     await page.screenshot({ path: `e2e/screenshots/mobile-field-${lang}-title.png` });
@@ -398,11 +432,11 @@ test("REQ-6.1.3, REQ-6.1.6, REQ-5.1.1: a tap elsewhere on the title still starts
 });
 
 for (const lang of ["ja", "en"] as const) {
-  test(`REQ-6.10: plays the field offline after the first load: look, sort, keep, clear and back, in ${lang}`, async ({
+  test(`REQ-6.10: plays the field offline after the first load: look, sort, keep, the next stars and back, in ${lang}`, async ({
     page,
     context,
   }) => {
-    test.setTimeout(150_000);
+    test.setTimeout(90_000);
     const errors = collectErrors(page);
     const tap = tapper(page);
     await openGame(page, lang);
@@ -414,10 +448,8 @@ for (const lang of ["ja", "en"] as const) {
     await enterField(page, tap);
     await sortAll(page, tap);
     await keepStars(page, tap);
+    await expectLesson(page, true);
     await nextRound(page, tap);
-    await sortAll(page, tap);
-    await keepStars(page, tap);
-    await expectClearPanel(page, true);
     await leaveToTitle(page, tap);
     expect((await gameState(page)).phase).toBe("title");
 

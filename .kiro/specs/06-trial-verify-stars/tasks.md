@@ -1,5 +1,9 @@
 # Tasks: Trial 3, The Wisp Field
 
+> **Revision 3** adds section 9 (a 60-second time attack with a score, and a way back to the title). Sections 1 to 8
+> are revision 2 and are kept as they were written; their Result lines describe that build (two rounds and a cleared
+> trial), which revision 3 replaced.
+
 One task per branch and per pull request (`AGENTS.md`). Branch `06-trial-verify-stars/<task>`, cut from
 `main` after the previous task is merged. Every task leaves the game working and passes `npm run check`;
 tasks that connect input to the screen also pass `npm run build` followed by `npm run smoke`. Sized for
@@ -285,3 +289,61 @@ and is replaced together with the behavior it described.
     request. **Still not verified:** no real phone, no real child (the weekly pass in `docs/device-checklist.md` and the
     next playtest do that); real WebKit (CI's `smoke` job); the `reviewer` and `kid-reader` agents were never run, only
     their rubrics applied by hand.
+
+## 9. Revision 3: a 60-second time attack, a score, and a way back (branch `06-trial-verify-stars/r3`)
+
+The three comments on revision 2 (see the top of `requirements.md`) were done in one branch because the pieces do not
+build apart: the reducer's `cleared` stage goes, the view, the scene, the end screen and every test of them change
+together. The order inside the branch was: domain (`field.ts`, `events.ts`, `reducer.ts`), then the unit, property and
+model tests, then the view, the layout, the scene and the end screen, then the strings and their tests, then the
+smoke, then the documents. Trial 1 and trial 2 code did not change, except two lines: the shed's `OverAction` name
+`leave` became `leaveShed` (so that the field's can sit beside it), and `shed-view.ts`'s two comments.
+
+### Tests of the old behavior that this revision replaces (REQ-6.14.1)
+
+| old test | file | by | why trials 1 and 2 are not weaker |
+|---|---|---|---|
+| the keep of the second round clears the trial; the retry after a cleared trial; `isLastRound`, `roundsPerRun` | `field.test.ts` | a keep always gives `kept`, for every round; the rounds wrap | the field only |
+| INV-37 (the trial is cleared only at the last round) | `field.pbt.test.ts` | removed with INV-37 (retired in `domain-invariants.md`); INV-38, INV-44, INV-45 and INV-15 to INV-17 for the field added | the field only |
+| INV-32 ("in trial 3 the clock never runs, the run stays initial") | `field.pbt.test.ts`, `reducer.test.ts` | the other trials' events, minus `Tick`, return the same state; the lane and the shed stay initial | the shed's INV-24 and the lane's invariants are the same tests as before |
+| the field model check (19,356 states; `clears`; a cleared trial; the leave only after a clear; 10 breaks) | `field.model.test.ts` | the clock, the score and the end screen in the record; 9,904 states; 12 breaks | the models of trials 1 and 2 are not touched |
+| `StartField` "starts no run"; "the clock never runs in the field" | `reducer.test.ts` | `StartField` begins a run; the clock, the score and the leave are tested | the lane and shed sections above them are byte for byte the same |
+| `field.clear`, `field.again`, `field.leave` and `noClock` strings and the tests that listed them | `field-content.test.ts`, `title-view.test.ts` | `field.timeAttack`; the title tests check both captions | the shed's strings are not touched |
+| the cleared stage in the view and layout tests; `clearText` | `field-view.test.ts`, `field-layout.test.ts` | `lesson` after a keep; the top row and the "Title" button in every stage's layout | the shed's view and layout tests are not touched |
+| the shed's end-screen test expecting action `"leave"` | `over-view.test.ts` | `"leaveShed"` | the same two buttons, the same texts |
+| the field smoke (two rounds, the clear panel, `playAgain` on the cleared trial) | `smoke.mobile.field.spec.ts`, `smoke.desktop.field.spec.ts`, `field-helpers.ts` | one round with the closing line, time up, the end screen, the leave in a run and on the end screen | the trial 1, 2 and score-attack smokes pass unchanged |
+
+- [x] 9.1 Make the field a 60-second time attack with a score and a way back to the title.
+  - Requirements: REQ-6.1.2, REQ-6.1.6, REQ-6.2.1, REQ-6.3.5, REQ-6.5.4, REQ-6.6, REQ-6.7, REQ-6.8.3, REQ-6.8.4,
+    REQ-6.9.2, REQ-6.9.4, REQ-6.10.2, REQ-6.11.1, REQ-6.12.2, REQ-6.12.3, REQ-6.12.4, REQ-6.13, REQ-6.14
+  - Tests: as in "Test plan" in `design.md`; the new property tests are INV-15 to INV-17 for the field, INV-38, INV-44
+    and INV-45; INV-37 is retired.
+  - Done when: `npm run check`, `npm run build` and `npm run smoke` pass (Chromium here; CI runs WebKit), and the
+    screens were looked at in screenshots.
+  - Result: **Run in the authoring sandbox on Node 26.13.0.** `npm run check` exits 0: format, lint and types pass;
+    knip passes; 41 test files and 867 tests pass at 100% coverage; `check-trace: 41 invariants, 0 without tests`
+    (the warnings it prints are the old ones of specs 03 and 04); ShellCheck was skipped (neither the binary nor
+    Docker is here; CI runs it); mutation score 100% (1,124 killed, 1 timeout, 0 survived, 7 module-crash errors that
+    are reported as errors and not survivors, 6 of them in `field-view.ts` and 1 in `shed-view.ts`, as before this
+    change); the size budget is 365.1 KB of 1,024 KB gzip. An earlier mutation run found one survivor in
+    `over-view.ts` (a condition that was equivalent whatever its value); the lookup was changed to a
+    `Record<number, …>`, and the whole run above is the one made after that. The field model has 9,904 states and its
+    12 deliberate breaks fail the checks they are meant to. `npm run build`, then the **whole smoke on Chromium with
+    the iPhone 13 touch profile** (WebKit cannot start here; through `.cache/pw.config.ts`, not committed) and desktop
+    Chromium, `--workers=1`: **32 passed** (mobile 24, desktop 8), including the trial 1, trial 2 and score-attack
+    smokes, which are unchanged. The field's new tests cover: the entrance, the clock and the score drawn in the top
+    row and the "Title" label drawn; the clue on every star; a wrong verdict leaving the score at 0 and a right one
+    scoring 100, then a wrong verdict on a fake star ending the streak and the right one scoring 100 again (200);
+    five right verdicts in a row reading 1,000 and streak 5 in the state; a keep sent too early; the keep with a real
+    double tap; the closing line (read as a gold panel edge and light text) in both languages; "Next stars" with two
+    fake stars; time up showing the end screen; "Play again" with the best kept; "Title" with a real double tap in a
+    run and from the end screen; grayscale and silence; the title with both captions; offline in both languages; and,
+    with the mouse, a held press on a star not moving the hero. I looked at the screenshots of the kept screen in
+    Japanese, the English end screen and the Japanese title. **Not run:** the smoke on real WebKit (CI); a real phone;
+    a real child; the `reviewer` and `kid-reader` agents (the one new Japanese caption, `60びょうで いくつ？`, is
+    copied from the shed's and `npm run kid` passes); the new smoke tests against deliberate breaks of the scene (only
+    the model and property tests were shown to fail on broken rules); CI's `smoke` job, since a record cannot contain
+    its own result.
+  - Risk noted: the smoke now plays on the real 60-second clock. The longest test (the verdicts, about 20 s) and the
+    keep test (about 20 s) leave room, but a slow runner could cross 60 s; if CI shows it, split the test as the
+    shed's was, do not raise the clock.

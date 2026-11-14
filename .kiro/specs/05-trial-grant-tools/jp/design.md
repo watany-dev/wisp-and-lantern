@@ -205,7 +205,7 @@ kid-reader エージェントはこのセッションでは実行できなかっ
 
 ### 入口、終了画面、シーンの選択
 
-- `TitleScene` の小屋ボタンは、`newSeed()` つきの `StartShed` を送ります。どのオブジェクトにも当たらなかった押下は、今も試練1を始めます。小屋のラベルの下のボタンの説明は `titleView(lang).shedCaption`（60秒）で、野原のラベルの下は `noClock` です。試練が子どもを戻したあと、タイトルは700msの間タップを無視します（`fromTrial`。以前は `fromField`）。
+- `TitleScene` の小屋ボタンは、`newSeed()` つきの `StartShed` を送ります。どのオブジェクトにも当たらなかった押下は、今も試練1を始めます。小屋のラベルの下のボタンの説明は `titleView(lang).shedCaption`（60秒）で、野原のラベルの下は `noClock` です（`06` の改訂3で削除。同じ言葉の `field.timeAttack` になった）。試練が子どもを戻したあと、タイトルは700msの間タップを無視します（`fromTrial`。以前は `fromField`）。
 - `route.ts`: `sceneFor(state)` は変わりません。`phase` と `trial` から `title`、`lane`、`shed`、`field`、`over` を返します。小屋のシーンは、状態が小屋のものでなくなったとき（終了画面、または `{ fromTrial: true }` のタイトル）に `sceneFor(state)` を開始します。
 - `OverScene` は `overView(state)` を描き、これはボタンのリストを持つようになりました。試練1: 1つ（遊び直す、action は `play`）。試練2: 2つ（遊び直す、action は `playShed`。タイトル、action は `leave`）。シーンは action をイベントに変え（`playShed` は `newSeed()` でシードを引く）、状態が `over` でなくなったら `sceneFor(state)` を開始します。
 

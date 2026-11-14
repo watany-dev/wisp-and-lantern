@@ -1,6 +1,6 @@
 // The title screen: the game's name, trial 1's card (a tap anywhere starts it, and it has the 60 seconds),
-// the wisp and the hero, and two buttons that open trial 2 (the shed, also a 60-second run) and trial 3 (the
-// field). Each button says in its own caption whether it has a clock. Specs:
+// the wisp and the hero, and two buttons that open trial 2 (the shed) and trial 3 (the field), which are
+// 60-second runs too. Each button says so in its own caption. Specs:
 // .kiro/specs/04-score-attack/design.md, .kiro/specs/05-trial-grant-tools/design.md,
 // .kiro/specs/06-trial-verify-stars/design.md
 
@@ -153,6 +153,6 @@ export class TitleScene extends Phaser.Scene {
     this.shed.label.setText(view.shed);
     this.shed.caption.setText(view.shedCaption);
     this.field.label.setText(view.field);
-    this.field.caption.setText(view.noClock);
+    this.field.caption.setText(view.fieldCaption);
   }
 }

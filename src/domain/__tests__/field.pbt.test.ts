@@ -1,11 +1,11 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vite-plus/test";
+import { balance } from "../balance";
 import type { GameEvent } from "../events";
 import {
   fakesOf,
   initialField,
   isFake,
-  isLastRound,
   isReady,
   keptStars,
   roundCount,
@@ -16,12 +16,13 @@ import {
 } from "../field";
 import { colors, things } from "../lane";
 import { reduce } from "../reducer";
+import { pointsFor } from "../run";
 import { tools } from "../shed";
 import { initialState, type GameState } from "../state";
 import { checkProperty, deepFreeze } from "./support/pbt";
 
-// Trial 3 (spec 06-trial-verify-stars): property tests over the real reducer. The generator mixes the
-// field events with every other event, so the guards between the trials are exercised too.
+// Trial 3 (spec 06-trial-verify-stars, revision 3): property tests over the real reducer. The generator mixes
+// the field events with every other event, so the guards between the trials are exercised too.
 
 const stars = [0, 1, 2, 3, 4];
 const lang = fc.constantFrom("ja" as const, "en" as const);
@@ -40,7 +41,6 @@ const fieldEvent: fc.Arbitrary<GameEvent> = fc.oneof(
   { weight: 6, arbitrary: fc.record({ type: fc.constant("SortStar" as const), verdict }) },
   { weight: 3, arbitrary: fc.record({ type: fc.constant("KeepStars" as const) }) },
   { weight: 2, arbitrary: fc.record({ type: fc.constant("RetryField" as const) }) },
-  { weight: 2, arbitrary: fc.record({ type: fc.constant("LeaveField" as const) }) },
 );
 const otherEvent: fc.Arbitrary<GameEvent> = fc.oneof(
   // `lang` is either absent or a language: `{ lang: undefined }` is not a valid event.
@@ -56,6 +56,7 @@ const otherEvent: fc.Arbitrary<GameEvent> = fc.oneof(
   fc.record({ type: fc.constant("StartShed" as const) }),
   fc.record({ type: fc.constant("LeaveShed" as const) }),
   fc.record({ type: fc.constant("StartField" as const), seed }),
+  fc.record({ type: fc.constant("LeaveField" as const) }),
   // Short ticks, and a long one that would end a run of trial 1.
   fc.record({ type: fc.constant("Tick" as const), ms: fc.integer({ min: -100, max: 2_000 }) }),
   fc.record({ type: fc.constant("Tick" as const), ms: fc.integer({ min: 0, max: 70_000 }) }),
@@ -66,21 +67,32 @@ const enter = (s: number): GameEvent => ({ type: "StartField", seed: s });
 /** Opens the field from the title first, so the field events are not all ignored. */
 const inField = fc.tuple(seed, events).map(([s, list]): GameEvent[] => [enter(s), ...list]);
 const other = (v: Verdict): Verdict => (v === "real" ? "fake" : "real");
+const ending = {
+  next: () => [{ type: "RetryField" }],
+  leave: (again: number) => [{ type: "LeaveField" }, enter(again)],
+  end: (again: number) => [{ type: "Tick", ms: balance.runMs }, enter(again)],
+} satisfies Record<string, (again: number) => GameEvent[]>;
 /**
  * Whole rounds: some noise, then every star looked at and given a verdict (a wrong one first half the
- * time, then the other, so the star is sorted in the end), the keep, the retry, and sometimes the way
- * back to the title and in again, several times over (random events alone almost never get through a
- * round).
+ * time, then the other, so the star is sorted in the end), the keep, and then the next round, or the way
+ * back to the title and in again, or the time up and play again, several times over (random events alone
+ * almost never get through a round).
  */
 const aRound = fc
   .tuple(
     fc.array(event, { maxLength: 3 }),
     fc.shuffledSubarray(stars, { minLength: 5 }),
     fc.array(verdict, { minLength: 5, maxLength: 5 }),
-    fc.boolean(),
+    fc.constantFrom(
+      "next" as const,
+      "next" as const,
+      "next" as const,
+      "leave" as const,
+      "end" as const,
+    ),
     seed,
   )
-  .map(([noise, order, said, leaves, again]): GameEvent[] => [
+  .map(([noise, order, said, after, again]): GameEvent[] => [
     ...noise,
     ...order.flatMap((i, k): GameEvent[] => [
       { type: "InspectStar", index: i },
@@ -89,9 +101,7 @@ const aRound = fc
       { type: "SortStar", verdict: other(said[k]!) },
     ]),
     { type: "KeepStars" },
-    ...(leaves
-      ? [{ type: "LeaveField" } as const, enter(again)]
-      : [{ type: "RetryField" } as const]),
+    ...ending[after](again),
   ]);
 const rounded = fc
   .tuple(seed, fc.array(aRound, { minLength: 1, maxLength: 9 }))
@@ -110,23 +120,37 @@ function steps(list: GameEvent[]): Step[] {
   });
 }
 
+/** A run of the field is on: the clock is going. */
 const isField = (s: GameState) => s.phase === "trial" && s.trial === 3;
+/** A run of the field, or its end screen. */
+const isFieldOrEnd = (s: GameState) => s.phase !== "title" && s.trial === 3;
 const finished = (f: Field) => f.stage !== "sorting";
 const isFieldEvent = (e: GameEvent) =>
   e.type === "InspectStar" ||
   e.type === "SortStar" ||
   e.type === "KeepStars" ||
-  e.type === "RetryField" ||
-  e.type === "LeaveField";
+  e.type === "RetryField";
 const isOtherTrialEvent = (e: GameEvent) =>
   e.type === "Ask" ||
   e.type === "PickCard" ||
   e.type === "Retry" ||
-  e.type === "Tick" ||
   e.type === "PickTool" ||
   e.type === "GiveTool" ||
   e.type === "RetryShed" ||
   e.type === "LeaveShed";
+const fullRun = { remainingMs: balance.runMs, score: 0, streak: 0 };
+
+/** The step began a new run (of the field, the shed or trial 1), or went back to the title. */
+function resetsRun(s: Step): boolean {
+  const { before, event: e, after } = s;
+  if (e.type === "LeaveField" || e.type === "LeaveShed") {
+    return after.phase === "title" && before.phase !== "title";
+  }
+  if (e.type === "StartField" || e.type === "StartShed") {
+    return before.phase !== "trial" && after.phase === "trial";
+  }
+  return e.type === "Start" && before.phase !== "trial";
+}
 const isStar = (i: number) => Number.isInteger(i) && i >= 0 && i < starCount;
 const truth = (f: Field, i: number): Verdict => (isFake(f, i) ? "fake" : "real");
 
@@ -272,7 +296,15 @@ describe("the field, the verdict (properties)", () => {
             looking: null,
             note: { star: f.looking, said: e.verdict },
           });
-          expect(after).toEqual({ ...before, field: after.field });
+          expect(after).toEqual({
+            ...before,
+            field: after.field,
+            run: {
+              ...before.run,
+              score: before.run.score + pointsFor(before.run.streak),
+              streak: before.run.streak + 1,
+            },
+          });
         }
       }),
     );
@@ -293,6 +325,11 @@ describe("the field, the verdict (properties)", () => {
             looking: null,
             note: { star: f.looking, said: e.verdict },
           });
+          expect(after).toEqual({
+            ...before,
+            field: after.field,
+            run: { ...before.run, streak: 0 },
+          });
           const again = reduce(after, { type: "InspectStar", index: f.looking });
           expect(again.field).toEqual({ ...after.field, looking: f.looking, note: null });
           const fixed = reduce(again, { type: "SortStar", verdict: truth(f, f.looking) });
@@ -305,7 +342,7 @@ describe("the field, the verdict (properties)", () => {
   });
 });
 
-describe("the field, the keep and the clear (properties)", () => {
+describe("the field, the keep (properties)", () => {
   it("INV-27: REQ-6.5.1: a round is finished only by KeepStars, and only when all five are sorted", () => {
     checkProperty(
       "field-keep-needs-all-sorted",
@@ -340,28 +377,10 @@ describe("the field, the keep and the clear (properties)", () => {
       }),
     );
   });
-
-  it("INV-37: REQ-6.7.1: the trial is cleared only by keeping the last round of a run; keeping any other round gives a round still to come", () => {
-    checkProperty(
-      "field-clear-at-last-round",
-      fc.property(anywhere, (list) => {
-        for (const { before, event: e, after } of steps(list)) {
-          if (!isField(before) || !isField(after) || finished(before.field)) continue;
-          if (after.field.stage === "cleared") {
-            expect(e.type).toBe("KeepStars");
-            expect(isLastRound(before.field.round)).toBe(true);
-          }
-          if (e.type === "KeepStars" && isReady(before.field)) {
-            expect(after.field.stage).toBe(isLastRound(before.field.round) ? "cleared" : "kept");
-          }
-        }
-      }),
-    );
-  });
 });
 
 describe("the field, the next round and the way back (properties)", () => {
-  it("INV-29: REQ-6.5.4: once a round is finished, every event except RetryField and the leave from a cleared trial leaves the field equal", () => {
+  it("INV-29: REQ-6.5.4: once a round is finished, every event except RetryField (and the start and the leave, which end the run) leaves the field equal", () => {
     checkProperty(
       "field-finished-stays",
       fc.property(anywhere, (list) => {
@@ -395,14 +414,115 @@ describe("the field, the next round and the way back (properties)", () => {
     );
   });
 
-  it("INV-38: REQ-6.7.4: LeaveField returns to the title only from the cleared trial, with the field initial and nothing else changed; anywhere else it changes nothing", () => {
+  it("INV-38: REQ-6.7.5: LeaveField from a run or the end screen of trial 3 goes to the title and drops the field and the run, keeping the best, the language and the hero; elsewhere it returns the same state", () => {
     checkProperty(
-      "field-leave-from-cleared",
+      "field-leave-goes-to-the-title",
       fc.property(anywhere, (list) => {
         for (const { before, event: e, after } of steps(list)) {
           if (e.type !== "LeaveField") continue;
-          if (isField(before) && before.field.stage === "cleared") {
-            expect(after).toEqual({ ...before, phase: "title", trial: 0, field: initialField });
+          if (!isFieldOrEnd(before)) {
+            expect(after).toBe(before);
+            continue;
+          }
+          expect(after).toEqual({
+            ...before,
+            phase: "title",
+            trial: 0,
+            field: initialField,
+            run: { ...fullRun, best: before.run.best, record: false },
+          });
+        }
+      }),
+    );
+  });
+});
+
+describe("the field and the other trials stay apart (properties)", () => {
+  it("INV-31: REQ-6.8: field events return the same state outside a run of trial 3, and in trial 3 change only `field` (a verdict also scores); `field` is initial whenever trial is not 3", () => {
+    checkProperty(
+      "field-events-stay-in-the-field",
+      fc.property(anywhere, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          if (isFieldEvent(e) && !isField(before)) expect(after).toBe(before);
+          if (isFieldEvent(e) && isField(before)) {
+            const scores = e.type === "SortStar";
+            expect({ ...after, field: before.field, run: scores ? before.run : after.run }).toEqual(
+              before,
+            );
+            if (!scores) expect(after.run).toBe(before.run);
+          }
+          if (after.trial !== 3) expect(after.field).toEqual(initialField);
+        }
+      }),
+    );
+  });
+
+  it("INV-32: REQ-6.8: in trial 3 the events of the lane and the shed return the same state, so the lane and the shed stay initial", () => {
+    checkProperty(
+      "field-ignores-other-trials",
+      fc.property(anywhere, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          if (isFieldOrEnd(before) && isOtherTrialEvent(e)) expect(after).toBe(before);
+          if (isFieldOrEnd(after)) {
+            expect(after.lane).toEqual(initialState.lane);
+            expect(after.shed).toEqual(initialState.shed);
+          }
+        }
+      }),
+    );
+  });
+});
+
+describe("the field's 60-second run (properties)", () => {
+  it("INV-15: REQ-6.7.1: the clock only runs down inside a run, between 0 and 60 seconds, and a new run or the way back to the title sets it to 60", () => {
+    checkProperty(
+      "field-clock-only-runs-down",
+      fc.property(anywhere, (list) => {
+        for (const s of steps(list)) {
+          const { before, after } = s;
+          expect(after.run.remainingMs).toBeGreaterThanOrEqual(0);
+          expect(after.run.remainingMs).toBeLessThanOrEqual(balance.runMs);
+          if (resetsRun(s)) expect(after.run.remainingMs).toBe(balance.runMs);
+          else expect(after.run.remainingMs).toBeLessThanOrEqual(before.run.remainingMs);
+        }
+      }),
+    );
+  });
+
+  it("INV-16: REQ-6.7.3: inside a run the score never goes down, and goes up only when a right verdict is given", () => {
+    checkProperty(
+      "field-score-only-goes-up-on-a-right-verdict",
+      fc.property(anywhere, (list) => {
+        for (const s of steps(list)) {
+          const { before, event: e, after } = s;
+          if (resetsRun(s)) {
+            expect(after.run.score).toBe(0);
+            continue;
+          }
+          expect(after.run.score).toBeGreaterThanOrEqual(before.run.score);
+          if (after.run.score > before.run.score) {
+            expect(e.type).toBe("SortStar");
+            expect(isField(before)).toBe(true);
+          }
+        }
+      }),
+    );
+  });
+
+  it("INV-17: REQ-6.7.4: the run is over exactly when the clock is at zero, and the field's end screen takes only Start, StartField, LeaveField, SetLang and MoveHeroTo", () => {
+    checkProperty(
+      "field-over-means-zero",
+      fc.property(anywhere, (list) => {
+        for (const { before, event: e, after } of steps(list)) {
+          if (isField(after)) expect(after.run.remainingMs).toBeGreaterThan(0);
+          if (isFieldOrEnd(after) && after.phase === "over") {
+            expect(after.run.remainingMs).toBe(0);
+          }
+          if (before.phase !== "over" || before.trial !== 3) continue;
+          if (["Start", "StartField", "LeaveField"].includes(e.type)) continue;
+          if (e.type === "SetLang" || e.type === "MoveHeroTo") {
+            expect(after.run).toBe(before.run);
+            expect(after.field).toBe(before.field);
           } else {
             expect(after).toBe(before);
           }
@@ -412,34 +532,49 @@ describe("the field, the next round and the way back (properties)", () => {
   });
 });
 
-describe("the field and the other trials stay apart (properties)", () => {
-  it("INV-31: REQ-6.8: field events return the same state outside trial 3, and in trial 3 (but for the leave) change only `field`; `field` is initial whenever trial is not 3", () => {
+describe("the field's score and its start (properties)", () => {
+  it("INV-44: REQ-6.7.3: a verdict scores once: a right one adds the points for the streak and extends it, a wrong one ends the streak and adds nothing; no other event moves the score or the streak", () => {
     checkProperty(
-      "field-events-stay-in-the-field",
+      "field-scores-once-on-a-verdict",
       fc.property(anywhere, (list) => {
-        for (const { before, event: e, after } of steps(list)) {
-          if (isFieldEvent(e) && !isField(before)) expect(after).toBe(before);
-          if (isFieldEvent(e) && e.type !== "LeaveField" && isField(before)) {
-            expect({ ...after, field: before.field }).toEqual(before);
+        for (const s of steps(list)) {
+          const { before, event: e, after } = s;
+          if (resetsRun(s)) continue;
+          const f = before.field;
+          const judged =
+            e.type === "SortStar" && isField(before) && f.stage === "sorting" && f.looking !== null;
+          if (!judged) {
+            expect(after.run.score).toBe(before.run.score);
+            expect(after.run.streak).toBe(before.run.streak);
+          } else if (e.verdict === truth(f, f.looking!)) {
+            expect(after.run.score).toBe(before.run.score + pointsFor(before.run.streak));
+            expect(after.run.streak).toBe(before.run.streak + 1);
+          } else {
+            expect(after.run.score).toBe(before.run.score);
+            expect(after.run.streak).toBe(0);
           }
-          if (after.trial !== 3) expect(after.field).toEqual(initialField);
         }
       }),
     );
   });
 
-  it("INV-32: REQ-6.7.3, REQ-6.8: in trial 3 the other trials' events return the same state, so the lane, the run and the shed stay initial: no clock, no score", () => {
+  it("INV-45: REQ-6.1.2, REQ-6.7.4: StartField from the title or the field's end screen begins a run: a full clock, a score of 0, round 0 of the seed, the best kept; anywhere else it returns the same state", () => {
     checkProperty(
-      "field-ignores-other-trials",
+      "field-start-begins-a-run",
       fc.property(anywhere, (list) => {
         for (const { before, event: e, after } of steps(list)) {
-          if (isField(before) && isOtherTrialEvent(e)) expect(after).toBe(before);
-          if (isField(after)) {
-            expect(after.lane).toEqual(initialState.lane);
-            // A run of the shed may have set the best score of the session before the child came here.
-            expect({ ...after.run, best: 0 }).toEqual(initialState.run);
-            expect(after.shed).toEqual(initialState.shed);
+          if (e.type !== "StartField") continue;
+          if (before.phase !== "title" && !(before.phase === "over" && before.trial === 3)) {
+            expect(after).toBe(before);
+            continue;
           }
+          expect(after).toEqual({
+            ...before,
+            phase: "trial",
+            trial: 3,
+            field: { ...initialField, seed: e.seed >>> 0 },
+            run: { ...fullRun, best: before.run.best, record: false },
+          });
         }
       }),
     );
@@ -455,15 +590,23 @@ function verdictKind(f: Field, e: GameEvent): string[] {
 /** What one step shows about the generators' reach: the names of the situations it is an example of. */
 function reached(step: Step): string[] {
   const { before, event: e, after } = step;
-  if (!isField(before)) return [];
+  const names: [boolean, string][] = [
+    [before.phase === "over" && e.type === "StartField" && after.phase === "trial", "play again"],
+    [isField(before) && after.phase === "over", "time up"],
+    [isFieldOrEnd(before) && e.type === "LeaveField" && after.phase === "title", "leave"],
+  ];
+  const inRun = isField(before) ? reachedInRun(step) : [];
+  return [...inRun, ...names.filter(([hit]) => hit).map(([, name]) => name)];
+}
+
+/** What a step in a run of the field is an example of: a look, a keep, a verdict, the next round. */
+function reachedInRun({ before, event: e, after }: Step): string[] {
   const f = before.field;
   const names: [boolean, string][] = [
     [e.type === "InspectStar" && !isStar(e.index), "bad index"],
     [e.type === "InspectStar" && after !== before, "look"],
     [e.type === "KeepStars" && f.stage === "sorting" && !isReady(f), "early keep"],
     [e.type === "KeepStars" && isReady(f), "keep"],
-    [isField(after) && after.field.stage === "cleared", "clear"],
-    [e.type === "LeaveField" && after !== before, "leave"],
     [e.type === "RetryField" && finished(f), "next round"],
     [isField(after) && after.field.round !== f.round && after.field.round === 0, "wrap"],
   ];
@@ -471,7 +614,7 @@ function reached(step: Step): string[] {
 }
 
 describe("the generators reach what the properties are about", () => {
-  it("covers a look, a right and a wrong verdict, an early keep, a keep, a clear, a leave and a bad index", () => {
+  it("covers a look, a right and a wrong verdict, an early keep, a keep, a leave, the time up, a new run and a bad index", () => {
     const seen = new Set<string>();
     for (const list of fc.sample(anywhere, 400)) {
       for (const step of steps(list)) reached(step).forEach((name) => seen.add(name));
@@ -479,13 +622,14 @@ describe("the generators reach what the properties are about", () => {
     expect([...seen].sort()).toEqual(
       [
         "bad index",
-        "clear",
         "early keep",
         "keep",
         "leave",
         "look",
         "next round",
+        "play again",
         "right verdict",
+        "time up",
         "wrap",
         "wrong verdict",
       ].sort(),

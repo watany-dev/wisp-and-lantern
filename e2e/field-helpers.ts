@@ -6,17 +6,27 @@ import { expect, type Page } from "@playwright/test";
 import { fakesOf } from "../src/domain/field";
 import {
   buttonRects,
-  clearText,
   lensProbes,
   lensRect,
+  lessonText,
   starCenter,
   starProbes,
   titleFieldButton,
   type ButtonSlot,
   type Probes,
 } from "../src/game/field-layout";
-import { canvas, type Rect } from "../src/game/lane-layout";
-import { canvasFrame, gameState, look, pressUntil, type GameState, type Press } from "./helpers";
+import { buttonRect, canvas, type Rect } from "../src/game/lane-layout";
+import { leaveButton, overLeave } from "../src/game/shed-layout";
+import {
+  canvasFrame,
+  gameState,
+  look,
+  minTextPixels,
+  pressUntil,
+  textPixels,
+  type GameState,
+  type Press,
+} from "./helpers";
 import { colorsAt } from "./shed-helpers";
 import { countMatching, near, type Rgb } from "./pixels";
 
@@ -101,20 +111,22 @@ export async function nextRound(page: Page, press: Press) {
   );
 }
 
-/** Play again, after the clear: left button. */
-export async function playAgain(page: Page, press: Press) {
-  const before = (await gameState(page)).field.round;
-  await pressSlot(
+/** The way back to the title, on the field's screen: the shed's button, always there. */
+export const leaveToTitle = (page: Page, press: Press) =>
+  pressUntil(page, press, { x: leaveButton.x, y: leaveButton.y }, (s) => s.phase === "title");
+
+/** The end screen's play-again button: taps until a new run of the field has begun (the screen ignores early taps). */
+export const playAgain = (page: Page, press: Press) =>
+  pressUntil(
     page,
     press,
-    "left",
-    (s) => s.field.stage === "sorting" && s.field.round !== before,
+    { x: buttonRect.x, y: buttonRect.y },
+    (s) => s.phase === "trial" && s.trial === 3,
   );
-}
 
-/** The title button of the cleared trial: right button. */
-export const leaveToTitle = (page: Page, press: Press) =>
-  pressSlot(page, press, "right", (s) => s.phase === "title");
+/** The end screen's title button. */
+export const leaveFromEnd = (page: Page, press: Press) =>
+  pressUntil(page, press, { x: overLeave.x, y: overLeave.y }, (s) => s.phase === "title");
 
 // What is on the screen.
 
@@ -264,18 +276,29 @@ async function goldPixels(page: Page, rect: Rect): Promise<number> {
   return countMatching(image, (pixel) => near(pixel, [0xff, 0xd5, 0x4a], 40)) / (ratio * ratio);
 }
 
-/** The clear panel is on the screen or is not: its gold word "Cleared!" is drawn in the middle of the lens place. */
-export async function expectClearPanel(page: Page, shown: boolean) {
-  const word = { x: clearText.title.x, y: clearText.title.y, width: clearText.wrap, height: 36 };
+/** The closing line's lines, drawn in the lens place once a round is kept. */
+export const lessonArea: Rect = {
+  x: lessonText.x,
+  y: lessonText.y,
+  width: lessonText.wrap,
+  height: 58,
+};
+
+/**
+ * The closing line is on the screen or is not. Once a round is kept the lens place holds the line in a panel
+ * with a gold edge; the lens star is gold too, but it sits in the middle and the edge is read along the top
+ * of the panel, so only the panel can answer. The line itself is light text, and the lens is empty then.
+ */
+export async function expectLesson(page: Page, shown: boolean) {
+  const edge = { x: lensRect.x, y: lensRect.y - lensRect.height / 2, width: 200, height: 3 };
   await expect
-    .poll(async () => (await goldPixels(page, word)) > 20, { timeout: 5_000 })
+    .poll(async () => (await goldPixels(page, edge)) > 100, { timeout: 5_000 })
     .toBe(shown);
+  if (shown) {
+    await expect.poll(() => textPixels(page, lessonArea)).toBeGreaterThan(minTextPixels);
+  }
 }
 
-/** Where the closing line is drawn on the clear panel. */
-export const clearTextAreas = {
-  lesson: { x: clearText.lesson.x, y: clearText.lesson.y, width: clearText.wrap, height: 58 },
-} as const;
 /** The dark ink of the buttons' words (`inkStyle` in `ui/text.ts`), counted in a game rectangle in CSS pixels. */
 export async function inkPixels(
   page: Page,

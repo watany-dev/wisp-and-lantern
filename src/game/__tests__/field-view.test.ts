@@ -5,7 +5,8 @@ import type { GameEvent } from "../../domain/events";
 import { fakesOf } from "../../domain/field";
 import { reduce } from "../../domain/reducer";
 import { initialState, type GameState, type Lang } from "../../domain/state";
-import { fieldEnterLabel, fieldView, justFinished, justSorted } from "../field-view";
+import { fieldCaption, fieldEnterLabel, fieldView, justFinished, justSorted } from "../field-view";
+import { leaveLabel } from "../shed-view";
 
 // Seed 0: round 0 has one fake star (4); round 1 has two (1 and 4). See `fakesOf` in the domain tests.
 const strings = { ja: ja.field, en: en.field };
@@ -15,7 +16,6 @@ const look = (index: number): GameEvent => ({ type: "InspectStar", index });
 const sort = (verdict: "real" | "fake"): GameEvent => ({ type: "SortStar", verdict });
 const keep: GameEvent = { type: "KeepStars" };
 const retry: GameEvent = { type: "RetryField" };
-const leave: GameEvent = { type: "LeaveField" };
 const stars = [0, 1, 2, 3, 4];
 
 /** The events that look at and rightly sort every star of the round the state is in. */
@@ -29,12 +29,14 @@ const secondReady = (lang: Lang) => {
   const next = play([retry], kept(lang));
   return play(sortAll(next), next);
 };
-const cleared = (lang: Lang) => play([keep], secondReady(lang));
+const secondKept = (lang: Lang) => play([keep], secondReady(lang));
 
-describe("fieldEnterLabel (REQ-6.1.1)", () => {
-  it("is the title button's words in each language", () => {
+describe("fieldEnterLabel and fieldCaption (REQ-6.1.1, REQ-6.1.6)", () => {
+  it("are the title button's words in each language", () => {
     expect(fieldEnterLabel("ja")).toBe(ja.field.enter);
     expect(fieldEnterLabel("en")).toBe(en.field.enter);
+    expect(fieldCaption("ja")).toBe(ja.field.timeAttack);
+    expect(fieldCaption("en")).toBe(en.field.timeAttack);
   });
 });
 
@@ -47,10 +49,11 @@ describe.each(["ja", "en"] as const)("fieldView in %s", (lang) => {
       play([look(1)], open(lang)),
       ready(lang),
       kept(lang),
-      cleared(lang),
+      secondKept(lang),
     ]) {
       const view = fieldView(state);
       expect(view.guide).toBe(s.guide);
+      expect(view.leave).toBe(leaveLabel(lang));
       expect(view.stars.map((star) => star.index)).toEqual(stars);
     }
   });
@@ -76,7 +79,7 @@ describe.each(["ja", "en"] as const)("fieldView in %s", (lang) => {
     }
     expect(view).toMatchObject({
       lens: null,
-      clear: null,
+      lesson: null,
       buttons: [],
       verdict: null,
       finished: false,
@@ -165,7 +168,7 @@ describe.each(["ja", "en"] as const)("fieldView, verdicts and rounds in %s", (la
   });
 });
 
-describe.each(["ja", "en"] as const)("fieldView, keeping and clearing in %s", (lang) => {
+describe.each(["ja", "en"] as const)("fieldView, keeping and the next round in %s", (lang) => {
   const s = strings[lang];
 
   it("when all five are sorted: the message is still about the last star (a fake one keeps the wisp's mix-up), and the one wide keep button shows, nothing kept yet (REQ-6.5.1)", () => {
@@ -174,7 +177,7 @@ describe.each(["ja", "en"] as const)("fieldView, keeping and clearing in %s", (l
     expect(view.buttons).toEqual([
       { id: "keep", text: s.keep, event: keep, slot: "single", icon: "none" },
     ]);
-    expect(view).toMatchObject({ clear: null, finished: false });
+    expect(view).toMatchObject({ lesson: null, finished: false });
     expect(view.stars.map((star) => star.ticked)).toEqual([true, true, true, true, false]);
   });
 
@@ -184,13 +187,13 @@ describe.each(["ja", "en"] as const)("fieldView, keeping and clearing in %s", (l
     expect(fieldView(play([look(4)], partial)).buttons.map((b) => b.id)).toEqual(["real", "fake"]);
   });
 
-  it("after the keep of the first round: the number of real stars, the next button, no clear panel (REQ-6.5.3)", () => {
+  it("after the keep: the number of real stars, the closing line, and the next button (REQ-6.5.3, REQ-6.6)", () => {
     const view = fieldView(kept(lang));
     expect(view.message).toBe(s.kept.replace("{0}", "4"));
     expect(view.buttons).toEqual([
       { id: "next", text: s.next, event: retry, slot: "single", icon: "none" },
     ]);
-    expect(view).toMatchObject({ clear: null, lens: null, finished: true, verdict: null });
+    expect(view).toMatchObject({ lesson: s.lesson, lens: null, finished: true, verdict: null });
     expect(view.stars.map((star) => star.alpha)).toEqual([1, 1, 1, 1, 0.5]);
   });
 
@@ -203,22 +206,27 @@ describe.each(["ja", "en"] as const)("fieldView, keeping and clearing in %s", (l
       "normal",
       "bright",
     ]);
-    expect(fieldView(cleared(lang)).message).toBe(s.kept.replace("{0}", "3"));
+    expect(fieldView(secondKept(lang)).message).toBe(s.kept.replace("{0}", "3"));
   });
 
-  it("when the trial is cleared: the clear word, the closing line, and the play again and title buttons (REQ-6.7)", () => {
-    const view = fieldView(cleared(lang));
-    expect(view.clear).toEqual({ title: s.clear, lesson: s.lesson });
-    expect(view.buttons).toEqual([
-      { id: "again", text: s.again, event: retry, slot: "left", icon: "none" },
-      { id: "leave", text: s.leave, event: leave, slot: "right", icon: "none" },
-    ]);
+  it("after the keep of the second round: the same next button and the closing line, with three kept (there is no clear panel: only the clock ends the trial)", () => {
+    const view = fieldView(secondKept(lang));
+    expect(view.lesson).toBe(s.lesson);
+    expect(view.buttons.map((b) => b.id)).toEqual(["next"]);
     expect(view.finished).toBe(true);
   });
 
-  it("shows the closing line on the cleared trial only, not while sorting or after the first round", () => {
+  it("shows the closing line after a kept round only, not while sorting", () => {
+    for (const state of [open(lang), play([look(0)], open(lang)), ready(lang)]) {
+      expect(fieldView(state).lesson).toBeNull();
+    }
+  });
+});
+
+describe.each(["ja", "en"] as const)("fieldView, the way back to the title in %s", (lang) => {
+  it("always has the label of the way back to the title, in every stage", () => {
     for (const state of [open(lang), play([look(0)], open(lang)), ready(lang), kept(lang)]) {
-      expect(fieldView(state).clear).toBeNull();
+      expect(fieldView(state).leave).toBe({ ja: ja.shed.leave, en: en.shed.leave }[lang]);
     }
   });
 });

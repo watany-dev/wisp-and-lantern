@@ -3,16 +3,15 @@ import {
   fakesOf,
   initialField,
   isFake,
-  isLastRound,
   isReady,
   keptStars,
   markOf,
   noteWasRight,
   reduceField,
   roundCount,
-  roundsPerRun,
   shineOf,
   starCount,
+  verdictRight,
   type Field,
 } from "../field";
 import type { FieldEvent } from "../events";
@@ -44,11 +43,11 @@ describe("the round table: seed and round give the fake stars (REQ-6.4.1)", () =
     expect(sets(3)).toEqual(["0", "01", "1", "12"]);
   });
 
-  it("gives one fake star in the first round of a run and two in the second", () => {
+  it("gives one fake star in the even rounds and two in the odd ones", () => {
     for (let seed = 0; seed < 200; seed += 1) {
       for (let round = 0; round < roundCount; round += 1) {
         const fakes = fakesOf(seed, round);
-        expect(fakes).toHaveLength(1 + (round % roundsPerRun));
+        expect(fakes).toHaveLength(1 + (round % 2));
         expect(new Set(fakes).size).toBe(fakes.length);
         expect(fakes.every((i) => Number.isInteger(i) && i >= 0 && i < starCount)).toBe(true);
         expect([...fakes].sort((a, b) => a - b)).toEqual(fakes);
@@ -74,12 +73,12 @@ describe("the round table: seed and round give the fake stars (REQ-6.4.1)", () =
     expect(fakesOf(1.9, 1)).toEqual(fakesOf(1, 1));
   });
 
-  it("makes a run of whole rounds: the table is a whole number of runs", () => {
-    expect(roundCount % roundsPerRun).toBe(0);
-    expect(isLastRound(0)).toBe(false);
-    expect(isLastRound(1)).toBe(true);
-    expect(isLastRound(2)).toBe(false);
-    expect(isLastRound(3)).toBe(true);
+  it("makes neighbouring rounds differ in size, the wrap from the last round to the first included", () => {
+    expect(roundCount % 2).toBe(0);
+    for (let round = 0; round < roundCount; round += 1) {
+      const after = (round + 1) % roundCount;
+      expect(fakesOf(7, round).length).not.toBe(fakesOf(7, after).length);
+    }
   });
 });
 
@@ -176,6 +175,23 @@ describe("the child's verdict (REQ-6.3.2 to REQ-6.3.5)", () => {
   });
 });
 
+describe("grading a verdict, for the score (REQ-6.7.3)", () => {
+  it("is true for the verdict that says what the star in the lens is, and false for the other", () => {
+    expect(verdictRight(run([inspect(4)]), "fake")).toBe(true);
+    expect(verdictRight(run([inspect(4)]), "real")).toBe(false);
+    expect(verdictRight(run([inspect(0)]), "real")).toBe(true);
+    expect(verdictRight(run([inspect(0)]), "fake")).toBe(false);
+  });
+
+  it("is null when there is nothing to decide: no star in the lens, or a finished round", () => {
+    expect(verdictRight(initialField, "real")).toBeNull();
+    expect(verdictRight(initialField, "fake")).toBeNull();
+    const done = run([keep], ready);
+    expect(verdictRight(done, "real")).toBeNull();
+    expect(verdictRight(done, "fake")).toBeNull();
+  });
+});
+
 describe("keeping (REQ-6.5)", () => {
   it("is not ready until all five are sorted", () => {
     expect(isReady(initialField)).toBe(false);
@@ -203,11 +219,17 @@ describe("keeping (REQ-6.5)", () => {
     expect(stars.map((i) => markOf(done, i))).toEqual(["real", "real", "real", "real", "fake"]);
   });
 
-  it("keeping the last round of a run clears the trial; keeping the first does not", () => {
-    const second = run([keep, retry], ready);
-    const secondReady = sortRight(second);
-    expect(run([keep], secondReady)).toEqual({ stage: "cleared", seed: 0, round: 1 });
-    expect(run([keep], ready).stage).toBe("kept");
+  it("keeps round after round: no keep ends the trial, only the clock does (REQ-6.7)", () => {
+    let field: Field = initialField;
+    for (let round = 0; round < roundCount * 2; round += 1) {
+      field = run([keep], sortRight(field));
+      expect(field).toEqual({ stage: "kept", seed: 0, round: round % roundCount });
+      field = reduceField(field, retry);
+    }
+  });
+
+  it("keeps the real stars of the second round too", () => {
+    const secondReady = sortRight(run([keep, retry], ready));
     expect(keptStars(run([keep], secondReady))).toEqual([0, 2, 3]);
   });
 
@@ -227,11 +249,9 @@ describe("the next round (REQ-6.7)", () => {
     expect(seeded).toEqual({ ...initialField, seed: 9, round: 1 });
   });
 
-  it("RetryField after a cleared trial starts the next run, and the rounds wrap", () => {
-    expect(reduceField({ stage: "cleared", seed: 0, round: 1 }, retry)).toMatchObject({
-      round: 2,
-    });
-    expect(reduceField({ stage: "cleared", seed: 0, round: 3 }, retry)).toEqual(initialField);
+  it("the rounds wrap from the last to the first", () => {
+    expect(reduceField({ stage: "kept", seed: 0, round: 1 }, retry)).toMatchObject({ round: 2 });
+    expect(reduceField({ stage: "kept", seed: 0, round: 3 }, retry)).toEqual(initialField);
   });
 
   it("RetryField while sorting returns the same field", () => {

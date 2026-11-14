@@ -70,12 +70,12 @@ export function shedEnterLabel(lang: Lang): string {
   return strings[lang].shed.enter;
 }
 
-/** The caption under that label: the shed has a clock (the field's caption says it has none). */
+/** The caption under that label: the shed is a 60-second time attack. */
 export function shedCaption(lang: Lang): string {
   return strings[lang].shed.timeAttack;
 }
 
-/** The label of the button back to the title, on the shed's screen and on its end screen. */
+/** The label of the button back to the title, on the shed's and the field's screens and on their end screens. */
 export function leaveLabel(lang: Lang): string {
   return strings[lang].shed.leave;
 }
