@@ -36,6 +36,9 @@ export type GameState = {
         note: { star: number; said: "real" | "fake" } | null;
       }
     | { stage: "kept"; seed: number; round: number };
+  shadows:
+    | { stage: "deciding"; seed: number; round: number }
+    | { stage: "decided"; seed: number; round: number; choice: "give" | "keep" };
 };
 type GameWindow = Window & { __game: { state: () => GameState; dispatch: (e: unknown) => void } };
 
