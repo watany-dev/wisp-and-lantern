@@ -75,6 +75,35 @@
       "fake": "fake"
     }
   },
+  "shadows": {
+    "enter": "Keep the secrets",
+    "timeAttack": "How many in 60 seconds?",
+    "guide": "A shadow is listening!\nGive it or keep it secret?",
+    "ask": "You have the {0}\nWhat will you do?",
+    "givenSafe": "The shadow heard\nthe {0}. That is fine!",
+    "keptSecret": "The shadow heard nothing\nYou kept the {0}",
+    "givenSecret": "The shadow heard\nthe {0}!",
+    "keptSafe": "You kept the {0}\nIt was fine to give",
+    "give": "Give",
+    "secret": "Secret",
+    "next": "Next",
+    "items": {
+      "houseKey": "house key",
+      "address": "address",
+      "password": "password",
+      "candy": "candy",
+      "ball": "ball",
+      "flower": "flower"
+    },
+    "why": {
+      "houseKey": "A house key is a secret\nWe give it to nobody",
+      "address": "An address is a secret\nWe give it to nobody",
+      "password": "A password is a secret\nWe give it to nobody",
+      "candy": "A candy is just a candy\nIt is fine to give",
+      "ball": "A ball is just a ball\nIt is fine to give",
+      "flower": "A flower is just a flower\nIt is fine to give"
+    }
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",

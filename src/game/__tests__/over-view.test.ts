@@ -109,3 +109,39 @@ describe.each(["ja", "en"] as const)("overView after a run of the field in %s", 
     expect(fieldOver(lang).record).toBeNull();
   });
 });
+
+// The end screen of trial 4's run (spec 07-trial-keep-secrets, REQ-7.7.4): the same lines, and two buttons,
+// play again and back to the title.
+const shadowsOver = (lang: Lang, ...events: GameEvent[]) =>
+  overView(
+    [{ type: "StartShadows", seed: 0 } as GameEvent, ...events, end].reduce(reduce, {
+      ...initialState,
+      lang,
+    }),
+  );
+
+describe.each(["ja", "en"] as const)("overView after a run of the shadows in %s", (lang) => {
+  const s = strings[lang].run;
+  // Seed 0 starts with the house key: keeping it is a right decision.
+  const keep: GameEvent = { type: "DecideItem", choice: "keep" };
+
+  it("says the time is up and shows the score and the best", () => {
+    const view = shadowsOver(lang, keep);
+    expect(view.title).toBe(s.over);
+    expect(view.score).toBe(s.score.replace("{0}", "100"));
+    expect(view.best).toBe(s.best.replace("{0}", "100"));
+    expect(view.record).toBe(s.newBest);
+  });
+
+  it("offers play again for the shadows, and the way back to the title", () => {
+    expect(shadowsOver(lang).buttons).toEqual([
+      { text: s.again, action: "playShadows" },
+      { text: strings[lang].shed.leave, action: "leaveShadows" },
+    ]);
+  });
+
+  it("does not call a run that scored nothing a record", () => {
+    expect(shadowsOver(lang).record).toBeNull();
+    expect(shadowsOver(lang, { type: "DecideItem", choice: "give" }).record).toBeNull();
+  });
+});

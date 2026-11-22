@@ -1,9 +1,10 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
-import type { FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
+import type { FieldEvent, GameEvent, LaneEvent, ShadowsEvent, ShedEvent } from "./events";
 import { initialField, reduceField, verdictRight } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
+import { decisionRight, initialShadows, newShadows, reduceShadows } from "./shadows";
 import { initialShed, newShed, reduceShed, shedOutcome } from "./shed";
 import { trials, type GameState, type Lang } from "./state";
 
@@ -25,13 +26,20 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return startField(state, event.seed);
     case "LeaveField":
       return leaveField(state);
+    case "StartShadows":
+      return startShadows(state, event.seed);
+    case "LeaveShadows":
+      return leaveShadows(state);
     default:
       return reduceTrial(state, event);
   }
 }
 
 /** The events of one trial each: they act only in their own trial and return the state otherwise. */
-function reduceTrial(state: GameState, event: LaneEvent | ShedEvent | FieldEvent): GameState {
+function reduceTrial(
+  state: GameState,
+  event: LaneEvent | ShedEvent | FieldEvent | ShadowsEvent,
+): GameState {
   switch (event.type) {
     case "Ask":
       return inTrial(state, trials.lane) ? ask(state, event) : state;
@@ -43,6 +51,20 @@ function reduceTrial(state: GameState, event: LaneEvent | ShedEvent | FieldEvent
       return inTrial(state, trials.shed) ? withShed(state, reduceShed(state.shed, event)) : state;
     case "GiveTool":
       return inTrial(state, trials.shed) ? give(state) : state;
+    default:
+      return reduceLaterTrial(state, event);
+  }
+}
+
+/** Trial 3's and trial 4's events, each acting only in its own trial. */
+function reduceLaterTrial(state: GameState, event: FieldEvent | ShadowsEvent): GameState {
+  switch (event.type) {
+    case "DecideItem":
+      return decide(state, event);
+    case "NextItem":
+      return inTrial(state, trials.shadows)
+        ? withShadows(state, reduceShadows(state.shadows, event))
+        : state;
     default:
       return reduceFieldTrial(state, event);
   }
@@ -73,6 +95,7 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     run: restartRun(state.run),
     shed: initialShed,
     field: initialField,
+    shadows: initialShadows,
   };
 }
 
@@ -129,10 +152,43 @@ function leaveField(state: GameState): GameState {
   return { ...state, phase: "title", trial: 0, field: initialField, run: restartRun(state.run) };
 }
 
-/** Time passes only during a run of trial 1, 2 or 3. At zero the run is over and its score is final. */
+/**
+ * Trial 4's 60-second run starts from the title, or from its own end screen to play again. Like `startField`, it
+ * gives a full clock and a score of 0 and keeps only the best; the other trials are untouched.
+ */
+function startShadows(state: GameState, seed: number): GameState {
+  const again = state.phase === "over" && state.trial === trials.shadows;
+  if (state.phase !== "title" && !again) return state;
+  return {
+    ...state,
+    phase: "trial",
+    trial: trials.shadows,
+    shadows: newShadows(seed),
+    run: restartRun(state.run),
+  };
+}
+
+/**
+ * The way back to the title, from a run of trial 4 or from its end screen (`trial` is 4 in both, and 0 on the
+ * title). It keeps the language, the hero and the best score of the session, and drops trial 4 and the run in
+ * progress.
+ */
+function leaveShadows(state: GameState): GameState {
+  if (state.trial !== trials.shadows) return state;
+  return {
+    ...state,
+    phase: "title",
+    trial: 0,
+    shadows: initialShadows,
+    run: restartRun(state.run),
+  };
+}
+
+/** Time passes only during a run of trial 1, 2, 3 or 4. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  const running =
-    inTrial(state, trials.lane) || inTrial(state, trials.shed) || inTrial(state, trials.field);
+  const running = [trials.lane, trials.shed, trials.field, trials.shadows].some((trial) =>
+    inTrial(state, trial),
+  );
   if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
@@ -161,6 +217,15 @@ function sortStar(state: GameState, event: FieldEvent & { type: "SortStar" }): G
   return { ...state, field, run: scoreSearch(state.run, right) };
 }
 
+/** A decision scores once, like the search of trial 1: a right one adds points, a wrong one ends the streak. */
+function decide(state: GameState, event: ShadowsEvent & { type: "DecideItem" }): GameState {
+  if (!inTrial(state, trials.shadows)) return state;
+  const right = decisionRight(state.shadows, event.choice);
+  if (right === null) return state;
+  const shadows = reduceShadows(state.shadows, event);
+  return { ...state, shadows, run: scoreSearch(state.run, right) };
+}
+
 function withLane(state: GameState, lane: GameState["lane"]): GameState {
   return lane === state.lane ? state : { ...state, lane };
 }
@@ -171,4 +236,8 @@ function withShed(state: GameState, shed: GameState["shed"]): GameState {
 
 function withField(state: GameState, field: GameState["field"]): GameState {
   return field === state.field ? state : { ...state, field };
+}
+
+function withShadows(state: GameState, shadows: GameState["shadows"]): GameState {
+  return shadows === state.shadows ? state : { ...state, shadows };
 }

@@ -2,6 +2,7 @@
 
 import type { CardId } from "./lane";
 import type { Verdict } from "./field";
+import type { Choice } from "./shadows";
 import type { ToolId } from "./shed";
 import type { Lang } from "./state";
 
@@ -28,6 +29,13 @@ export type FieldEvent =
   | { type: "KeepStars" }
   | { type: "RetryField" };
 
+/**
+ * Events of trial 4. `DecideItem` is the child's one decision about the item in front of the wisp, and it
+ * scores; `NextItem` brings the next item after a decision. They have their own names so that no other
+ * trial's event can act on trial 4, and no trial 4 event on another trial.
+ */
+export type ShadowsEvent = { type: "DecideItem"; choice: Choice } | { type: "NextItem" };
+
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
@@ -48,6 +56,14 @@ export type GameEvent =
   | { type: "StartField"; seed: number }
   /** Back to the title from the field, in a run or on its end screen: the only way out of trial 3. */
   | { type: "LeaveField" }
+  /**
+   * Starts a 60-second run of trial 4: from the title, or from its own end screen to play again. `seed`
+   * picks the order of the items.
+   */
+  | { type: "StartShadows"; seed: number }
+  /** Back to the title from trial 4, in a run or on its end screen: the only way out of trial 4. */
+  | { type: "LeaveShadows" }
   | LaneEvent
   | ShedEvent
-  | FieldEvent;
+  | FieldEvent
+  | ShadowsEvent;

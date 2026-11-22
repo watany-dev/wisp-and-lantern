@@ -1,8 +1,8 @@
 // The title screen: the game's name, trial 1's card (a tap anywhere starts it, and it has the 60 seconds),
-// the wisp and the hero, and two buttons that open trial 2 (the shed) and trial 3 (the field), which are
-// 60-second runs too. Each button says so in its own caption. Specs:
+// the wisp and the hero, and three buttons that open trial 2 (the shed), trial 3 (the field) and trial 4 (the
+// shadows), which are 60-second runs too. Each button says so in its own caption. Specs:
 // .kiro/specs/04-score-attack/design.md, .kiro/specs/05-trial-grant-tools/design.md,
-// .kiro/specs/06-trial-verify-stars/design.md
+// .kiro/specs/06-trial-verify-stars/design.md, .kiro/specs/07-trial-keep-secrets/design.md
 
 import Phaser from "phaser";
 import type { GameState } from "../../domain/state";
@@ -12,6 +12,7 @@ import type { Rect } from "../lane-layout";
 import { sceneFor } from "../route";
 import { newSeed } from "../seed";
 import { titleShedButton } from "../shed-layout";
+import { titleShadowsButton } from "../shadows-layout";
 import {
   buttonCaption,
   buttonLabel,
@@ -23,6 +24,7 @@ import {
 } from "../title-layout";
 import { titleView, type TitleView } from "../title-view";
 import { drawButton, drawPanel, drawStar, palette } from "../ui/art";
+import { drawPadlock } from "../ui/shadow-art";
 import { drawBackground } from "../ui/background";
 import { fitCamera } from "../ui/camera";
 import { inkStyle, textStyle } from "../ui/text";
@@ -37,6 +39,7 @@ const stop = (e: TouchEvent) => e.preventDefault();
 
 const drawKey = (g: Phaser.GameObjects.Graphics) => drawTool(g, "key", 46);
 const drawGoldStar = (g: Phaser.GameObjects.Graphics) => drawStar(g, 20);
+const drawLock = (g: Phaser.GameObjects.Graphics) => drawPadlock(g, 46);
 
 type Entrance = { label: Phaser.GameObjects.Text; caption: Phaser.GameObjects.Text };
 
@@ -46,6 +49,7 @@ export class TitleScene extends Phaser.Scene {
   private intro!: Phaser.GameObjects.Text;
   private shed!: Entrance;
   private field!: Entrance;
+  private shadows!: Entrance;
   private lockUntil = 0;
   private fromTrial = false;
   private touchGuarded = false;
@@ -66,12 +70,7 @@ export class TitleScene extends Phaser.Scene {
     const { wisp, hero } = titleArt;
     this.add.container(wisp.x, wisp.y, [createWispArt(this)]).setScale(wisp.scale);
     this.add.container(hero.x, hero.y, [createHero(this)]).setScale(hero.scale);
-    this.shed = this.createEntrance(titleShedButton, drawKey, () =>
-      this.enter({ type: "StartShed", seed: newSeed() }),
-    );
-    this.field = this.createEntrance(titleFieldButton, drawGoldStar, () =>
-      this.enter({ type: "StartField", seed: newSeed() }),
-    );
+    this.createEntrances();
 
     // A press that hit an object (a button) is that object's, not the start of trial 1.
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (_p: unknown, over: unknown[]) => {
@@ -81,6 +80,19 @@ export class TitleScene extends Phaser.Scene {
     const unsubscribe = this.game_.subscribe((s) => this.render(s));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
     this.render(this.game_.state());
+  }
+
+  /** The three buttons under the art, from the top: trial 4, trial 3 and trial 2. */
+  private createEntrances(): void {
+    this.shadows = this.createEntrance(titleShadowsButton, drawLock, () =>
+      this.enter({ type: "StartShadows", seed: newSeed() }),
+    );
+    this.field = this.createEntrance(titleFieldButton, drawGoldStar, () =>
+      this.enter({ type: "StartField", seed: newSeed() }),
+    );
+    this.shed = this.createEntrance(titleShedButton, drawKey, () =>
+      this.enter({ type: "StartShed", seed: newSeed() }),
+    );
   }
 
   /** The canvas never scrolls or zooms the page, in every scene. Added once: the title can be entered again. */
@@ -133,7 +145,7 @@ export class TitleScene extends Phaser.Scene {
     return { label, caption };
   }
 
-  private enter(event: { type: "StartShed" | "StartField"; seed: number }): void {
+  private enter(event: { type: "StartShed" | "StartField" | "StartShadows"; seed: number }): void {
     if (this.game_.state().phase === "title") this.game_.dispatch(event);
   }
 
@@ -154,5 +166,7 @@ export class TitleScene extends Phaser.Scene {
     this.shed.caption.setText(view.shedCaption);
     this.field.label.setText(view.field);
     this.field.caption.setText(view.fieldCaption);
+    this.shadows.label.setText(view.shadows);
+    this.shadows.caption.setText(view.shadowsCaption);
   }
 }
