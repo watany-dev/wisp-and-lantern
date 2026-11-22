@@ -27,6 +27,22 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 4, The Listening Shadows ("keep secrets", learning goal L4) is a new 60-second time attack with a score.
+  One thing at a time is in front of the wisp, and a shadow listens beside it. The child decides: "Give" or
+  "Secret". A house key, an address and a password are secrets, and a candy, a ball and a flower are fine to give.
+  A right decision scores 100 (plus 50 for each right decision in a row, up to 4); a wrong one scores nothing and
+  ends the streak. A given item is heard by the shadow and appears in its speech bubble; a kept item gets a
+  padlock and the shadow's bubble shows three quiet dots; a closing line says what kind of thing it was ("A house
+  key is a secret. We give it to nobody."). A secret that was given cannot be taken back in that round, and it
+  costs only the points. The shadow is a listener and never an enemy, and no word of fear or blame is used. The
+  order of the items comes from a seed the game draws when a run starts. The clock, the score and the end screen
+  are trial 1's, with "Play again" and "Title", and a "Title" button is on the screen in every stage. The child
+  opens it from the padlock button on the title (above the star button), which says "How many in 60 seconds?"
+  like the other two; the title's name, card, wisp and hero moved up to make room, and a tap elsewhere on the
+  title still starts trial 1. Japanese and English, one finger or a mouse, drawn in code, no network after the
+  first load. Spec in `.kiro/specs/07-trial-keep-secrets/`; invariants INV-46 to INV-53 added and INV-15 to
+  INV-17 widened to trial 4. The other trials' events still act only in their own trial.
+
 - Trial 3, The Wisp Field ("check it", learning goal L3) is now a 60-second time attack with a score. The wisp
   brings five stars and one or two are fakes. A fake shines brighter than a real star and its rim is a ring of
   dots instead of one line, so the child can tell by looking, from the first screen, with no color and no sound.
