@@ -106,6 +106,12 @@ const isLaneEvent = (e: GameEvent) =>
   e.type === "Ask" || e.type === "PickCard" || e.type === "Retry";
 const fullRun = { remainingMs: balance.runMs, score: 0, streak: 0 };
 
+/**
+ * The step starts or ends in trial 2 (a run or its end screen). The run properties judge only these steps: the
+ * generator may open the field or the shadows from the title, whose own events score and run the clock by their rules.
+ */
+const touchesShed = (s: Step) => s.before.trial === 2 || s.after.trial === 2;
+
 /** The step began a new run of the shed, or a new run of trial 1, or went back to the title. */
 function resetsRun(s: Step): boolean {
   const { before, event: e, after } = s;
@@ -271,7 +277,7 @@ describe("the shed's 60-second run (properties)", () => {
     checkProperty(
       "shed-clock-only-runs-down",
       fc.property(inShed, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShed)) {
           const { before, after } = s;
           expect(after.run.remainingMs).toBeGreaterThanOrEqual(0);
           expect(after.run.remainingMs).toBeLessThanOrEqual(balance.runMs);
@@ -286,7 +292,7 @@ describe("the shed's 60-second run (properties)", () => {
     checkProperty(
       "shed-score-only-goes-up-on-a-find",
       fc.property(inShed, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShed)) {
           const { before, event: e, after } = s;
           if (resetsRun(s)) {
             expect(after.run.score).toBe(0);
@@ -328,7 +334,7 @@ describe("the shed's score and the order of the puzzles (properties)", () => {
     checkProperty(
       "shed-scores-once-on-the-hand-over",
       fc.property(inShed, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShed)) {
           const { before, event: e, after } = s;
           if (resetsRun(s)) continue;
           const handedOver =

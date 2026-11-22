@@ -15,6 +15,8 @@ describe("titleView (REQ-6.1.6)", () => {
       fieldCaption: ja.field.timeAttack,
       shadows: ja.shadows.enter,
       shadowsCaption: ja.shadows.timeAttack,
+      lantern: ja.lantern.enter,
+      lanternCaption: ja.lantern.timeAttack,
     });
     expect(titleView("en")).toEqual({
       title: en.title,
@@ -26,16 +28,26 @@ describe("titleView (REQ-6.1.6)", () => {
       fieldCaption: en.field.timeAttack,
       shadows: en.shadows.enter,
       shadowsCaption: en.shadows.timeAttack,
+      lantern: en.lantern.enter,
+      lanternCaption: en.lantern.timeAttack,
     });
   });
 
-  it("puts the 60 seconds in trial 1's rule and in the three buttons' captions, and in no button's label", () => {
+  it("puts the 60 seconds in trial 1's rule and in the four buttons' captions, and in no button's label", () => {
     for (const lang of ["ja", "en"] as const) {
       const view = titleView(lang);
-      for (const text of [view.intro, view.shedCaption, view.fieldCaption, view.shadowsCaption]) {
+      for (const text of [
+        view.intro,
+        view.shedCaption,
+        view.fieldCaption,
+        view.shadowsCaption,
+        view.lanternCaption,
+      ]) {
         expect(text).toMatch(/60/);
       }
-      for (const text of [view.shed, view.field, view.shadows]) expect(text).not.toMatch(/\d/);
+      for (const text of [view.shed, view.field, view.shadows, view.lantern]) {
+        expect(text).not.toMatch(/\d/);
+      }
     }
   });
 
@@ -43,9 +55,11 @@ describe("titleView (REQ-6.1.6)", () => {
     expect(titleView("en").fieldCaption).toMatch(/60 seconds/);
     expect(titleView("en").shedCaption).toMatch(/60 seconds/);
     expect(titleView("en").shadowsCaption).toMatch(/60 seconds/);
+    expect(titleView("en").lanternCaption).toMatch(/60 seconds/);
     for (const lang of ["ja", "en"] as const) {
       expect(titleView(lang).fieldCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
       expect(titleView(lang).shadowsCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
+      expect(titleView(lang).lanternCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
     }
   });
 });

@@ -1,6 +1,6 @@
-// The buttons of the field and of the shadows: one wide button or two side by side, each with an optional
-// picture (a tick or a ring of dots for a verdict, an arrow or a padlock for a decision, so it is told without
-// reading or color) and a label. There is one widget per slot; a
+// The buttons of the field, the shadows and the lantern: one wide button or two side by side, each with an optional
+// picture (a tick or a ring of dots for a verdict, an arrow or a padlock for a decision, a look for a lantern's card,
+// so it is told without reading or color) and a label. There is one widget per slot; a
 // slot with no button in the view is hidden, and a hidden widget takes no taps. Painting only (ADR 0003).
 
 import type Phaser from "phaser";
@@ -9,6 +9,7 @@ import { pressable, setChanged } from "../button-lock";
 import type { ButtonIcon, ButtonView } from "../button-view";
 import { dotAngles } from "../field-look";
 import { drawButton, palette } from "./art";
+import { lookIcons } from "./look-icons";
 import { inkStyle } from "./text";
 
 type ButtonWidget = {
@@ -64,6 +65,7 @@ const icons: Record<Exclude<ButtonIcon, "none">, (g: Graphics) => void> = {
   dots,
   arrow,
   lock,
+  ...lookIcons,
 };
 
 function drawIcon(g: Graphics, icon: ButtonIcon): void {

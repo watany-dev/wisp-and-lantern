@@ -104,6 +104,35 @@
       "flower": "A flower is just a flower\nIt is fine to give"
     }
   },
+  "lantern": {
+    "enter": "Fix the lantern",
+    "timeAttack": "How many in 60 seconds?",
+    "guide": "One part flickers!\nTap it and say the fix",
+    "wish": "Your wish",
+    "brought": "The wisp's lantern",
+    "look": "Look at your wish\nWhat is different?",
+    "point": "Which {0} is right?\nLook at your wish",
+    "fine": "The {0} is fine\nTap the part that flickers",
+    "said": "You said: {0}\nIt still flickers",
+    "lit": "Just right: {0}!\nOnly that part was fixed",
+    "next": "Next",
+    "parts": {
+      "handle": "handle",
+      "roof": "roof",
+      "light": "light"
+    },
+    "looks": {
+      "ring": "ring",
+      "bow": "bow",
+      "bell": "bell",
+      "pointy": "pointy",
+      "round": "round",
+      "flat": "flat",
+      "candle": "candle",
+      "star": "star",
+      "moon": "moon"
+    }
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",

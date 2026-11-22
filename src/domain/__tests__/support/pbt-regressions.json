@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "property": "lantern-score-only-goes-up-on-a-right-card",
+    "seed": 661011412,
+    "path": "24:0:3:3:2:4:4:5:6:5:6:5:4:6:5:5",
+    "note": "Spec 08: the generator left trial 5, opened trial 4 from the title and kept a secret there, which scores by trial 4's rules. The property judged that step as trial 5's; the run properties now judge only steps that start or end in trial 5."
+  },
+  {
+    "property": "field-score-only-goes-up-on-a-right-verdict",
+    "seed": -2132514310,
+    "path": "50:3:1:5:7:8:8",
+    "note": "Found on main during spec 08's full check: the generator opens the shed from the title with StartShed and a freed cat scores, which INV-16 and INV-40 allow for the shed. The field's run properties (INV-15, INV-16, INV-44) now judge only steps that start or end in trial 3, as the lantern's do."
+  }
+]

@@ -2,6 +2,7 @@
 
 import { initialField, type Field } from "./field";
 import { initialLane, type Lane } from "./lane";
+import { initialLantern, type Lantern } from "./lantern";
 import { initialRun, type Run } from "./run";
 import { initialShadows, type Shadows } from "./shadows";
 import { initialShed, type Shed } from "./shed";
@@ -13,9 +14,10 @@ type Phase = "title" | "trial" | "over";
 
 /**
  * The trial numbers: `trial` is 1 in the lane (The Dark Lane), 2 in the shed (The Locked Shed), 3 in
- * the field (The Wisp Field) and 4 in the shadows (The Listening Shadows).
+ * the field (The Wisp Field), 4 in the shadows (The Listening Shadows) and 5 in the lantern (The Flickering
+ * Lantern).
  */
-export const trials = { lane: 1, shed: 2, field: 3, shadows: 4 } as const;
+export const trials = { lane: 1, shed: 2, field: 3, shadows: 4, lantern: 5 } as const;
 
 export type GameState = {
   phase: Phase;
@@ -31,6 +33,8 @@ export type GameState = {
   field: Field;
   /** Trial 4. It is `initialShadows` whenever `trial` is not 4. */
   shadows: Shadows;
+  /** Trial 5. It is `initialLantern` whenever `trial` is not 5. */
+  lantern: Lantern;
 };
 
 export const initialState: GameState = {
@@ -44,4 +48,5 @@ export const initialState: GameState = {
   shed: initialShed,
   field: initialField,
   shadows: initialShadows,
+  lantern: initialLantern,
 };

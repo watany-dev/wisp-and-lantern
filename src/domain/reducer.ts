@@ -1,8 +1,16 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
-import type { FieldEvent, GameEvent, LaneEvent, ShadowsEvent, ShedEvent } from "./events";
+import type {
+  FieldEvent,
+  GameEvent,
+  LaneEvent,
+  LanternEvent,
+  ShadowsEvent,
+  ShedEvent,
+} from "./events";
 import { initialField, reduceField, verdictRight } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
+import { fixRight, initialLantern, newLantern, reduceLantern } from "./lantern";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
 import { decisionRight, initialShadows, newShadows, reduceShadows } from "./shadows";
 import { initialShed, newShed, reduceShed, shedOutcome } from "./shed";
@@ -30,6 +38,10 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return startShadows(state, event.seed);
     case "LeaveShadows":
       return leaveShadows(state);
+    case "StartLantern":
+      return startLantern(state, event.seed);
+    case "LeaveLantern":
+      return leaveLantern(state);
     default:
       return reduceTrial(state, event);
   }
@@ -38,7 +50,7 @@ export function reduce(state: GameState, event: GameEvent): GameState {
 /** The events of one trial each: they act only in their own trial and return the state otherwise. */
 function reduceTrial(
   state: GameState,
-  event: LaneEvent | ShedEvent | FieldEvent | ShadowsEvent,
+  event: LaneEvent | ShedEvent | FieldEvent | ShadowsEvent | LanternEvent,
 ): GameState {
   switch (event.type) {
     case "Ask":
@@ -56,9 +68,19 @@ function reduceTrial(
   }
 }
 
-/** Trial 3's and trial 4's events, each acting only in its own trial. */
-function reduceLaterTrial(state: GameState, event: FieldEvent | ShadowsEvent): GameState {
+/** Trial 3's, trial 4's and trial 5's events, each acting only in its own trial. */
+function reduceLaterTrial(
+  state: GameState,
+  event: FieldEvent | ShadowsEvent | LanternEvent,
+): GameState {
   switch (event.type) {
+    case "FixPart":
+      return fix(state, event);
+    case "TapPart":
+    case "NextLantern":
+      return inTrial(state, trials.lantern)
+        ? withLantern(state, reduceLantern(state.lantern, event))
+        : state;
     case "DecideItem":
       return decide(state, event);
     case "NextItem":
@@ -96,6 +118,7 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     shed: initialShed,
     field: initialField,
     shadows: initialShadows,
+    lantern: initialLantern,
   };
 }
 
@@ -184,11 +207,41 @@ function leaveShadows(state: GameState): GameState {
   };
 }
 
-/** Time passes only during a run of trial 1, 2, 3 or 4. At zero the run is over and its score is final. */
+/**
+ * Trial 5's 60-second run starts from the title, or from its own end screen to play again. Like `startShadows`, it
+ * gives a full clock and a score of 0 and keeps only the best; the other trials are untouched.
+ */
+function startLantern(state: GameState, seed: number): GameState {
+  const again = state.phase === "over" && state.trial === trials.lantern;
+  if (state.phase !== "title" && !again) return state;
+  return {
+    ...state,
+    phase: "trial",
+    trial: trials.lantern,
+    lantern: newLantern(seed),
+    run: restartRun(state.run),
+  };
+}
+
+/**
+ * The way back to the title, from a run of trial 5 or from its end screen (`trial` is 5 in both, and 0 on the
+ * title). It keeps the language, the hero and the best score of the session, and drops trial 5 and the run in
+ * progress.
+ */
+function leaveLantern(state: GameState): GameState {
+  if (state.trial !== trials.lantern) return state;
+  return {
+    ...state,
+    phase: "title",
+    trial: 0,
+    lantern: initialLantern,
+    run: restartRun(state.run),
+  };
+}
+
+/** Time passes only during a run of trial 1, 2, 3, 4 or 5. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  const running = [trials.lane, trials.shed, trials.field, trials.shadows].some((trial) =>
-    inTrial(state, trial),
-  );
+  const running = Object.values(trials).some((trial) => inTrial(state, trial));
   if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
@@ -226,6 +279,15 @@ function decide(state: GameState, event: ShadowsEvent & { type: "DecideItem" }):
   return { ...state, shadows, run: scoreSearch(state.run, right) };
 }
 
+/** A card scores once, like the search of trial 1: a right one adds points, a wrong one ends the streak. */
+function fix(state: GameState, event: LanternEvent & { type: "FixPart" }): GameState {
+  if (!inTrial(state, trials.lantern)) return state;
+  const right = fixRight(state.lantern, event.look);
+  if (right === null) return state;
+  const lantern = reduceLantern(state.lantern, event);
+  return { ...state, lantern, run: scoreSearch(state.run, right) };
+}
+
 function withLane(state: GameState, lane: GameState["lane"]): GameState {
   return lane === state.lane ? state : { ...state, lane };
 }
@@ -240,4 +302,8 @@ function withField(state: GameState, field: GameState["field"]): GameState {
 
 function withShadows(state: GameState, shadows: GameState["shadows"]): GameState {
   return shadows === state.shadows ? state : { ...state, shadows };
+}
+
+function withLantern(state: GameState, lantern: GameState["lantern"]): GameState {
+  return lantern === state.lantern ? state : { ...state, lantern };
 }

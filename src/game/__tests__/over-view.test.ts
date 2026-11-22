@@ -145,3 +145,39 @@ describe.each(["ja", "en"] as const)("overView after a run of the shadows in %s"
     expect(shadowsOver(lang, { type: "DecideItem", choice: "give" }).record).toBeNull();
   });
 });
+
+// The end screen of trial 5's run (spec 08-trial-tell-whats-wrong, REQ-8.9.4): the same lines, and two buttons,
+// play again and back to the title.
+const lanternOver = (lang: Lang, ...events: GameEvent[]) =>
+  overView(
+    [{ type: "StartLantern", seed: 0 } as GameEvent, ...events, end].reduce(reduce, {
+      ...initialState,
+      lang,
+    }),
+  );
+
+describe.each(["ja", "en"] as const)("overView after a run of the lantern in %s", (lang) => {
+  const s = strings[lang].run;
+  // Seed 0 brings a bell for the wish's ring: the ring is the right card.
+  const point: GameEvent = { type: "TapPart", part: "handle" };
+
+  it("says the time is up and shows the score and the best", () => {
+    const view = lanternOver(lang, point, { type: "FixPart", look: "ring" });
+    expect(view.title).toBe(s.over);
+    expect(view.score).toBe(s.score.replace("{0}", "100"));
+    expect(view.best).toBe(s.best.replace("{0}", "100"));
+    expect(view.record).toBe(s.newBest);
+  });
+
+  it("offers play again for the lantern, and the way back to the title", () => {
+    expect(lanternOver(lang).buttons).toEqual([
+      { text: s.again, action: "playLantern" },
+      { text: strings[lang].shed.leave, action: "leaveLantern" },
+    ]);
+  });
+
+  it("does not call a run that scored nothing a record", () => {
+    expect(lanternOver(lang).record).toBeNull();
+    expect(lanternOver(lang, point, { type: "FixPart", look: "bow" }).record).toBeNull();
+  });
+});

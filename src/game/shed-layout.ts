@@ -45,7 +45,7 @@ export const overWispTwoButtons: Point = { x: 195, y: 776 };
 /** The title's button into the shed: a tap target of its own, below the title's wisp and hero. */
 export const titleShedButton: Rect = { x: 195, y: 736, width: 300, height: 80 };
 /** The title's wisp and hero end at about this y. The buttons sit below it (`titleArt` in `field-layout.ts`). */
-export const titleArtBottom = 514;
+export const titleArtBottom = 426;
 
 /** Parts of the shed picture, as offsets from the center of `shedBox`. */
 export const shedParts = {
