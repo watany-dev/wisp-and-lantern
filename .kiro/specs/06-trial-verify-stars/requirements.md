@@ -1,5 +1,10 @@
 # Requirements: Trial 3, The Wisp Field ("check it")
 
+> **Scope note: a fourth trial now exists ([`07-trial-keep-secrets`](../07-trial-keep-secrets/requirements.md)).**
+> "Trials 4 to 6 are out" below describes this spec's scope. Trial 4 (The Listening Shadows) is added by `07`,
+> which also moves the title's name, card, wisp and hero up and puts its button above the field button. The
+> field's and the shed's buttons do not move, and nothing else in this spec changes.
+
 Spec `06-trial-verify-stars`, **revision 3**. Teaches learning goal L3 (`docs/learning-design.md`): a helper
 can make an honest mistake, so look closely at what it brings and decide for yourself before you accept it.
 Requirement ids are `REQ-6.n`. `REQ-5.n` belongs to `05-trial-grant-tools`, `REQ-4.n` to `04-score-attack`,

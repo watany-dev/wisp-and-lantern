@@ -1,5 +1,8 @@
 # 要件: 試練3「The Wisp Field」（確かめる）
 
+> **スコープの注記：4つ目の試練ができました（[`07-trial-keep-secrets`](../../07-trial-keep-secrets/jp/requirements.md)）。**
+> 下の「試練4〜6は対象外」は、このspecの範囲の話です。試練4（The Listening Shadows）は `07` が足します。`07` はタイトルの名前・カード・ウィスプ・ヒーローを上に動かし、畑ボタンの上に試練4のボタンを置きます。畑と小屋のボタンは動かず、このspecのほかの部分は変わりません。
+
 > 和訳です。**正本は英語版** [`../requirements.md`](../requirements.md) です。英語版を変えたら、同じPRでこのファイルも直します。識別子・パス・コマンド・要件ID（`REQ-6.n`）・不変条件ID（`INV-n`）は原文のままです。
 
 spec `06-trial-verify-stars`、**改訂3**。学習目標 L3（`docs/learning-design.md`）を教えます。助手は悪気なく間違えることがあるので、助手が持ってきたものはよく見て、自分で決めてから受け取ろう、という内容です。要件IDは `REQ-6.n` です。`REQ-5.n` は `05-trial-grant-tools`、`REQ-4.n` は `04-score-attack`、`REQ-3.n` は `03-trial-tell-vague-request`、`REQ-2.n` は `02-trial-tell`、`REQ-1.n` は存在しない `01-core-loop` のもので、どれも再利用しません。
