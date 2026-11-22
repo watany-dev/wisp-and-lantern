@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { colors, things, type CardId, type ColorId, type ThingId } from "../src/domain/lane";
+import type { Lantern } from "../src/domain/lantern";
 import {
   buttonRect,
   canvas,
@@ -39,6 +40,7 @@ export type GameState = {
   shadows:
     | { stage: "deciding"; seed: number; round: number }
     | { stage: "decided"; seed: number; round: number; choice: "give" | "keep" };
+  lantern: Lantern;
 };
 type GameWindow = Window & { __game: { state: () => GameState; dispatch: (e: unknown) => void } };
 
