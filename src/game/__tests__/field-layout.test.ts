@@ -108,8 +108,8 @@ describe("field layout (REQ-6.9)", () => {
     expect(fieldWispSize).toBe(60);
     expect(titleFieldButton).toEqual({ x: 195, y: 648, width: 300, height: 80 });
     expect(titleArt).toEqual({
-      wisp: { x: 285, y: 538, scale: 2, bottom: 31 },
-      hero: { x: 110, y: 548, scale: 1.6, bottom: 34 },
+      wisp: { x: 285, y: 448, scale: 2, bottom: 31 },
+      hero: { x: 110, y: 458, scale: 1.6, bottom: 34 },
     });
   });
 

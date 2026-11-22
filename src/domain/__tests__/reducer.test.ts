@@ -1012,3 +1012,341 @@ describe("reduce: the other trials' events leave the field alone (REQ-6.8)", () 
     expect(later.shed).toBe(initialState.shed);
   });
 });
+
+// Trial 4 (spec 07-trial-keep-secrets). `shadowsOver` is two right decisions and a wrong one (250 points). Seed 0 plays houseKey, candy, ball, address, password, flower: the
+// right decisions are keep, give, give, keep, keep, give.
+const enterShadows: GameEvent = { type: "StartShadows", seed: 0 };
+const decide = (choice: "give" | "keep"): GameEvent => ({ type: "DecideItem", choice });
+const nextItem: GameEvent = { type: "NextItem" };
+const leaveShadows: GameEvent = { type: "LeaveShadows" };
+const inShadows = play([enterShadows]);
+const rightAnswers = ["keep", "give", "give", "keep", "keep", "give"] as const;
+/** The right decision and the next round, for the first `rounds` items of seed 0. */
+const rightRounds = (rounds: number): GameEvent[] =>
+  rightAnswers.slice(0, rounds).flatMap((choice) => [decide(choice), nextItem]);
+const scores = (events: GameEvent[]) => play(events, inShadows).run;
+const shadowsOver = reduce(play([...rightRounds(2), decide("keep")], inShadows), runOut);
+
+describe("reduce: opening trial 4 (REQ-7.1, REQ-7.8)", () => {
+  it("StartShadows on the title opens trial 4 with round 0 for the seed and begins a 60-second run", () => {
+    expect(inShadows.phase).toBe("trial");
+    expect(inShadows.trial).toBe(4);
+    expect(inShadows.shadows).toEqual({ ...initialState.shadows, seed: 0 });
+    expect(reduce(initialState, { type: "StartShadows", seed: 7 }).shadows).toEqual({
+      ...initialState.shadows,
+      seed: 7,
+    });
+    // A full clock, a score of 0 and no streak; the other trials are untouched.
+    expect(inShadows.run).toEqual(fullRun);
+    expect(inShadows.lane).toBe(initialState.lane);
+    expect(inShadows.shed).toBe(initialState.shed);
+    expect(inShadows.field).toBe(initialState.field);
+    expect(inShadows.lang).toBe(initialState.lang);
+  });
+
+  it("the seed is a whole number: a negative or fractional seed gives the same rounds every time", () => {
+    expect(reduce(initialState, { type: "StartShadows", seed: -1 }).shadows.seed).toBe(
+      4_294_967_295,
+    );
+    expect(reduce(initialState, { type: "StartShadows", seed: 1.9 }).shadows.seed).toBe(1);
+  });
+
+  it("StartShadows keeps the language and the hero where they were", () => {
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterShadows)).toEqual({
+      ...before,
+      phase: "trial",
+      trial: 4,
+      run: fullRun,
+    });
+  });
+
+  it("StartShadows keeps only the best score of the session", () => {
+    const first = reduce(play([decide("keep")], inShadows), runOut);
+    expect(first.run).toMatchObject({ score: 100, best: 100, record: true });
+    const again = reduce(reduce(first, leaveShadows), enterShadows);
+    expect(again.run).toEqual({ ...fullRun, best: 100 });
+  });
+
+  it("StartShadows is ignored in the other trials and in a run of trial 4", () => {
+    expect(reduce(started, enterShadows)).toBe(started);
+    expect(reduce(inShed, enterShadows)).toBe(inShed);
+    expect(reduce(inField, enterShadows)).toBe(inField);
+    expect(reduce(inShadows, enterShadows)).toBe(inShadows);
+  });
+
+  it("StartShadows on the end screen of another trial is ignored", () => {
+    for (const over of [reduce(started, runOut), shedOver, fieldOver]) {
+      expect(over.phase).toBe("over");
+      expect(reduce(over, enterShadows)).toBe(over);
+    }
+  });
+
+  it("StartShadows on trial 4's own end screen plays again: round 0 of the new seed, a full clock, a score of 0, the best kept", () => {
+    expect(shadowsOver.phase).toBe("over");
+    const again = reduce(shadowsOver, { type: "StartShadows", seed: 5 });
+    expect(again).toEqual({
+      ...shadowsOver,
+      phase: "trial",
+      trial: 4,
+      shadows: { ...initialState.shadows, seed: 5 },
+      run: { ...fullRun, best: shadowsOver.run.best },
+    });
+    expect(shadowsOver.run.best).toBeGreaterThan(0);
+  });
+});
+
+describe("reduce: trial 4 and the other entrances (REQ-7.1, REQ-7.8)", () => {
+  it("the other entrances are ignored in trial 4, so one entrance never opens another", () => {
+    for (const state of [inShadows, shadowsOver]) {
+      for (const event of [enterShed, enterField]) expect(reduce(state, event)).toBe(state);
+    }
+    expect(reduce(inShed, enterShadows)).toBe(inShed);
+  });
+
+  it("Start in a run of trial 4 sets the language only: it never leaves trial 4 or starts trial 1", () => {
+    const midway = play([decide("keep")], inShadows);
+    expect(reduce(midway, { type: "Start" })).toEqual(midway);
+    expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
+  });
+
+  it("Start on trial 4's end screen begins trial 1 and drops trial 4", () => {
+    const next = reduce(shadowsOver, { type: "Start" });
+    expect(next).toMatchObject({ phase: "trial", trial: 1 });
+    expect(next.shadows).toBe(initialState.shadows);
+    expect(next.run).toEqual({ ...fullRun, best: shadowsOver.run.best });
+  });
+
+  it("SetLang and MoveHeroTo keep the decision and the result", () => {
+    for (const before of [inShadows, play([decide("give")], inShadows), shadowsOver]) {
+      const next = play(
+        [
+          { type: "SetLang", lang: "ja" },
+          { type: "MoveHeroTo", x: 1, y: 2 },
+        ],
+        before,
+      );
+      expect(next.shadows).toBe(before.shadows);
+      expect(next.run).toBe(before.run);
+    }
+  });
+});
+
+describe("reduce: the events of trial 4 (REQ-7.3, REQ-7.7)", () => {
+  it("DecideItem records the choice that was pressed, whether or not it was right", () => {
+    expect(reduce(inShadows, decide("keep")).shadows).toEqual({
+      stage: "decided",
+      seed: 0,
+      round: 0,
+      choice: "keep",
+    });
+    expect(reduce(inShadows, decide("give")).shadows).toEqual({
+      stage: "decided",
+      seed: 0,
+      round: 0,
+      choice: "give",
+    });
+  });
+
+  it("a second DecideItem in the same round changes nothing, and does not score again", () => {
+    const decided = reduce(inShadows, decide("keep"));
+    expect(reduce(decided, decide("keep"))).toBe(decided);
+    expect(reduce(decided, decide("give"))).toBe(decided);
+  });
+
+  it("NextItem before a decision changes nothing; after one it brings the next item", () => {
+    expect(reduce(inShadows, nextItem)).toBe(inShadows);
+    const second = play([decide("keep"), nextItem], inShadows);
+    expect(second.shadows).toEqual({ stage: "deciding", seed: 0, round: 1 });
+    expect(second.run).toEqual(reduce(inShadows, decide("keep")).run);
+  });
+
+  it("the rounds go on past the six items", () => {
+    const state = play([...rightRounds(6), ...rightRounds(1)], inShadows);
+    expect(state.shadows).toEqual({ stage: "deciding", seed: 0, round: 7 });
+  });
+
+  it("does nothing outside a run of trial 4: on the title, in the other trials and on any end screen", () => {
+    const over = reduce(started, runOut);
+    for (const state of [initialState, started, inShed, inField, over, shedOver, fieldOver]) {
+      for (const event of [decide("keep"), decide("give"), nextItem]) {
+        expect(reduce(state, event)).toBe(state);
+      }
+    }
+    for (const event of [decide("keep"), nextItem]) {
+      expect(reduce(shadowsOver, event)).toBe(shadowsOver);
+    }
+  });
+});
+
+describe("reduce: the clock and score of trial 4 (REQ-7.7)", () => {
+  it("Tick runs the clock down in trial 4, and does nothing for zero or less", () => {
+    expect(reduce(inShadows, tick(1_000)).run.remainingMs).toBe(59_000);
+    expect(reduce(inShadows, tick(0))).toBe(inShadows);
+    expect(reduce(inShadows, tick(-5))).toBe(inShadows);
+    expect(play([tick(1_500), tick(2_500)], inShadows).run.remainingMs).toBe(56_000);
+  });
+
+  it("time up ends the run at once, deciding or decided, and keeps trial 4 and the best", () => {
+    for (const state of [inShadows, play([decide("keep")], inShadows)]) {
+      const over = reduce(state, runOut);
+      expect(over).toMatchObject({ phase: "over", trial: 4 });
+      expect(over.run.remainingMs).toBe(0);
+      expect(over.shadows).toBe(state.shadows);
+    }
+    expect(reduce(inShadows, tick(balance.runMs - 1)).phase).toBe("trial");
+    expect(reduce(shadowsOver, tick(1_000))).toBe(shadowsOver);
+  });
+
+  it("a right decision scores 100, then 50 more for each right decision in a row up to 4", () => {
+    expect(scores([decide("keep")])).toMatchObject({ score: 100, streak: 1 });
+    expect(scores(rightRounds(2))).toMatchObject({ score: 250, streak: 2 });
+    expect(scores(rightRounds(5))).toMatchObject({
+      score: 100 + 150 + 200 + 250 + 300,
+      streak: 5,
+    });
+    // Round 5 is the flower: keeping it is wrong, so the score stays and the streak ends.
+    expect(scores([...rightRounds(5), decide("keep")])).toMatchObject({ score: 1000, streak: 0 });
+    expect(scores([...rightRounds(6)])).toMatchObject({ score: 1300, streak: 6 });
+  });
+
+  it("a wrong decision scores nothing and ends the streak, for a secret given and for a safe item kept", () => {
+    expect(play([decide("give")], inShadows).run).toMatchObject({ score: 0, streak: 0 });
+    const afterOne = play([...rightRounds(2), decide("keep")], inShadows);
+    // Round 2 is the ball, which was fine to give.
+    expect(afterOne.run).toMatchObject({ score: 250, streak: 0 });
+    // Round 3 is the address: keeping it is right, and the streak starts again at 100.
+    expect(play([nextItem, decide("keep")], afterOne).run).toMatchObject({ score: 350, streak: 1 });
+  });
+
+  it("the next round scores nothing and keeps the streak", () => {
+    const decided = play([decide("keep")], inShadows);
+    expect(reduce(decided, nextItem).run).toBe(decided.run);
+  });
+
+  it("the run's score and best carry to the end screen, with a record flag", () => {
+    expect(shadowsOver.run).toMatchObject({ score: 250, best: 250, record: true });
+    expect(reduce(inShadows, runOut).run).toMatchObject({ score: 0, best: 0, record: false });
+  });
+});
+
+describe("reduce: the way back to the title from trial 4 (REQ-7.7)", () => {
+  it("LeaveShadows in a run goes to the title and drops trial 4 and the run in progress", () => {
+    const midway = play([decide("keep"), tick(1_000)], inShadows);
+    expect(reduce(midway, leaveShadows)).toEqual({
+      ...midway,
+      phase: "title",
+      trial: 0,
+      shadows: initialState.shadows,
+      run: fullRun,
+    });
+  });
+
+  it("LeaveShadows in every stage of a run goes to the title", () => {
+    for (const state of [
+      inShadows,
+      play([decide("give")], inShadows),
+      play(rightRounds(2), inShadows),
+    ]) {
+      expect(reduce(state, leaveShadows)).toMatchObject({ phase: "title", trial: 0 });
+    }
+  });
+
+  it("LeaveShadows on the end screen goes to the title and keeps the best score of the session", () => {
+    const away = reduce(shadowsOver, leaveShadows);
+    expect(away).toMatchObject({ phase: "title", trial: 0 });
+    expect(away.run).toEqual({ ...fullRun, best: 250 });
+    expect(away.shadows).toBe(initialState.shadows);
+    expect(away.lane).toBe(initialState.lane);
+    expect(away.shed).toBe(initialState.shed);
+    expect(away.field).toBe(initialState.field);
+  });
+
+  it("keeps the language and the hero, and the title opens every trial again", () => {
+    const set = play([
+      enterShadows,
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 9, y: 8 },
+    ]);
+    const left = reduce(set, leaveShadows);
+    expect(left).toMatchObject({ lang: "ja", hero: { x: 9, y: 8 } });
+    expect(reduce(left, { type: "StartShadows", seed: 3 }).shadows).toEqual({
+      ...initialState.shadows,
+      seed: 3,
+    });
+    expect(reduce(left, enterField).trial).toBe(3);
+    expect(reduce(left, enterShed).trial).toBe(2);
+    expect(reduce(left, { type: "Start" }).trial).toBe(1);
+  });
+
+  it("LeaveShadows on the title and in the other trials returns the same state", () => {
+    for (const state of [initialState, started, inShed, inField, shedOver, fieldOver]) {
+      expect(reduce(state, leaveShadows)).toBe(state);
+    }
+  });
+
+  it("the other trials' ways back return the same state in trial 4, so one way back never closes another", () => {
+    for (const state of [inShadows, shadowsOver]) {
+      expect(reduce(state, leaveShed)).toBe(state);
+      expect(reduce(state, leaveField)).toBe(state);
+    }
+    expect(reduce(inShed, leaveShadows)).toBe(inShed);
+    expect(reduce(inField, leaveShadows)).toBe(inField);
+  });
+});
+
+describe("reduce: the other trials' events leave trial 4 alone (REQ-7.8)", () => {
+  const otherEvents: GameEvent[] = [
+    ...pick("red", "lantern"),
+    ask,
+    retry,
+    pickTool("key"),
+    giveTool,
+    retryShed,
+    inspectStar(0),
+    sortAs("real"),
+    keepStars,
+    retryField,
+  ];
+
+  it("changes nothing in trial 4, whatever is decided", () => {
+    for (const state of [inShadows, play([decide("keep")], inShadows), shadowsOver]) {
+      for (const event of otherEvents) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("keeps the lane, the shed and the field initial through a whole run", () => {
+    const later = play([...otherEvents, ...rightRounds(3), runOut], inShadows);
+    expect(later.lane).toBe(initialState.lane);
+    expect(later.shed).toBe(initialState.shed);
+    expect(later.field).toBe(initialState.field);
+  });
+
+  it("trial 4's events change nothing in the other trials", () => {
+    for (const state of [started, inShed, inField]) {
+      for (const event of [decide("keep"), nextItem]) expect(reduce(state, event)).toBe(state);
+    }
+  });
+});
+
+const eight = (choose: (round: number) => "give" | "keep") =>
+  play(Array.from({ length: 8 }, (_, round) => [decide(choose(round)), nextItem]).flat(), inShadows)
+    .run.score;
+
+describe("reduce: guessing does not pay in trial 4 (REQ-7.7.8)", () => {
+  // Eight rounds of seed 0: the house key, the candy, the ball, the address, the password, the flower, the house
+  // key, the candy. Knowing which is which scores 100 + 150 + 200 + 250 + 300 + 300 + 300 + 300.
+  it("scores 1,900 for eight right decisions, and 450 for pressing the same button every time", () => {
+    expect(eight((round) => rightAnswers[round % 6]!)).toBe(1900);
+    expect(eight(() => "keep")).toBe(450);
+    expect(eight(() => "give")).toBe(450);
+  });
+
+  it("scores less than a quarter as much for the same button every time", () => {
+    expect(eight(() => "keep") * 4).toBeLessThan(1900);
+    expect(eight(() => "give") * 4).toBeLessThan(1900);
+  });
+});

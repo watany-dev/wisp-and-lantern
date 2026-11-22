@@ -1,16 +1,15 @@
-// The field's buttons: one wide button or two side by side, each with an optional picture (a tick or a ring
-// of dots, so a verdict is told without reading or color) and a label. There is one widget per slot; a
+// The buttons of the field and of the shadows: one wide button or two side by side, each with an optional
+// picture (a tick or a ring of dots for a verdict, an arrow or a padlock for a decision, so it is told without
+// reading or color) and a label. There is one widget per slot; a
 // slot with no button in the view is hidden, and a hidden widget takes no taps. Painting only (ADR 0003).
 
 import type Phaser from "phaser";
 import { buttonRects, type ButtonSlot } from "../field-layout";
 import { pressable, setChanged } from "../button-lock";
+import type { ButtonIcon, ButtonView } from "../button-view";
 import { dotAngles } from "../field-look";
-import type { FieldView } from "../field-view";
 import { drawButton, palette } from "./art";
 import { inkStyle } from "./text";
-
-type ButtonView = FieldView["buttons"][number];
 
 type ButtonWidget = {
   box: Phaser.GameObjects.Container;
@@ -28,17 +27,48 @@ export type ButtonsWidget = {
 
 const slots: readonly ButtonSlot[] = ["single", "left", "right"];
 
-/** A tick, or a ring of dots like the fake star's rim. */
-function drawIcon(g: Phaser.GameObjects.Graphics, icon: ButtonView["icon"]): void {
+type Graphics = Phaser.GameObjects.Graphics;
+
+const tick = (g: Graphics) => {
+  g.lineStyle(6, palette.ink, 1);
+  g.lineBetween(-11, 0, -3, 8);
+  g.lineBetween(-3, 8, 12, -10);
+};
+
+/** Twelve dots, like the fake star's rim. */
+const dots = (g: Graphics) => {
+  g.fillStyle(palette.ink, 1);
+  for (const a of dotAngles) g.fillCircle(12 * Math.cos(a), 12 * Math.sin(a), 2.6);
+};
+
+/** An arrow to the right: the thing goes to the wisp. */
+const arrow = (g: Graphics) => {
+  g.lineStyle(6, palette.ink, 1);
+  g.lineBetween(-12, 0, 11, 0);
+  g.lineBetween(2, -9, 12, 0);
+  g.lineBetween(2, 9, 12, 0);
+};
+
+/** A padlock: a round shackle over a body. */
+const lock = (g: Graphics) => {
+  g.lineStyle(5, palette.ink, 1);
+  g.beginPath();
+  g.arc(0, -4, 7, Math.PI, 2 * Math.PI);
+  g.strokePath();
+  g.fillStyle(palette.ink, 1);
+  g.fillRoundedRect(-11, -4, 22, 17, 4);
+};
+
+const icons: Record<Exclude<ButtonIcon, "none">, (g: Graphics) => void> = {
+  tick,
+  dots,
+  arrow,
+  lock,
+};
+
+function drawIcon(g: Graphics, icon: ButtonIcon): void {
   g.clear();
-  if (icon === "tick") {
-    g.lineStyle(6, palette.ink, 1);
-    g.lineBetween(-11, 0, -3, 8);
-    g.lineBetween(-3, 8, 12, -10);
-  } else if (icon === "dots") {
-    g.fillStyle(palette.ink, 1);
-    for (const a of dotAngles) g.fillCircle(12 * Math.cos(a), 12 * Math.sin(a), 2.6);
-  }
+  if (icon !== "none") icons[icon](g);
 }
 
 function createButton(

@@ -29,5 +29,8 @@ open an issue for each problem.
 - [ ] Trial 3: the title shows the 60 seconds in trial 1's card and in the captions of the shed's and the field's buttons; children say the field has a time limit
 - [ ] Trial 3: the Title button at the bottom right is found when wanted and not tapped by accident while sorting; the end screen's two buttons are told apart
 - [ ] Color: trial 3 fake stars are told from real ones in grayscale, with the sound off, by their brighter glow and their ring of dots, and a sorted star by its word and tick
+- [ ] Trial 4: children (5–8) play The Listening Shadows' 60 seconds without verbal help, and say in their own words why a house key, an address and a password are "secret" and a candy is not (record verbatim); note whether they say the shadow is a bad one or just listening, whether they look at the picture before they press a button, whether they press the same button every time (and whether the streak makes them stop), whether a given secret upsets them or they shrug, how they read the closing line, and whether the 60 seconds feels rushed or dull
+- [ ] Trial 4: the title shows three buttons with the 60 seconds in each caption, and a child finds the padlock button without help; the Title button at the bottom right is found when wanted and not tapped by accident; "Next" is not pressed by the second tap of a quick double tap
+- [ ] Color: trial 4's six items are told apart by outline in grayscale, a kept item by its padlock, a right decision by its tick, and what the shadow heard by its bubble (the item, or three dots), with the sound off
 - [ ] Stability: one full playthrough on iPhone Safari, Android Chrome and desktop Chrome
 - [ ] Performance: 60 fps target; if it stays under 30 fps, cut effects
