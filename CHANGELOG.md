@@ -27,6 +27,14 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 5, The Flickering Lantern ("tell it what's wrong", learning goal L5) is a new 60-second time attack with a
+  score. The wisp brings a lantern that matches the wish in every part but one, and that part flickers (and has a
+  frame of dots). The child taps it (where) and picks one of two cards for it (how); the wisp changes exactly that
+  part to exactly that look. The wish's look lights the lantern and scores (100, plus 50 for each right card in a row,
+  up to 4); another look changes the part, which still flickers, and ends the streak. A tap on a steady part says it
+  is fine, at no cost. "Next" brings the next lantern, the title gains a fourth button (its name, card and art move up
+  88 pixels), and the end screen has play again and Title. Spec in `.kiro/specs/08-trial-tell-whats-wrong/`;
+  INV-15 to INV-17 are widened and INV-54 to INV-62 added.
 - Trial 4, The Listening Shadows ("keep secrets", learning goal L4) is a new 60-second time attack with a score.
   One thing at a time is in front of the wisp, and a shadow listens beside it. The child decides: "Give" or
   "Secret". A house key, an address and a password are secrets, and a candy, a ball and a flower are fine to give.
