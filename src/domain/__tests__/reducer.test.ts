@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
+import { isSecretAt } from "../bag";
 import { fakesOf } from "../field";
 import { reduce } from "../reducer";
 import { initialState, type GameState } from "../state";
@@ -1010,5 +1011,220 @@ describe("reduce: the other trials' events leave the field alone (REQ-6.8)", () 
     const later = play([...otherEvents, ...sortAll(inField), keepStars, runOut], inField);
     expect(later.lane).toBe(initialState.lane);
     expect(later.shed).toBe(initialState.shed);
+  });
+});
+
+// Trial 4, the bag (spec 07-trial-keep-secrets). The cases above this line are not changed.
+
+const enterBag: GameEvent = { type: "StartBag", seed: 0 };
+const giveItem = (index: number): GameEvent => ({ type: "GiveItem", index });
+const retryBag: GameEvent = { type: "RetryBag" };
+const leaveBag: GameEvent = { type: "LeaveBag" };
+const inBag = play([enterBag]);
+/** Seed 0, round 0: the address is in place 1; the other four are safe. */
+const safe0 = [0, 2, 3, 4];
+
+/** Hands over every safe thing of the bag's round, in place order. */
+function giveAll(state: GameState): GameEvent[] {
+  return [0, 1, 2, 3, 4].filter((i) => !isSecretAt(state.bag, i)).map(giveItem);
+}
+
+const bagDone = play(giveAll(inBag), inBag);
+const bagNext = play([retryBag], bagDone);
+const bagOver = reduce(play(safe0.slice(0, 2).map(giveItem), inBag), runOut);
+
+describe("reduce: the title's bag button (REQ-7.1)", () => {
+  it("StartBag from the title opens the bag and begins a run: round 0 of the seed, a full clock, a score of 0", () => {
+    expect(inBag).toEqual({
+      ...initialState,
+      phase: "trial",
+      trial: 4,
+      bag: { ...initialState.bag, seed: 0 },
+      run: fullRun,
+    });
+    expect(reduce(initialState, { type: "StartBag", seed: 8 }).bag.seed).toBe(8);
+    expect(inBag.lane).toBe(initialState.lane);
+    expect(inBag.shed).toBe(initialState.shed);
+    expect(inBag.field).toBe(initialState.field);
+  });
+
+  it("the seed is a whole number, and the language, the hero and the best stay", () => {
+    expect(reduce(initialState, { type: "StartBag", seed: -1 }).bag.seed).toBe(4_294_967_295);
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterBag)).toMatchObject({ lang: "ja", hero: { x: 5, y: 6 } });
+    const again = reduce(reduce(bagOver, leaveBag), enterBag);
+    expect(again.run).toEqual({ ...fullRun, best: bagOver.run.best });
+    expect(bagOver.run.best).toBe(250);
+  });
+
+  it("StartBag is ignored in a run of any trial and on the end screens of the other trials", () => {
+    for (const state of [
+      started,
+      inShed,
+      inField,
+      inBag,
+      shedOver,
+      fieldOver,
+      reduce(started, runOut),
+    ]) {
+      expect(reduce(state, enterBag)).toBe(state);
+    }
+  });
+
+  it("StartBag on the bag's own end screen plays again: round 0 of the new seed, a full clock, the best kept", () => {
+    const again = reduce(bagOver, { type: "StartBag", seed: 5 });
+    expect(again).toEqual({
+      ...bagOver,
+      phase: "trial",
+      trial: 4,
+      bag: { ...initialState.bag, seed: 5 },
+      run: { ...fullRun, best: 250 },
+    });
+  });
+
+  it("the other entrances do nothing in the bag, and Start sets the language only", () => {
+    for (const event of [enterShed, enterField]) {
+      expect(reduce(inBag, event)).toBe(inBag);
+      expect(reduce(bagOver, event)).toBe(bagOver);
+    }
+    const midway = play([giveItem(0)], inBag);
+    expect(reduce(midway, { type: "Start" })).toEqual(midway);
+    expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
+  });
+
+  it("Start on the bag's end screen begins trial 1 and drops the bag", () => {
+    const next = reduce(bagOver, { type: "Start" });
+    expect(next).toMatchObject({ phase: "trial", trial: 1 });
+    expect(next.bag).toBe(initialState.bag);
+    expect(next.run).toEqual({ ...fullRun, best: 250 });
+  });
+});
+
+describe("reduce: the bag events (REQ-7.3 to REQ-7.5)", () => {
+  it("GiveItem hands a safe thing over and scores; a secret is held back and scores nothing", () => {
+    const gave = reduce(inBag, giveItem(0));
+    expect(gave.bag).toMatchObject({
+      stage: "giving",
+      given: [true, false, false, false, false],
+      last: 0,
+    });
+    expect(gave.run).toMatchObject({ score: 100, streak: 1 });
+    const held = reduce(gave, giveItem(1));
+    expect(held.bag).toMatchObject({ given: [true, false, false, false, false], last: 1 });
+    expect(held.run).toMatchObject({ score: 100, streak: 0 });
+  });
+
+  it("scores 100, then 50 more for each hand-over in a row up to 4; a secret ends the streak", () => {
+    expect(bagDone.run).toMatchObject({ score: 100 + 150 + 200 + 250, streak: 4 });
+    const fifth = play(giveAll(bagNext).slice(0, 1), bagNext);
+    expect(fifth.run).toMatchObject({ score: 700 + 300, streak: 5 });
+    const broken = play([giveItem(0), giveItem(2), giveItem(1), giveItem(3)], inBag);
+    expect(broken.run).toMatchObject({ score: 100 + 150 + 100, streak: 1 });
+  });
+
+  it("a thing already handed over, an index that is not a thing, and a done round change nothing", () => {
+    const gave = reduce(inBag, giveItem(0));
+    expect(reduce(gave, giveItem(0))).toBe(gave);
+    for (const bad of [-1, 5, 2.5]) expect(reduce(inBag, giveItem(bad))).toBe(inBag);
+    for (const i of [0, 1, 2, 3, 4]) expect(reduce(bagDone, giveItem(i))).toBe(bagDone);
+  });
+
+  it("the last safe thing finishes the round; RetryBag then brings the next round and scores nothing", () => {
+    expect(bagDone.bag).toEqual({ stage: "done", seed: 0, round: 0 });
+    expect(bagDone.phase).toBe("trial");
+    expect(bagNext.bag).toEqual({ ...initialState.bag, round: 1 });
+    expect(bagNext.run).toBe(bagDone.run);
+    expect(reduce(inBag, retryBag)).toBe(inBag);
+  });
+
+  it("does nothing outside a run of the bag: on the title, in the other trials and on any end screen", () => {
+    const over = reduce(started, runOut);
+    for (const state of [
+      initialState,
+      started,
+      inShed,
+      inField,
+      over,
+      shedOver,
+      fieldOver,
+      bagOver,
+    ]) {
+      for (const event of [giveItem(0), giveItem(1), retryBag]) {
+        expect(reduce(state, event)).toBe(state);
+      }
+    }
+  });
+});
+
+describe("reduce: the bag's clock and the way back (REQ-7.7)", () => {
+  it("Tick runs the clock down in the bag; time up ends the run in any stage and keeps the bag", () => {
+    expect(reduce(inBag, tick(1_000)).run.remainingMs).toBe(59_000);
+    expect(reduce(inBag, tick(0))).toBe(inBag);
+    for (const state of [inBag, play([giveItem(1)], inBag), bagDone, bagNext]) {
+      const over = reduce(state, runOut);
+      expect(over).toMatchObject({ phase: "over", trial: 4 });
+      expect(over.run.remainingMs).toBe(0);
+      expect(over.bag).toBe(state.bag);
+    }
+    expect(bagOver.run).toMatchObject({ score: 250, best: 250, record: true });
+    expect(reduce(bagOver, tick(1_000))).toBe(bagOver);
+  });
+
+  it("LeaveBag from a run or the end screen goes to the title and keeps the best, the language and the hero", () => {
+    const midway = play([giveItem(0), { type: "SetLang", lang: "ja" }, tick(1_000)], inBag);
+    expect(reduce(midway, leaveBag)).toEqual({
+      ...midway,
+      phase: "title",
+      trial: 0,
+      bag: initialState.bag,
+      run: fullRun,
+    });
+    for (const state of [bagDone, bagNext]) {
+      expect(reduce(state, leaveBag)).toMatchObject({ phase: "title", trial: 0 });
+    }
+    const away = reduce(bagOver, leaveBag);
+    expect(away).toMatchObject({ phase: "title", trial: 0, bag: initialState.bag });
+    expect(away.run).toEqual({ ...fullRun, best: 250 });
+  });
+
+  it("LeaveBag anywhere else returns the same state, and the other ways back do nothing in the bag", () => {
+    for (const state of [initialState, started, inShed, inField, shedOver, fieldOver]) {
+      expect(reduce(state, leaveBag)).toBe(state);
+    }
+    for (const event of [leaveShed, leaveField]) {
+      expect(reduce(inBag, event)).toBe(inBag);
+      expect(reduce(bagOver, event)).toBe(bagOver);
+    }
+  });
+});
+
+describe("reduce: the other trials' events leave the bag alone (REQ-7.8)", () => {
+  const otherEvents: GameEvent[] = [
+    ...pick("red", "lantern"),
+    ask,
+    retry,
+    pickTool("key"),
+    giveTool,
+    retryShed,
+    inspectStar(0),
+    sortAs("real"),
+    keepStars,
+    retryField,
+  ];
+
+  it("changes nothing in the bag, whatever was handed over", () => {
+    for (const state of [inBag, play([giveItem(1)], inBag), bagDone, bagOver]) {
+      for (const event of otherEvents) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("keeps the lane, the shed and the field initial through a whole run", () => {
+    const later = play([...otherEvents, ...giveAll(inBag), runOut], inBag);
+    expect(later.lane).toBe(initialState.lane);
+    expect(later.shed).toBe(initialState.shed);
+    expect(later.field).toBe(initialState.field);
   });
 });

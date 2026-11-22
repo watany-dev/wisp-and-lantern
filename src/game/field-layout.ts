@@ -60,12 +60,13 @@ export const fieldWispSize = 60;
 export const titleFieldButton: Rect = { x: 195, y: 648, width: 300, height: 80 };
 
 /**
- * The title's wisp and hero, moved up so that two buttons fit under them. `bottom` is how far the
- * drawing reaches below its center before scaling (the wisp's waves, the hero's shadow).
+ * The title's wisp and hero, moved up so that three buttons fit under them (trial 4's is the top one,
+ * `titleBagButton` in `bag-layout.ts`). `bottom` is how far the drawing reaches below its center before
+ * scaling (the wisp's waves, the hero's shadow).
  */
 export const titleArt = {
-  wisp: { x: 285, y: 538, scale: 2, bottom: 31 },
-  hero: { x: 110, y: 548, scale: 1.6, bottom: 34 },
+  wisp: { x: 285, y: 444, scale: 2, bottom: 31 },
+  hero: { x: 110, y: 454, scale: 1.6, bottom: 34 },
 } as const;
 
 /** The points of a star the smoke reads from a screenshot to see the clue (REQ-6.13). */

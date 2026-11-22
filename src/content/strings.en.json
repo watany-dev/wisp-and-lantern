@@ -75,6 +75,26 @@
       "fake": "fake"
     }
   },
+  "bag": {
+    "enter": "Keep the secrets",
+    "timeAttack": "How many in 60 seconds?",
+    "guide": "Keys, address, password:\nnever give them to anyone",
+    "start": "Tap the things that are\nOK to give the wisp",
+    "given": "The {0} is safe to give",
+    "secret": "The {0} is a secret!\nA shadow may be listening",
+    "done": "You gave {0} safe things",
+    "lesson": "You kept the secrets\nand gave the safe ones",
+    "next": "Next",
+    "items": {
+      "candy": "candy",
+      "flower": "flower",
+      "acorn": "acorn",
+      "leaf": "leaf",
+      "key": "house key",
+      "address": "address",
+      "password": "password"
+    }
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",

@@ -1,6 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
-import type { FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
+import { handOver, initialBag, newBag, reduceBag } from "./bag";
+import type { BagEvent, FieldEvent, GameEvent, LaneEvent, ShedEvent } from "./events";
 import { initialField, reduceField, verdictRight } from "./field";
 import { initialLane, outcome, reduceLane } from "./lane";
 import { finishRun, restartRun, runDown, scoreSearch } from "./run";
@@ -25,13 +26,20 @@ export function reduce(state: GameState, event: GameEvent): GameState {
       return startField(state, event.seed);
     case "LeaveField":
       return leaveField(state);
+    case "StartBag":
+      return startBag(state, event.seed);
+    case "LeaveBag":
+      return leaveBag(state);
     default:
       return reduceTrial(state, event);
   }
 }
 
 /** The events of one trial each: they act only in their own trial and return the state otherwise. */
-function reduceTrial(state: GameState, event: LaneEvent | ShedEvent | FieldEvent): GameState {
+function reduceTrial(
+  state: GameState,
+  event: LaneEvent | ShedEvent | FieldEvent | BagEvent,
+): GameState {
   switch (event.type) {
     case "Ask":
       return inTrial(state, trials.lane) ? ask(state, event) : state;
@@ -44,8 +52,26 @@ function reduceTrial(state: GameState, event: LaneEvent | ShedEvent | FieldEvent
     case "GiveTool":
       return inTrial(state, trials.shed) ? give(state) : state;
     default:
+      return reduceLaterTrial(state, event);
+  }
+}
+
+/** The events of trials 3 and 4, kept apart from `reduceTrial` so that each switch stays small. */
+function reduceLaterTrial(state: GameState, event: FieldEvent | BagEvent): GameState {
+  switch (event.type) {
+    case "GiveItem":
+    case "RetryBag":
+      return reduceBagTrial(state, event);
+    default:
       return reduceFieldTrial(state, event);
   }
+}
+
+/** The bag's events act only in a run of trial 4. A tap on a thing also scores. */
+function reduceBagTrial(state: GameState, event: BagEvent): GameState {
+  if (!inTrial(state, trials.bag)) return state;
+  if (event.type === "GiveItem") return giveItem(state, event);
+  return withBag(state, reduceBag(state.bag, event));
 }
 
 /** The field's events act only in a run of trial 3. A verdict also scores. */
@@ -73,6 +99,7 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     run: restartRun(state.run),
     shed: initialShed,
     field: initialField,
+    bag: initialBag,
   };
 }
 
@@ -129,10 +156,38 @@ function leaveField(state: GameState): GameState {
   return { ...state, phase: "title", trial: 0, field: initialField, run: restartRun(state.run) };
 }
 
-/** Time passes only during a run of trial 1, 2 or 3. At zero the run is over and its score is final. */
+/**
+ * The bag's 60-second run starts from the title, or from the bag's own end screen to play again. Like
+ * `startField`, it gives a full clock and a score of 0 and keeps only the best; the other trials are untouched.
+ */
+function startBag(state: GameState, seed: number): GameState {
+  const again = state.phase === "over" && state.trial === trials.bag;
+  if (state.phase !== "title" && !again) return state;
+  return {
+    ...state,
+    phase: "trial",
+    trial: trials.bag,
+    bag: newBag(seed),
+    run: restartRun(state.run),
+  };
+}
+
+/**
+ * The way back to the title, from a run of the bag or from its end screen (`trial` is 4 in both, and 0 on the
+ * title). It keeps the language, the hero and the best score of the session, and drops the bag and the run.
+ */
+function leaveBag(state: GameState): GameState {
+  if (state.trial !== trials.bag) return state;
+  return { ...state, phase: "title", trial: 0, bag: initialBag, run: restartRun(state.run) };
+}
+
+/** Time passes only during a run of trial 1, 2, 3 or 4. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
   const running =
-    inTrial(state, trials.lane) || inTrial(state, trials.shed) || inTrial(state, trials.field);
+    inTrial(state, trials.lane) ||
+    inTrial(state, trials.shed) ||
+    inTrial(state, trials.field) ||
+    inTrial(state, trials.bag);
   if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
@@ -161,6 +216,16 @@ function sortStar(state: GameState, event: FieldEvent & { type: "SortStar" }): G
   return { ...state, field, run: scoreSearch(state.run, right) };
 }
 
+/**
+ * A tap on a thing scores once, like the hand-over of trial 2: a safe thing handed over adds points, a secret held
+ * back ends the streak, and a tap that does nothing changes nothing.
+ */
+function giveItem(state: GameState, event: BagEvent & { type: "GiveItem" }): GameState {
+  const safe = handOver(state.bag, event.index);
+  if (safe === null) return state;
+  return { ...state, bag: reduceBag(state.bag, event), run: scoreSearch(state.run, safe) };
+}
+
 function withLane(state: GameState, lane: GameState["lane"]): GameState {
   return lane === state.lane ? state : { ...state, lane };
 }
@@ -171,4 +236,8 @@ function withShed(state: GameState, shed: GameState["shed"]): GameState {
 
 function withField(state: GameState, field: GameState["field"]): GameState {
   return field === state.field ? state : { ...state, field };
+}
+
+function withBag(state: GameState, bag: GameState["bag"]): GameState {
+  return bag === state.bag ? state : { ...state, bag };
 }

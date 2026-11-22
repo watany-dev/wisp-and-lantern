@@ -27,6 +27,19 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 4, The Listening Shadows ("keep secrets", learning goal L4), a 60-second time attack with a score. Five
+  things are in front of the child: one or two secrets (the house key, the address, the password) and the rest safe
+  (candy, a flower, an acorn, a leaf). Tapping a safe thing hands it to the wisp and scores 100 (plus 50 for each
+  hand-over in a row, up to 4). A secret is never handed over: the game holds it back, says kindly that it is a secret
+  and that a shadow may be listening, and the streak ends; it costs no time and can be tapped again. The guide names
+  the three secrets ("never give them to anyone") and a rule card shows them with padlocks. When every safe thing is
+  handed over, the secrets get a padlock badge, a closing line says they stayed with the child, and "Next" brings five
+  more. Two shadows with round eyes and a big ear sit beside the wisp; they listen and do nothing. The things come
+  from a seed, so their places change from visit to visit. The clock, the score, the end screen and the Title button
+  are the other trials'. The title has a third button above the field's, and its name, card and art moved up to make
+  room. Spec in `.kiro/specs/07-trial-keep-secrets/`; INV-46 to INV-57 added and INV-15 to INV-17 widened to the bag.
+  The trial 4 row of `docs/learning-design.md` no longer lists the house key and a name as safe things.
+
 - Trial 3, The Wisp Field ("check it", learning goal L3) is now a 60-second time attack with a score. The wisp
   brings five stars and one or two are fakes. A fake shines brighter than a real star and its rim is a ring of
   dots instead of one line, so the child can tell by looking, from the first screen, with no color and no sound.

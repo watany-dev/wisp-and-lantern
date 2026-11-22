@@ -109,3 +109,37 @@ describe.each(["ja", "en"] as const)("overView after a run of the field in %s", 
     expect(fieldOver(lang).record).toBeNull();
   });
 });
+
+// The end screen of the bag's run (spec 07-trial-keep-secrets, REQ-7.7.4): the same lines, and two buttons,
+// play again and back to the title.
+const bagOver = (lang: Lang, ...events: GameEvent[]) =>
+  overView(
+    [{ type: "StartBag", seed: 0 } as GameEvent, ...events, end].reduce(reduce, {
+      ...initialState,
+      lang,
+    }),
+  );
+
+describe.each(["ja", "en"] as const)("overView after a run of the bag in %s", (lang) => {
+  const s = strings[lang].run;
+
+  it("says the time is up and shows the score and the best", () => {
+    // Seed 0, round 0: place 0 is candy, a safe thing.
+    const view = bagOver(lang, { type: "GiveItem", index: 0 });
+    expect(view.title).toBe(s.over);
+    expect(view.score).toBe(s.score.replace("{0}", "100"));
+    expect(view.best).toBe(s.best.replace("{0}", "100"));
+    expect(view.record).toBe(s.newBest);
+  });
+
+  it("offers play again for the bag, and the way back to the title", () => {
+    expect(bagOver(lang).buttons).toEqual([
+      { text: s.again, action: "playBag" },
+      { text: strings[lang].shed.leave, action: "leaveBag" },
+    ]);
+  });
+
+  it("does not call a run that only tapped a secret a record", () => {
+    expect(bagOver(lang, { type: "GiveItem", index: 1 }).record).toBeNull();
+  });
+});

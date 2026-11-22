@@ -1,11 +1,12 @@
 // The title screen: the game's name, trial 1's card (a tap anywhere starts it, and it has the 60 seconds),
-// the wisp and the hero, and two buttons that open trial 2 (the shed) and trial 3 (the field), which are
-// 60-second runs too. Each button says so in its own caption. Specs:
+// the wisp and the hero, and three buttons that open trial 4 (the bag), trial 3 (the field) and trial 2 (the
+// shed), which are 60-second runs too. Each button says so in its own caption. Specs:
 // .kiro/specs/04-score-attack/design.md, .kiro/specs/05-trial-grant-tools/design.md,
-// .kiro/specs/06-trial-verify-stars/design.md
+// .kiro/specs/06-trial-verify-stars/design.md, .kiro/specs/07-trial-keep-secrets/design.md
 
 import Phaser from "phaser";
 import type { GameState } from "../../domain/state";
+import { titleBagButton } from "../bag-layout";
 import type { Game } from "../judge";
 import { titleArt, titleFieldButton } from "../field-layout";
 import type { Rect } from "../lane-layout";
@@ -23,6 +24,7 @@ import {
 } from "../title-layout";
 import { titleView, type TitleView } from "../title-view";
 import { drawButton, drawPanel, drawStar, palette } from "../ui/art";
+import { drawPadlock } from "../ui/bag-items";
 import { drawBackground } from "../ui/background";
 import { fitCamera } from "../ui/camera";
 import { inkStyle, textStyle } from "../ui/text";
@@ -37,6 +39,7 @@ const stop = (e: TouchEvent) => e.preventDefault();
 
 const drawKey = (g: Phaser.GameObjects.Graphics) => drawTool(g, "key", 46);
 const drawGoldStar = (g: Phaser.GameObjects.Graphics) => drawStar(g, 20);
+const drawLock = (g: Phaser.GameObjects.Graphics) => drawPadlock(g, 0, 0, 24);
 
 type Entrance = { label: Phaser.GameObjects.Text; caption: Phaser.GameObjects.Text };
 
@@ -46,6 +49,7 @@ export class TitleScene extends Phaser.Scene {
   private intro!: Phaser.GameObjects.Text;
   private shed!: Entrance;
   private field!: Entrance;
+  private bag!: Entrance;
   private lockUntil = 0;
   private fromTrial = false;
   private touchGuarded = false;
@@ -71,6 +75,9 @@ export class TitleScene extends Phaser.Scene {
     );
     this.field = this.createEntrance(titleFieldButton, drawGoldStar, () =>
       this.enter({ type: "StartField", seed: newSeed() }),
+    );
+    this.bag = this.createEntrance(titleBagButton, drawLock, () =>
+      this.enter({ type: "StartBag", seed: newSeed() }),
     );
 
     // A press that hit an object (a button) is that object's, not the start of trial 1.
@@ -133,7 +140,7 @@ export class TitleScene extends Phaser.Scene {
     return { label, caption };
   }
 
-  private enter(event: { type: "StartShed" | "StartField"; seed: number }): void {
+  private enter(event: { type: "StartShed" | "StartField" | "StartBag"; seed: number }): void {
     if (this.game_.state().phase === "title") this.game_.dispatch(event);
   }
 
@@ -154,5 +161,7 @@ export class TitleScene extends Phaser.Scene {
     this.shed.caption.setText(view.shedCaption);
     this.field.label.setText(view.field);
     this.field.caption.setText(view.fieldCaption);
+    this.bag.label.setText(view.bag);
+    this.bag.caption.setText(view.bagCaption);
   }
 }

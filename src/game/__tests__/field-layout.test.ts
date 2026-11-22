@@ -107,9 +107,10 @@ describe("field layout (REQ-6.9)", () => {
     expect(fieldWisp).toEqual({ x: 195, y: 720 });
     expect(fieldWispSize).toBe(60);
     expect(titleFieldButton).toEqual({ x: 195, y: 648, width: 300, height: 80 });
+    // Spec 07-trial-keep-secrets moved the title's art up 94 pixels for the bag's button (was y 538 and 548).
     expect(titleArt).toEqual({
-      wisp: { x: 285, y: 538, scale: 2, bottom: 31 },
-      hero: { x: 110, y: 548, scale: 1.6, bottom: 34 },
+      wisp: { x: 285, y: 444, scale: 2, bottom: 31 },
+      hero: { x: 110, y: 454, scale: 1.6, bottom: 34 },
     });
   });
 

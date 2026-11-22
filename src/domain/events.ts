@@ -28,6 +28,13 @@ export type FieldEvent =
   | { type: "KeepStars" }
   | { type: "RetryField" };
 
+/**
+ * Events of trial 4. `GiveItem` is a tap on a thing: a safe thing is handed to the wisp and scores, a secret is
+ * held back and ends the streak. `RetryBag` brings the next five things after a done round. They have their own
+ * names so that no other trial's event can act on the bag, and no bag event on another trial.
+ */
+export type BagEvent = { type: "GiveItem"; index: number } | { type: "RetryBag" };
+
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
@@ -48,6 +55,14 @@ export type GameEvent =
   | { type: "StartField"; seed: number }
   /** Back to the title from the field, in a run or on its end screen: the only way out of trial 3. */
   | { type: "LeaveField" }
+  /**
+   * Starts a 60-second run of the bag: from the title, or from the bag's own end screen to play again. `seed`
+   * picks which things each round has, and where.
+   */
+  | { type: "StartBag"; seed: number }
+  /** Back to the title from the bag, in a run or on its end screen: the only way out of trial 4. */
+  | { type: "LeaveBag" }
   | LaneEvent
   | ShedEvent
-  | FieldEvent;
+  | FieldEvent
+  | BagEvent;

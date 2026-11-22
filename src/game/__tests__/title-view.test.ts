@@ -13,6 +13,8 @@ describe("titleView (REQ-6.1.6)", () => {
       shedCaption: ja.shed.timeAttack,
       field: ja.field.enter,
       fieldCaption: ja.field.timeAttack,
+      bag: ja.bag.enter,
+      bagCaption: ja.bag.timeAttack,
     });
     expect(titleView("en")).toEqual({
       title: en.title,
@@ -22,6 +24,8 @@ describe("titleView (REQ-6.1.6)", () => {
       shedCaption: en.shed.timeAttack,
       field: en.field.enter,
       fieldCaption: en.field.timeAttack,
+      bag: en.bag.enter,
+      bagCaption: en.bag.timeAttack,
     });
   });
 
@@ -41,5 +45,18 @@ describe("titleView (REQ-6.1.6)", () => {
     for (const lang of ["ja", "en"] as const) {
       expect(titleView(lang).fieldCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
     }
+  });
+});
+
+describe("titleView for the bag's button (REQ-7.1.1)", () => {
+  it("gives the bag's button a label with no number and a caption with the 60 seconds, like the other two", () => {
+    for (const lang of ["ja", "en"] as const) {
+      const view = titleView(lang);
+      expect(view.bagCaption).toMatch(/60/);
+      expect(view.bag).not.toMatch(/\d/);
+      expect(view.bag).not.toBe(view.field);
+      expect(view.bag).not.toBe(view.shed);
+    }
+    expect(titleView("en").bagCaption).toMatch(/60 seconds/);
   });
 });

@@ -1,11 +1,12 @@
 // The title's words for a language. Plain data in, plain data out (ADR 0003). `intro` is trial 1's rule
-// (the 60 seconds) and belongs to its card only; the shed's and the field's buttons say in their own captions
-// that they are 60-second runs too (REQ-5.1.1, REQ-6.1.6), so every sentence on the title matches the trial
-// it sits with.
+// (the 60 seconds) and belongs to its card only; the shed's, the field's and the bag's buttons say in their own
+// captions that they are 60-second runs too (REQ-5.1.1, REQ-6.1.6, REQ-7.1.1), so every sentence on the title
+// matches the trial it sits with.
 
 import en from "../content/strings.en.json";
 import ja from "../content/strings.ja.json";
 import type { Lang } from "../domain/state";
+import { bagCaption, bagEnterLabel } from "./bag-view";
 import { fieldCaption, fieldEnterLabel } from "./field-view";
 import { shedCaption, shedEnterLabel } from "./shed-view";
 
@@ -23,6 +24,9 @@ export type TitleView = {
   field: string;
   /** The caption under the field's label: the 60-second time attack. */
   fieldCaption: string;
+  bag: string;
+  /** The caption under the bag's label: the 60-second time attack. */
+  bagCaption: string;
 };
 
 export function titleView(lang: Lang): TitleView {
@@ -35,5 +39,7 @@ export function titleView(lang: Lang): TitleView {
     shedCaption: shedCaption(lang),
     field: fieldEnterLabel(lang),
     fieldCaption: fieldCaption(lang),
+    bag: bagEnterLabel(lang),
+    bagCaption: bagCaption(lang),
   };
 }

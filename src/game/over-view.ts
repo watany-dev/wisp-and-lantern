@@ -10,10 +10,18 @@ const strings = { ja, en };
 
 /**
  * What a button of the end screen does. The scene turns it into an event (the start of the shed and of the
- * field needs a new seed, which only the scene can draw): `play` begins a new run of trial 1, `playShed` a
- * new run of the shed, `playField` a new run of the field, `leaveShed` and `leaveField` go back to the title.
+ * field and of the bag needs a new seed, which only the scene can draw): `play` begins a new run of trial 1,
+ * `playShed` a new run of the shed, `playField` a new run of the field, `playBag` a new run of the bag, and
+ * `leaveShed`, `leaveField` and `leaveBag` go back to the title.
  */
-export type OverAction = "play" | "playShed" | "playField" | "leaveShed" | "leaveField";
+export type OverAction =
+  | "play"
+  | "playShed"
+  | "playField"
+  | "playBag"
+  | "leaveShed"
+  | "leaveField"
+  | "leaveBag";
 
 export type OverView = {
   title: string;
@@ -21,16 +29,17 @@ export type OverView = {
   record: string | null;
   score: string;
   best: string;
-  /** Trial 1's end screen has one button. The shed's and the field's have a second one, back to the title (REQ-5.16, REQ-6.7). */
+  /** Trial 1's end screen has one button. The other trials' have a second one, back to the title (REQ-5.16, REQ-6.7, REQ-7.7). */
   buttons: { text: string; action: OverAction }[];
 };
 
 const fill = (text: string, value: number) => text.replace("{0}", String(value));
 
-/** The shed's and the field's end screens have a play-again and a leave action each; trial 1 has no entry here. */
+/** The end screens of trials 2 to 4 have a play-again and a leave action each; trial 1 has no entry here. */
 const actions: Readonly<Record<number, { again: OverAction; leave: OverAction }>> = {
   [trials.shed]: { again: "playShed", leave: "leaveShed" },
   [trials.field]: { again: "playField", leave: "leaveField" },
+  [trials.bag]: { again: "playBag", leave: "leaveBag" },
 };
 
 export function overView(state: GameState): OverView {

@@ -29,5 +29,9 @@ open an issue for each problem.
 - [ ] Trial 3: the title shows the 60 seconds in trial 1's card and in the captions of the shed's and the field's buttons; children say the field has a time limit
 - [ ] Trial 3: the Title button at the bottom right is found when wanted and not tapped by accident while sorting; the end screen's two buttons are told apart
 - [ ] Color: trial 3 fake stars are told from real ones in grayscale, with the sound off, by their brighter glow and their ring of dots, and a sorted star by its word and tick
+- [ ] Trial 4: children (5–8) play The Listening Shadows' 60 seconds without verbal help, and say in their own words why the key, the address and the password stay with them (record verbatim); note whether they stop tapping the secrets after the first rounds, whether they look at the rule card, how they read "a shadow may be listening" (curious or scared), whether they know the Japanese words for address and password, whether they read the held-back secret as "the game kept it for me", and whether the 60 seconds feels rushed or dull
+- [ ] Trial 4: the shadows read as listeners, not as monsters; no child is scared of them (record what they say)
+- [ ] Trial 4: the title's three buttons are told apart, and a tap between them still starts trial 1; the Title button is found when wanted and not tapped by accident
+- [ ] Color: trial 4's seven things are told apart by outline in grayscale, a thing handed over by its frame and tick, and a kept secret by its padlock badge
 - [ ] Stability: one full playthrough on iPhone Safari, Android Chrome and desktop Chrome
 - [ ] Performance: 60 fps target; if it stays under 30 fps, cut effects

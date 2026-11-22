@@ -1,15 +1,17 @@
 // Where the title's words sit, in game pixels. Trial 1's rule ("60 seconds") and its way in ("tap") share one
-// card, so the 60 seconds can only be read as trial 1's; the two buttons below it are the other trials and
-// say, each in its own words, that they have no timer (REQ-6.1.6). Spec: .kiro/specs/06-trial-verify-stars/design.md
+// card, so the 60 seconds can only be read as trial 1's; the three buttons below it are the other trials and
+// say in their own captions that they are 60-second runs too (REQ-6.1.6, REQ-7.1.1). The name and the card
+// moved up 70 and 72 pixels to make room for the third button. Specs: .kiro/specs/06-trial-verify-stars/design.md,
+// .kiro/specs/07-trial-keep-secrets/design.md
 
 import type { Rect } from "./lane-layout";
 
-export const titleText = { x: 195, y: 230 } as const;
+export const titleText = { x: 195, y: 160 } as const;
 
 /** Trial 1's card: the way in (tap anywhere) and its rule (60 seconds). Nothing else is inside it. */
-export const titleCard: Rect = { x: 195, y: 372, width: 340, height: 144 };
-export const titlePrompt = { x: 195, y: 338, size: 26 } as const;
-export const titleIntro = { x: 195, y: 400, size: 22 } as const;
+export const titleCard: Rect = { x: 195, y: 300, width: 340, height: 144 };
+export const titlePrompt = { x: 195, y: 266, size: 26 } as const;
+export const titleIntro = { x: 195, y: 328, size: 22 } as const;
 
 /** Inside each of the two buttons (offsets from the button's center): the label, then the small caption. */
 export const buttonLabel = { x: 26, y: -10, size: 22 } as const;

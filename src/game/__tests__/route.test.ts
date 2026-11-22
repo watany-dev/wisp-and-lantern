@@ -47,3 +47,22 @@ describe("sceneFor for the field (REQ-6.8.2)", () => {
     expect(sceneFor({ phase: "over", trial: 3 })).toBe("over");
   });
 });
+
+describe("sceneFor for the bag (REQ-7.8.2)", () => {
+  it("shows the bag in trial 4", () => {
+    expect(sceneFor(reduce(initialState, { type: "StartBag", seed: 0 }))).toBe("bag");
+    expect(sceneFor({ phase: "trial", trial: 4 })).toBe("bag");
+  });
+
+  it("never shows another trial's scene for trial 4, and never the bag for trials 1 to 3", () => {
+    expect(sceneFor({ phase: "trial", trial: 1 })).toBe("lane");
+    expect(sceneFor({ phase: "trial", trial: 2 })).toBe("shed");
+    expect(sceneFor({ phase: "trial", trial: 3 })).toBe("field");
+    expect(sceneFor({ phase: "trial", trial: 5 })).toBe("lane");
+  });
+
+  it("follows the phase before the trial", () => {
+    expect(sceneFor({ phase: "title", trial: 4 })).toBe("title");
+    expect(sceneFor({ phase: "over", trial: 4 })).toBe("over");
+  });
+});
