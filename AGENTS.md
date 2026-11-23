@@ -13,7 +13,10 @@ Wisp & Lantern is a portrait mobile web game (Phaser 4 + TypeScript 7 + Vite+) t
   `npm audit --omit=dev --audit-level=high` (network), Semgrep and gitleaks (Docker or CI only), zizmor
   and zghalint (workflows), `perf` (needs the base branch) and `smoke` (`npm run smoke`, needs browsers).
 - `npm run mutation` — Stryker over the unit-tested code; any surviving mutant fails CI. Kill it with a
-  test, or for an equivalent mutant add `// Stryker disable next-line <mutator>: <why no test can tell>`
+  test, or for an equivalent mutant add `// Stryker disable next-line <mutator>: <why no test can tell>`.
+  CI runs it in three shards, on a pull request over the changed files only (`scripts/mutation-targets.mjs`,
+  ADR 0005). Build shared test states inside a test or `beforeEach`, never when the file loads: code run at
+  load time counts as covered by no test, and Stryker then runs every test for each of its mutants.
 - `npm run build` / `npm run smoke` — production build / Playwright smoke (mobile + desktop)
 - `scripts/__tests__/` runs every `check-*` gate against fixtures (part of `npm test`); CI also runs
   ShellCheck over `scripts/*.sh`. Change a gate together with its test.
