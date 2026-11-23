@@ -2,6 +2,7 @@
 
 import type { CardId } from "./lane";
 import type { Verdict } from "./field";
+import type { LookId, PartId } from "./lantern";
 import type { Choice } from "./shadows";
 import type { ToolId } from "./shed";
 import type { Lang } from "./state";
@@ -36,6 +37,16 @@ export type FieldEvent =
  */
 export type ShadowsEvent = { type: "DecideItem"; choice: Choice } | { type: "NextItem" };
 
+/**
+ * Events of trial 5. `TapPart` points at a part of the wisp's lantern (where); `FixPart` is the card the child picks
+ * for the pointed part (how), and it scores; `NextLantern` brings the next lantern once this one is lit. They have
+ * their own names so that no other trial's event can act on trial 5, and no trial 5 event on another trial.
+ */
+export type LanternEvent =
+  | { type: "TapPart"; part: PartId }
+  | { type: "FixPart"; look: LookId }
+  | { type: "NextLantern" };
+
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
@@ -63,7 +74,15 @@ export type GameEvent =
   | { type: "StartShadows"; seed: number }
   /** Back to the title from trial 4, in a run or on its end screen: the only way out of trial 4. */
   | { type: "LeaveShadows" }
+  /**
+   * Starts a 60-second run of trial 5: from the title, or from its own end screen to play again. `seed` picks the
+   * wishes and the lanterns the wisp brings.
+   */
+  | { type: "StartLantern"; seed: number }
+  /** Back to the title from trial 5, in a run or on its end screen: the only way out of trial 5. */
+  | { type: "LeaveLantern" }
   | LaneEvent
   | ShedEvent
   | FieldEvent
-  | ShadowsEvent;
+  | ShadowsEvent
+  | LanternEvent;

@@ -6,6 +6,11 @@ fine to give. Requirement ids are `REQ-7.n`. `REQ-6.n` belongs to `06-trial-veri
 `05-trial-grant-tools`, `REQ-4.n` to `04-score-attack`, `REQ-3.n` to `03-trial-tell-vague-request`, `REQ-2.n` to
 `02-trial-tell` and `REQ-1.n` to the missing `01-core-loop`; none is reused.
 
+> **Scope note: a fifth trial now exists ([`08-trial-tell-whats-wrong`](../08-trial-tell-whats-wrong/requirements.md)).**
+> "Trials 5 and 6" being out below describes this spec's scope. Trial 5 (The Flickering Lantern) is added by `08`,
+> which also moves the title's name, card, wisp and hero up 88 pixels and puts its button above the shadows button.
+> The shadows', the field's and the shed's buttons do not move, and nothing else in this spec changes.
+
 This adds a fourth trial on top of the existing base. It does not rebuild trials 1 to 3: the lane, the shed and the
 field keep their flows, clocks, scores and end screens. Trial 4 is built as a 60-second time attack with a score, a
 streak, trial 1's end screen and a "Title" button from its first version, because those were the three comments that

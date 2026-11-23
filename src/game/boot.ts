@@ -3,6 +3,7 @@
 import Phaser from "phaser";
 import type { Game } from "./judge";
 import { FieldScene } from "./scenes/FieldScene";
+import { LanternScene } from "./scenes/LanternScene";
 import { LaneScene } from "./scenes/LaneScene";
 import { OverScene } from "./scenes/OverScene";
 import { ShadowsScene } from "./scenes/ShadowsScene";
@@ -31,6 +32,7 @@ export function boot(parent: HTMLElement, game: Game): Phaser.Game {
       new ShedScene(game),
       new FieldScene(game),
       new ShadowsScene(game),
+      new LanternScene(game),
     ],
   });
 }

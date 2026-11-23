@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
 import { fakesOf } from "../field";
+import { broughtAt, cardsOf, newLantern, type LookId } from "../lantern";
 import { reduce } from "../reducer";
 import { initialState, type GameState } from "../state";
 import type { ToolId } from "../shed";
@@ -1348,5 +1349,334 @@ describe("reduce: guessing does not pay in trial 4 (REQ-7.7.8)", () => {
   it("scores less than a quarter as much for the same button every time", () => {
     expect(eight(() => "keep") * 4).toBeLessThan(1900);
     expect(eight(() => "give") * 4).toBeLessThan(1900);
+  });
+});
+
+// Trial 5 (spec 08-trial-tell-whats-wrong). Seed 0's wishes go round every three rounds, and its fault parts are
+// the handle, the roof and the light in turn: the right cards are the ring, the flat roof and the moon, again and
+// again. `lanternOver` is two lanterns lit and a wrong card (250 points).
+const enterLantern: GameEvent = { type: "StartLantern", seed: 0 };
+const tapPart = (part: "handle" | "roof" | "light"): GameEvent => ({ type: "TapPart", part });
+const fixPart = (look: LookId): GameEvent => ({ type: "FixPart", look });
+const nextLantern: GameEvent = { type: "NextLantern" };
+const leaveLantern: GameEvent = { type: "LeaveLantern" };
+const inLantern = play([enterLantern]);
+const faultParts = ["handle", "roof", "light"] as const;
+const rightLooks: LookId[] = ["ring", "flat", "moon"];
+/** Point at the fault part of `round` and pick `look` for it. */
+const tell = (round: number, look: LookId): GameEvent[] => [
+  tapPart(faultParts[round % 3]!),
+  fixPart(look),
+];
+/** The right card and the next lantern, for the first `rounds` rounds of seed 0. */
+const lightRounds = (rounds: number): GameEvent[] =>
+  Array.from({ length: rounds }, (_, r) => [...tell(r, rightLooks[r % 3]!), nextLantern]).flat();
+const lanternScore = (events: GameEvent[]) => play(events, inLantern).run;
+const lanternOver = reduce(play([...lightRounds(2), ...tell(2, "star")], inLantern), runOut);
+
+describe("reduce: opening trial 5 (REQ-8.1, REQ-8.10)", () => {
+  it("StartLantern on the title opens trial 5 with round 0 for the seed and begins a 60-second run", () => {
+    expect(inLantern.phase).toBe("trial");
+    expect(inLantern.trial).toBe(5);
+    expect(inLantern.lantern).toEqual(initialState.lantern);
+    expect(reduce(initialState, { type: "StartLantern", seed: 7 }).lantern).toEqual(newLantern(7));
+    expect(inLantern.run).toEqual(fullRun);
+    expect(inLantern.lane).toBe(initialState.lane);
+    expect(inLantern.shed).toBe(initialState.shed);
+    expect(inLantern.field).toBe(initialState.field);
+    expect(inLantern.shadows).toBe(initialState.shadows);
+    expect(inLantern.lang).toBe(initialState.lang);
+  });
+
+  it("the seed is a whole number: a negative or fractional seed gives the same rounds every time", () => {
+    expect(reduce(initialState, { type: "StartLantern", seed: -1 }).lantern.seed).toBe(
+      4_294_967_295,
+    );
+    expect(reduce(initialState, { type: "StartLantern", seed: 1.9 }).lantern.seed).toBe(1);
+  });
+
+  it("StartLantern keeps the language and the hero where they were, and only the best score", () => {
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterLantern)).toEqual({
+      ...before,
+      phase: "trial",
+      trial: 5,
+      run: fullRun,
+    });
+    const first = reduce(play(tell(0, "ring"), inLantern), runOut);
+    expect(first.run).toMatchObject({ score: 100, best: 100, record: true });
+    expect(reduce(reduce(first, leaveLantern), enterLantern).run).toEqual({
+      ...fullRun,
+      best: 100,
+    });
+  });
+
+  it("StartLantern is ignored in a run of any trial and on the end screen of another trial", () => {
+    for (const state of [started, inShed, inField, inShadows, inLantern]) {
+      expect(reduce(state, enterLantern)).toBe(state);
+    }
+    for (const over of [reduce(started, runOut), shedOver, fieldOver, shadowsOver]) {
+      expect(reduce(over, enterLantern)).toBe(over);
+    }
+  });
+
+  it("StartLantern on trial 5's own end screen plays again: round 0 of the new seed, a full clock, the best kept", () => {
+    expect(lanternOver.phase).toBe("over");
+    expect(reduce(lanternOver, { type: "StartLantern", seed: 5 })).toEqual({
+      ...lanternOver,
+      phase: "trial",
+      trial: 5,
+      lantern: newLantern(5),
+      run: { ...fullRun, best: lanternOver.run.best },
+    });
+    expect(lanternOver.run.best).toBeGreaterThan(0);
+  });
+});
+
+describe("reduce: trial 5 and the other entrances (REQ-8.1, REQ-8.10)", () => {
+  it("the other entrances are ignored in trial 5, and Start in a run sets the language only", () => {
+    for (const state of [inLantern, lanternOver]) {
+      for (const event of [enterShed, enterField, enterShadows])
+        expect(reduce(state, event)).toBe(state);
+    }
+    const midway = play(tell(0, "bow"), inLantern);
+    expect(reduce(midway, { type: "Start" })).toEqual(midway);
+    expect(reduce(midway, { type: "Start", lang: "ja" })).toEqual({ ...midway, lang: "ja" });
+  });
+
+  it("Start on trial 5's end screen begins trial 1 and drops trial 5", () => {
+    const next = reduce(lanternOver, { type: "Start" });
+    expect(next).toMatchObject({ phase: "trial", trial: 1 });
+    expect(next.lantern).toBe(initialState.lantern);
+    expect(next.run).toEqual({ ...fullRun, best: lanternOver.run.best });
+  });
+
+  it("SetLang and MoveHeroTo keep the lantern and the run", () => {
+    for (const before of [inLantern, play([tapPart("handle")], inLantern), lanternOver]) {
+      const next = play(
+        [
+          { type: "SetLang", lang: "ja" },
+          { type: "MoveHeroTo", x: 1, y: 2 },
+        ],
+        before,
+      );
+      expect(next.lantern).toBe(before.lantern);
+      expect(next.run).toBe(before.run);
+    }
+  });
+});
+
+describe("reduce: the events of trial 5 (REQ-8.4 to REQ-8.6)", () => {
+  it("TapPart points and scores nothing, on the flickering part and on a steady one", () => {
+    const pointed = reduce(inLantern, tapPart("handle"));
+    expect(pointed.lantern).toMatchObject({ stage: "pointing", part: "handle" });
+    expect(pointed.run).toBe(inLantern.run);
+    const fine = reduce(inLantern, tapPart("roof"));
+    expect(fine.lantern).toMatchObject({ stage: "looking", note: { kind: "fine", part: "roof" } });
+    expect(fine.run).toBe(inLantern.run);
+    expect(fine.lantern.stage === "looking" && fine.lantern.shape).toEqual(broughtAt(0, 0));
+  });
+
+  it("FixPart with the right card lights the lantern; with the other card the part changes and still flickers", () => {
+    expect(play(tell(0, "ring"), inLantern).lantern).toEqual({ stage: "lit", seed: 0, round: 0 });
+    const said = play(tell(0, "bow"), inLantern).lantern;
+    expect(said).toMatchObject({ stage: "looking", note: { kind: "said", look: "bow" } });
+    expect(said.stage === "looking" && said.shape.handle).toBe("bow");
+  });
+
+  it("FixPart without pointing, or with a look that is not one of the cards, changes nothing and scores nothing", () => {
+    expect(reduce(inLantern, fixPart("ring"))).toBe(inLantern);
+    const pointed = reduce(inLantern, tapPart("handle"));
+    for (const look of ["bell", "flat", "moon"] as const)
+      expect(reduce(pointed, fixPart(look))).toBe(pointed);
+    const lit = play(tell(0, "ring"), inLantern);
+    expect(reduce(lit, fixPart("bow"))).toBe(lit);
+    expect(reduce(lit, tapPart("handle"))).toBe(lit);
+  });
+
+  it("NextLantern before the lantern is lit changes nothing; after, it brings the next round", () => {
+    expect(reduce(inLantern, nextLantern)).toBe(inLantern);
+    const second = play([...tell(0, "ring"), nextLantern], inLantern);
+    expect(second.lantern).toEqual({ ...newLantern(0), round: 1, shape: broughtAt(0, 1) });
+    expect(second.run).toEqual(play(tell(0, "ring"), inLantern).run);
+    expect(play(lightRounds(7), inLantern).lantern.round).toBe(7);
+  });
+
+  it("does nothing outside a run of trial 5: on the title, in the other trials and on any end screen", () => {
+    const over = reduce(started, runOut);
+    const events = [tapPart("handle"), fixPart("ring"), nextLantern];
+    for (const state of [
+      initialState,
+      started,
+      inShed,
+      inField,
+      inShadows,
+      over,
+      shedOver,
+      fieldOver,
+    ]) {
+      for (const event of events) expect(reduce(state, event)).toBe(state);
+    }
+    for (const event of events) expect(reduce(lanternOver, event)).toBe(lanternOver);
+  });
+});
+
+describe("reduce: the clock and score of trial 5 (REQ-8.9)", () => {
+  it("Tick runs the clock down in trial 5, and time up ends the run in every stage", () => {
+    expect(reduce(inLantern, tick(1_000)).run.remainingMs).toBe(59_000);
+    expect(reduce(inLantern, tick(0))).toBe(inLantern);
+    const stages = [
+      inLantern,
+      play([tapPart("handle")], inLantern),
+      play(tell(0, "ring"), inLantern),
+    ];
+    for (const state of stages) {
+      const over = reduce(state, runOut);
+      expect(over).toMatchObject({ phase: "over", trial: 5 });
+      expect(over.lantern).toBe(state.lantern);
+    }
+    expect(reduce(lanternOver, tick(1_000))).toBe(lanternOver);
+  });
+
+  it("a right card scores 100, then 50 more for each right card in a row up to 4", () => {
+    expect(lanternScore(tell(0, "ring"))).toMatchObject({ score: 100, streak: 1 });
+    expect(lanternScore(lightRounds(2))).toMatchObject({ score: 250, streak: 2 });
+    expect(lanternScore(lightRounds(6))).toMatchObject({ score: 1300, streak: 6 });
+  });
+
+  it("a wrong card scores nothing and ends the streak; the right card after it starts again at 100", () => {
+    expect(lanternScore(tell(0, "bow")).score).toBe(0);
+    const ended = play([...lightRounds(2), ...tell(2, "star")], inLantern);
+    expect(ended.run).toMatchObject({ score: 250, streak: 0 });
+    expect(play(tell(2, "moon"), ended).run).toMatchObject({ score: 350, streak: 1 });
+  });
+
+  it("a point and the next lantern score nothing and keep the streak", () => {
+    const lit = play(tell(0, "ring"), inLantern);
+    expect(reduce(lit, nextLantern).run).toBe(lit.run);
+    const next = reduce(lit, nextLantern);
+    expect(play([tapPart("handle"), tapPart("roof")], next).run).toBe(next.run);
+  });
+});
+
+describe("reduce: the way back to the title from trial 5 (REQ-8.9.5)", () => {
+  it("LeaveLantern in every stage of a run and on the end screen goes to the title and keeps the best", () => {
+    for (const state of [
+      inLantern,
+      play([tapPart("handle")], inLantern),
+      play(tell(0, "ring"), inLantern),
+    ]) {
+      expect(reduce(state, leaveLantern)).toEqual({
+        ...state,
+        phase: "title",
+        trial: 0,
+        lantern: initialState.lantern,
+        run: fullRun,
+      });
+    }
+    const away = reduce(lanternOver, leaveLantern);
+    expect(away).toMatchObject({ phase: "title", trial: 0 });
+    expect(away.run).toEqual({ ...fullRun, best: 250 });
+  });
+
+  it("from the title every trial opens again", () => {
+    const left = reduce(play([{ type: "SetLang", lang: "ja" }], inLantern), leaveLantern);
+    expect(left.lang).toBe("ja");
+    for (const [event, trial] of [
+      [enterLantern, 5],
+      [enterShadows, 4],
+      [enterField, 3],
+      [enterShed, 2],
+      [{ type: "Start" }, 1],
+    ] as const) {
+      expect(reduce(left, event).trial).toBe(trial);
+    }
+  });
+
+  it("LeaveLantern elsewhere returns the same state, and the other ways back return the same state in trial 5", () => {
+    for (const state of [
+      initialState,
+      started,
+      inShed,
+      inField,
+      inShadows,
+      shedOver,
+      shadowsOver,
+    ]) {
+      expect(reduce(state, leaveLantern)).toBe(state);
+    }
+    for (const state of [inLantern, lanternOver]) {
+      for (const event of [leaveShed, leaveField, leaveShadows])
+        expect(reduce(state, event)).toBe(state);
+    }
+  });
+});
+
+describe("reduce: the other trials' events leave trial 5 alone (REQ-8.10)", () => {
+  const otherEvents: GameEvent[] = [
+    ...pick("red", "lantern"),
+    ask,
+    retry,
+    pickTool("key"),
+    giveTool,
+    retryShed,
+    inspectStar(0),
+    sortAs("real"),
+    keepStars,
+    retryField,
+    decide("keep"),
+    nextItem,
+  ];
+
+  it("changes nothing in trial 5, in any stage", () => {
+    for (const state of [inLantern, play([tapPart("handle")], inLantern), lanternOver]) {
+      for (const event of otherEvents) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("keeps the other trials initial through a whole run", () => {
+    const later = play([...otherEvents, ...lightRounds(3), runOut], inLantern);
+    expect(later.lane).toBe(initialState.lane);
+    expect(later.shed).toBe(initialState.shed);
+    expect(later.field).toBe(initialState.field);
+    expect(later.shadows).toBe(initialState.shadows);
+  });
+});
+
+/** Eight rounds of seed 0 by a child who picks one card first and, when it was not the wish's, the other one. */
+const tryInTurn = (first: 0 | 1) =>
+  play(
+    Array.from({ length: 8 }, (_, round) => {
+      const part = faultParts[round % 3]!;
+      const right = rightLooks[round % 3]!;
+      const cards = cardsOf({
+        stage: "pointing",
+        seed: 0,
+        round,
+        shape: broughtAt(0, round),
+        part,
+      });
+      const tried = cards[first]!;
+      return tried === right
+        ? [...tell(round, right), nextLantern]
+        : [...tell(round, tried), ...tell(round, right), nextLantern];
+    }).flat(),
+    inLantern,
+  ).run.score;
+
+describe("reduce: trying every card does not pay in trial 5 (REQ-8.9.8)", () => {
+  it("scores 1,900 for eight right cards, and about half for trying the left or the right card first", () => {
+    expect(lanternScore(lightRounds(8)).score).toBe(1900);
+    expect(tryInTurn(0)).toBe(1000);
+    expect(tryInTurn(1)).toBe(1050);
+  });
+
+  it("lights every lantern either way: the cost is the streak, not the lantern", () => {
+    expect(play(lightRounds(8), inLantern).lantern.round).toBe(8);
+    expect(tryInTurn(0) * 1.8).toBeLessThan(1900);
+    expect(tryInTurn(1) * 1.8).toBeLessThan(1900);
   });
 });

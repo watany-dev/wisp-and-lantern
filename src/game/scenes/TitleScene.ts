@@ -1,14 +1,16 @@
 // The title screen: the game's name, trial 1's card (a tap anywhere starts it, and it has the 60 seconds),
-// the wisp and the hero, and three buttons that open trial 2 (the shed), trial 3 (the field) and trial 4 (the
-// shadows), which are 60-second runs too. Each button says so in its own caption. Specs:
+// the wisp and the hero, and four buttons that open trial 2 (the shed), trial 3 (the field), trial 4 (the shadows)
+// and trial 5 (the lantern), which are 60-second runs too. Each button says so in its own caption. Specs:
 // .kiro/specs/04-score-attack/design.md, .kiro/specs/05-trial-grant-tools/design.md,
-// .kiro/specs/06-trial-verify-stars/design.md, .kiro/specs/07-trial-keep-secrets/design.md
+// .kiro/specs/06-trial-verify-stars/design.md, .kiro/specs/07-trial-keep-secrets/design.md,
+// .kiro/specs/08-trial-tell-whats-wrong/design.md
 
 import Phaser from "phaser";
 import type { GameState } from "../../domain/state";
 import type { Game } from "../judge";
 import { titleArt, titleFieldButton } from "../field-layout";
 import type { Rect } from "../lane-layout";
+import { titleLanternButton } from "../lantern-layout";
 import { sceneFor } from "../route";
 import { newSeed } from "../seed";
 import { titleShedButton } from "../shed-layout";
@@ -24,6 +26,7 @@ import {
 } from "../title-layout";
 import { titleView, type TitleView } from "../title-view";
 import { drawButton, drawPanel, drawStar, palette } from "../ui/art";
+import { drawLantern } from "../ui/items";
 import { drawPadlock } from "../ui/shadow-art";
 import { drawBackground } from "../ui/background";
 import { fitCamera } from "../ui/camera";
@@ -40,6 +43,8 @@ const stop = (e: TouchEvent) => e.preventDefault();
 const drawKey = (g: Phaser.GameObjects.Graphics) => drawTool(g, "key", 46);
 const drawGoldStar = (g: Phaser.GameObjects.Graphics) => drawStar(g, 20);
 const drawLock = (g: Phaser.GameObjects.Graphics) => drawPadlock(g, 46);
+/** An orange glass, so the lantern reads on the gold button. */
+const drawLanternIcon = (g: Phaser.GameObjects.Graphics) => drawLantern(g, 44, 0xff9d5c);
 
 type Entrance = { label: Phaser.GameObjects.Text; caption: Phaser.GameObjects.Text };
 
@@ -50,6 +55,7 @@ export class TitleScene extends Phaser.Scene {
   private shed!: Entrance;
   private field!: Entrance;
   private shadows!: Entrance;
+  private lantern!: Entrance;
   private lockUntil = 0;
   private fromTrial = false;
   private touchGuarded = false;
@@ -82,8 +88,11 @@ export class TitleScene extends Phaser.Scene {
     this.render(this.game_.state());
   }
 
-  /** The three buttons under the art, from the top: trial 4, trial 3 and trial 2. */
+  /** The four buttons under the art, from the top: trial 5, trial 4, trial 3 and trial 2. */
   private createEntrances(): void {
+    this.lantern = this.createEntrance(titleLanternButton, drawLanternIcon, () =>
+      this.enter({ type: "StartLantern", seed: newSeed() }),
+    );
     this.shadows = this.createEntrance(titleShadowsButton, drawLock, () =>
       this.enter({ type: "StartShadows", seed: newSeed() }),
     );
@@ -145,7 +154,10 @@ export class TitleScene extends Phaser.Scene {
     return { label, caption };
   }
 
-  private enter(event: { type: "StartShed" | "StartField" | "StartShadows"; seed: number }): void {
+  private enter(event: {
+    type: "StartShed" | "StartField" | "StartShadows" | "StartLantern";
+    seed: number;
+  }): void {
     if (this.game_.state().phase === "title") this.game_.dispatch(event);
   }
 
@@ -168,5 +180,7 @@ export class TitleScene extends Phaser.Scene {
     this.field.caption.setText(view.fieldCaption);
     this.shadows.label.setText(view.shadows);
     this.shadows.caption.setText(view.shadowsCaption);
+    this.lantern.label.setText(view.lantern);
+    this.lantern.caption.setText(view.lanternCaption);
   }
 }

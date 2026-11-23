@@ -68,3 +68,22 @@ describe("sceneFor for the shadows (REQ-7.8.2)", () => {
     expect(sceneFor({ phase: "over", trial: 4 })).toBe("over");
   });
 });
+
+describe("sceneFor for the lantern (REQ-8.10.2)", () => {
+  it("shows the lantern in trial 5", () => {
+    expect(sceneFor(reduce(initialState, { type: "StartLantern", seed: 0 }))).toBe("lantern");
+    expect(sceneFor({ phase: "trial", trial: 5 })).toBe("lantern");
+  });
+
+  it("never shows another trial's scene for trial 5, and never the lantern for trials 1 to 4", () => {
+    for (const trial of [1, 2, 3, 4]) {
+      expect(sceneFor({ phase: "trial", trial })).not.toBe("lantern");
+    }
+    expect(sceneFor({ phase: "trial", trial: 4 })).toBe("shadows");
+  });
+
+  it("follows the phase before the trial", () => {
+    expect(sceneFor({ phase: "title", trial: 5 })).toBe("title");
+    expect(sceneFor({ phase: "over", trial: 5 })).toBe("over");
+  });
+});

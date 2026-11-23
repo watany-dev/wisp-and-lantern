@@ -141,6 +141,12 @@ const isOtherTrialEvent = (e: GameEvent) =>
 const fullRun = { remainingMs: balance.runMs, score: 0, streak: 0 };
 
 /** The step began a new run (of the field, the shed or trial 1), or went back to the title. */
+/**
+ * The step starts or ends in trial 3 (a run or its end screen). The run properties judge only these steps: the
+ * generator may open the shed from the title, whose own hand-over scores by its rules (`shed.pbt.test.ts`).
+ */
+const touchesField = (s: Step) => s.before.trial === 3 || s.after.trial === 3;
+
 function resetsRun(s: Step): boolean {
   const { before, event: e, after } = s;
   if (e.type === "LeaveField" || e.type === "LeaveShed") {
@@ -478,7 +484,7 @@ describe("the field's 60-second run (properties)", () => {
     checkProperty(
       "field-clock-only-runs-down",
       fc.property(anywhere, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesField)) {
           const { before, after } = s;
           expect(after.run.remainingMs).toBeGreaterThanOrEqual(0);
           expect(after.run.remainingMs).toBeLessThanOrEqual(balance.runMs);
@@ -493,7 +499,7 @@ describe("the field's 60-second run (properties)", () => {
     checkProperty(
       "field-score-only-goes-up-on-a-right-verdict",
       fc.property(anywhere, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesField)) {
           const { before, event: e, after } = s;
           if (resetsRun(s)) {
             expect(after.run.score).toBe(0);
@@ -537,7 +543,7 @@ describe("the field's score and its start (properties)", () => {
     checkProperty(
       "field-scores-once-on-a-verdict",
       fc.property(anywhere, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesField)) {
           const { before, event: e, after } = s;
           if (resetsRun(s)) continue;
           const f = before.field;

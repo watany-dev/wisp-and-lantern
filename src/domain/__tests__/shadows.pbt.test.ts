@@ -150,6 +150,12 @@ const otherTrial = (e: GameEvent) =>
 const isShadowsEvent = (e: GameEvent) => e.type === "DecideItem" || e.type === "NextItem";
 const fullRun = { remainingMs: balance.runMs, score: 0, streak: 0 };
 
+/**
+ * The step starts or ends in trial 4 (a run or its end screen). The run properties judge only these steps: the
+ * generator may open the shed or the field from the title, whose own events score and run the clock by their rules.
+ */
+const touchesShadows = (s: Step) => s.before.trial === 4 || s.after.trial === 4;
+
 /** The step began a new run (of trial 4, or of trial 1), or went back to the title. */
 function resetsRun(s: Step): boolean {
   const { before, event: e, after } = s;
@@ -274,7 +280,7 @@ describe("the decision (properties)", () => {
     checkProperty(
       "shadows-scores-once-on-the-decision",
       fc.property(inShadows, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShadows)) {
           const { before, after } = s;
           if (resetsRun(s)) continue;
           if (!decidedNow(s)) {
@@ -394,7 +400,7 @@ describe("trial 4's 60-second run (properties)", () => {
     checkProperty(
       "shadows-clock-only-runs-down",
       fc.property(inShadows, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShadows)) {
           const { before, after } = s;
           expect(after.run.remainingMs).toBeGreaterThanOrEqual(0);
           expect(after.run.remainingMs).toBeLessThanOrEqual(balance.runMs);
@@ -409,7 +415,7 @@ describe("trial 4's 60-second run (properties)", () => {
     checkProperty(
       "shadows-score-only-goes-up-on-a-right-decision",
       fc.property(inShadows, (list) => {
-        for (const s of steps(list)) {
+        for (const s of steps(list).filter(touchesShadows)) {
           const { before, event: e, after } = s;
           if (resetsRun(s)) {
             expect(after.run.score).toBe(0);
