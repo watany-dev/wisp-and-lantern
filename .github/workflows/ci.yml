@@ -162,14 +162,22 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
-  mutation:
+  # ADR 0005: a pull request mutates the files it changed, the main branch mutates every file; both split the
+  # files into three shards that run side by side. `mutation` is the required check and passes only when
+  # every shard passed.
+  mutation-shard:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0 # the merge base with the base branch, for --changed
           persist-credentials: false
       - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
@@ -177,15 +185,39 @@ jobs:
           cache: true
           run-install: |
             - args: ['--frozen-lockfile']
-      - name: Mutation tests (fails on any surviving mutant, see stryker.config.json)
-        run: npm run mutation
+      - name: Mutation tests for this shard (fails on any surviving mutant, see stryker.config.json)
+        env:
+          SHARD: ${{ matrix.shard }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          args=(--shard "$SHARD/3")
+          if [ -n "$BASE_REF" ]; then args=(--changed "origin/$BASE_REF" "${args[@]}"); fi
+          files="$(node scripts/mutation-targets.mjs "${args[@]}")"
+          echo "Mutated in shard $SHARD: ${files:-nothing}" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -z "$files" ]; then exit 0; fi
+          npm run mutation -- --mutate "$files"
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mutation
+          name: mutation-${{ matrix.shard }}
           path: reports/mutation
           if-no-files-found: ignore
+
+  mutation:
+    if: always()
+    needs: mutation-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Every shard passed
+        env:
+          RESULT: ${{ needs.mutation-shard.result }}
+        run: |
+          echo "mutation shards: $RESULT"
+          [ "$RESULT" = success ]
 
   perf:
     runs-on: ubuntu-latest
