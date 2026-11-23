@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   fakesOf,
   initialField,
@@ -31,7 +31,11 @@ const rightVerdict = (field: Field, i: number): FieldEvent =>
 /** Looks at and rightly sorts the stars in `order`. */
 const sortRight = (field: Field, order = stars) =>
   order.reduce((f, i) => run([inspect(i), rightVerdict(f, i)], f), field);
-const ready = sortRight(initialField);
+const makeReady = () => sortRight(initialField);
+let ready: ReturnType<typeof makeReady>;
+beforeEach(() => {
+  ready = makeReady();
+});
 
 const sets = (seed: number) => [0, 1, 2, 3].map((r) => fakesOf(seed, r).join(""));
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import type { GameEvent } from "../../domain/events";
 import { reduce } from "../../domain/reducer";
 import { answerOf, puzzles, tools, type PuzzleId, type ToolId } from "../../domain/shed";
@@ -13,6 +13,7 @@ import {
   shedCaption,
   shedEnterLabel,
   shedView,
+  type ShedView,
   toolName,
 } from "../shed-view";
 
@@ -48,7 +49,10 @@ describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => 
   );
 
   describe("choosing with nothing picked (REQ-5.2.3, REQ-5.4.3)", () => {
-    const v = view(lang);
+    let v: ShedView;
+    beforeEach(() => {
+      v = view(lang);
+    });
 
     it("invites the child to pick a tool, kindly, and shows no button", () => {
       expect(v.message).toBe(s.pick);
@@ -79,7 +83,10 @@ describe.each(["ja", "en"] as const)("shedView while choosing in %s", (lang) => 
   });
 
   describe.each(tools)("choosing with the %s picked (REQ-5.3, REQ-5.4.2)", (tool) => {
-    const v = view(lang, pick(tool));
+    let v: ShedView;
+    beforeEach(() => {
+      v = view(lang, pick(tool));
+    });
 
     it("names the picked tool in the message and arms the wisp", () => {
       expect(v.message).toBe(s.ready.replace("{0}", name(tool, lang)));
@@ -114,9 +121,12 @@ describe.each(["ja", "en"] as const)(
     const s = strings[lang].shed;
 
     describe.each([0, 1, 2, 3, 4])("seed %i, whose first puzzle has its own answer", (seed) => {
-      const puzzle = firstOf(seed);
-      const tool = answerOf(puzzle);
-      const v = viewOf(lang, seed, pick(tool), give);
+      let puzzle: PuzzleId, tool: ToolId, v: ShedView;
+      beforeEach(() => {
+        puzzle = firstOf(seed);
+        tool = answerOf(puzzle);
+        v = viewOf(lang, seed, pick(tool), give);
+      });
 
       it("frees the cat: the obstacle is gone, the star shows, the tried tool is on the puzzle", () => {
         expect(v.picture).toEqual({ puzzle, solved: true, tool, star: true });
@@ -160,9 +170,12 @@ describe.each(["ja", "en"] as const)(
     const s = strings[lang].shed;
 
     describe.each([0, 1, 2, 3, 4])("seed %i", (seed) => {
-      const puzzle = firstOf(seed);
-      const tool = other(puzzle);
-      const v = viewOf(lang, seed, pick(tool), give);
+      let puzzle: PuzzleId, tool: ToolId, v: ShedView;
+      beforeEach(() => {
+        puzzle = firstOf(seed);
+        tool = other(puzzle);
+        v = viewOf(lang, seed, pick(tool), give);
+      });
 
       it("leaves the puzzle as it was, with the tried tool on it and no star", () => {
         expect(v.picture).toEqual({ puzzle, solved: false, tool, star: false });

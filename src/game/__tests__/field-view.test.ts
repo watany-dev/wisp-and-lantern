@@ -1,11 +1,18 @@
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import type { GameEvent } from "../../domain/events";
 import { fakesOf } from "../../domain/field";
 import { reduce } from "../../domain/reducer";
 import { initialState, type GameState, type Lang } from "../../domain/state";
-import { fieldCaption, fieldEnterLabel, fieldView, justFinished, justSorted } from "../field-view";
+import {
+  fieldCaption,
+  fieldEnterLabel,
+  fieldView,
+  justFinished,
+  justSorted,
+  type FieldView,
+} from "../field-view";
 import { leaveLabel } from "../shed-view";
 
 // Seed 0: round 0 has one fake star (4); round 1 has two (1 and 4). See `fakesOf` in the domain tests.
@@ -232,10 +239,13 @@ describe.each(["ja", "en"] as const)("fieldView, the way back to the title in %s
 });
 
 describe("what changed since the last view (the flourish)", () => {
-  const start = fieldView(open("en"));
-  const looked = fieldView(play([look(0)], open("en")));
-  const right = fieldView(play([look(0), sort("real")], open("en")));
-  const wrong = fieldView(play([look(0), sort("fake")], open("en")));
+  let start: FieldView, looked: FieldView, right: FieldView, wrong: FieldView;
+  beforeEach(() => {
+    start = fieldView(open("en"));
+    looked = fieldView(play([look(0)], open("en")));
+    right = fieldView(play([look(0), sort("real")], open("en")));
+    wrong = fieldView(play([look(0), sort("fake")], open("en")));
+  });
 
   it("justSorted gives the verdict that is new, and nothing for the same verdict again", () => {
     expect(justSorted(looked, right)).toEqual({ star: 0, right: true });
