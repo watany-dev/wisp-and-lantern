@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
 import { colors, initialLane, things } from "../lane";
@@ -427,10 +427,16 @@ describe("the shed's way back and its start (properties)", () => {
 });
 
 describe("the generator for the shed is not empty", () => {
-  const sampled = fc
-    .sample(inShed, { numRuns: 600, seed: 5 })
-    .map((list) => steps(list).filter((s) => isShedOrEnd(s.before)));
-  const all = sampled.flat();
+  // Sampled in each test, not when the file loads, so the reducer paths it takes count as covered by these tests
+  // (ADR 0005).
+  let sampled: Step[][] = [];
+  let all: Step[] = [];
+  beforeEach(() => {
+    sampled = fc
+      .sample(inShed, { numRuns: 600, seed: 5 })
+      .map((list) => steps(list).filter((s) => isShedOrEnd(s.before)));
+    all = sampled.flat();
+  });
   const handed = (outcome: "freed" | "stuck", t?: string) =>
     all.filter(
       (s) =>
@@ -486,10 +492,14 @@ describe("the generator for the shed is not empty", () => {
 });
 
 describe("the generator for the shed reaches the run, the end screen and the title", () => {
-  const all = fc
-    .sample(inShed, { numRuns: 600, seed: 5 })
-    .map((list) => steps(list).filter((s) => isShedOrEnd(s.before)))
-    .flat();
+  // Sampled in each test, not when the file loads (ADR 0005).
+  let all: Step[] = [];
+  beforeEach(() => {
+    all = fc
+      .sample(inShed, { numRuns: 600, seed: 5 })
+      .map((list) => steps(list).filter((s) => isShedOrEnd(s.before)))
+      .flat();
+  });
 
   it("scores, runs the clock out, plays again from the end screen and leaves for the title", () => {
     expect(all.some((s) => s.after.run.score > 0)).toBe(true);

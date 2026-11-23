@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import en from "../../content/strings.en.json";
 import ja from "../../content/strings.ja.json";
 import type { GameEvent } from "../../domain/events";
@@ -42,11 +42,14 @@ describe("the words of the title button, the parts and the looks (REQ-8.1.6, REQ
 
 describe.each(["ja", "en"] as const)("lanternView in %s", (lang) => {
   const s = strings[lang];
-  const looking = open(lang);
-  const pointing = play([tap("handle")], looking);
-  const fine = play([tap("light")], looking);
-  const said = play([fix("bow")], pointing);
-  const lit = play([fix("ring")], pointing);
+  let looking: GameState, pointing: GameState, fine: GameState, said: GameState, lit: GameState;
+  beforeEach(() => {
+    looking = open(lang);
+    pointing = play([tap("handle")], looking);
+    fine = play([tap("light")], looking);
+    said = play([fix("bow")], pointing);
+    lit = play([fix("ring")], pointing);
+  });
 
   it("always shows the guide, both labels, the wish of the round and the way back to the title", () => {
     for (const state of [looking, pointing, fine, said, lit]) {
@@ -138,10 +141,13 @@ describe("lanternView and the language (REQ-8.13.4)", () => {
 });
 
 describe("justFixed (REQ-8.5.6)", () => {
-  const looking = open("en");
-  const pointing = play([tap("handle")], looking);
-  const said = play([fix("bow")], pointing);
-  const lit = play([fix("ring")], pointing);
+  let looking: GameState, pointing: GameState, said: GameState, lit: GameState;
+  beforeEach(() => {
+    looking = open("en");
+    pointing = play([tap("handle")], looking);
+    said = play([fix("bow")], pointing);
+    lit = play([fix("ring")], pointing);
+  });
   const view = lanternView;
 
   it("is true when a card has just lit the lantern or been said, and false otherwise", () => {

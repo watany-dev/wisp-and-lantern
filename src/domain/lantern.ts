@@ -89,7 +89,18 @@ function roundOf(seed: number, round: number): Lantern {
   return { stage: "looking", seed, round, shape: broughtAt(seed, round), note: null };
 }
 
-export const initialLantern: Lantern = roundOf(0, 0);
+/**
+ * Round 0 of seed 0, written out rather than computed: a value computed when the module loads would run
+ * `broughtAt` outside every test, and Stryker would then run every test for each of its mutants (ADR 0005).
+ * `lantern.test.ts` checks that it is `broughtAt(0, 0)`.
+ */
+export const initialLantern: Lantern = {
+  stage: "looking",
+  seed: 0,
+  round: 0,
+  shape: { handle: "bell", roof: "pointy", light: "candle" },
+  note: null,
+};
 
 /** The lantern of a new run: round 0 for `seed`. The seed is a whole number, so a stray value still plays the same. */
 export function newLantern(seed: number): Lantern {

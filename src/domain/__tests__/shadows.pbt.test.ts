@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
 import { initialField } from "../field";
@@ -453,10 +453,15 @@ describe("trial 4's 60-second run (properties)", () => {
 });
 
 describe("the generator for trial 4 is not empty", () => {
-  const all = fc
-    .sample(inShadows, { numRuns: 600, seed: 5 })
-    .map((list) => steps(list).filter((s) => isRunOrEnd(s.before)))
-    .flat();
+  // Sampled in each test, not when the file loads, so the reducer paths it takes count as covered by these tests
+  // (ADR 0005).
+  let all: Step[] = [];
+  beforeEach(() => {
+    all = fc
+      .sample(inShadows, { numRuns: 600, seed: 5 })
+      .map((list) => steps(list).filter((s) => isRunOrEnd(s.before)))
+      .flat();
+  });
   const decided = (item: "secret" | "rest", c: Choice) =>
     all.filter(
       (s) =>

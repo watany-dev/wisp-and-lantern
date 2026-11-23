@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
 import type { GameEvent } from "../events";
 import { initialField } from "../field";
@@ -535,10 +535,15 @@ describe("trial 5's 60-second run (properties)", () => {
 const tapNow = (s: Step) => s.event.type === "TapPart" && isRun(s.before);
 
 describe("the generator for trial 5 is not empty", () => {
-  const all = fc
-    .sample(inLantern, { numRuns: 600, seed: 5 })
-    .map((list) => steps(list).filter((s) => isRunOrEnd(s.before)))
-    .flat();
+  // Sampled in each test, not when the file loads, so the reducer paths it takes count as covered by these tests
+  // (ADR 0005).
+  let all: Step[] = [];
+  beforeEach(() => {
+    all = fc
+      .sample(inLantern, { numRuns: 600, seed: 5 })
+      .map((list) => steps(list).filter((s) => isRunOrEnd(s.before)))
+      .flat();
+  });
   const counted = (pred: (s: Step) => boolean) => all.filter(pred).length;
 
   it("points at the flickering part and at steady ones, and picks right cards, wrong cards and looks that are no card", () => {
