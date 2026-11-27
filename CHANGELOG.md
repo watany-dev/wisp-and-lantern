@@ -27,6 +27,15 @@ There are no numbered releases: the `submitted` tag marks the version entered in
 
 ### Added
 
+- Trial 6, The Hollow Crown ("use it all", learning goals L1 to L5) is the last trial. It has no clock and no score:
+  the town's three lamps are dark, and each is lit by one chain of five steps. Tell the wisp the lamp (a roof card and
+  a light card; with one card the wisp asks for the other), give it the tool for the job at the shed's door (a secret
+  among the three things is not a tool), ask it to go (it tries exactly that tool), check the lamp it made ("same" or
+  "different"; it slips in one part every time), and fix that part (tap it, pick one of two cards; only that part
+  changes) and check again. A row of the five steps shows where the child is; a skipped step does not work and nothing
+  goes back to the tell. The third lit lamp clears the trial, with play again and Title. The title gains a fifth button
+  between trial 1's card and the art (the name and the card move up and the card is 16 pixels shorter). Spec in
+  `.kiro/specs/09-trial-hollow-crown/`; INV-63 to INV-74 added.
 - Trial 5, The Flickering Lantern ("tell it what's wrong", learning goal L5) is a new 60-second time attack with a
   score. The wisp brings a lantern that matches the wish in every part but one, and that part flickers (and has a
   frame of dots). The child taps it (where) and picks one of two cards for it (how); the wisp changes exactly that
