@@ -72,6 +72,14 @@ from `initialState`.
   sequences that contain the events of trial 5. Each of 54 to 62 has its property test in `lantern.pbt.test.ts`, where
   INV-15 to INV-17 for the lantern are next to the other trials' in `reducer.pbt.test.ts`, `shed.pbt.test.ts`,
   `field.pbt.test.ts` and `shadows.pbt.test.ts`.
+- Spec `09-trial-hollow-crown` adds 63 to 74 (trial 6, the crown: `crown` in the state, `trial` 6). Trial 6 has no clock
+  and no score: it never changes `run` (INV-71), and `Tick` does nothing in it. So INV-15 to INV-17 keep their wording and
+  still hold for every event sequence, including the events of trial 6 (the clock stays full there and the end screen is
+  never reached from it). INV-5, INV-8 to INV-24 and INV-26 to INV-62 describe the other trials; they are unchanged and
+  hold for every event sequence, including the events of trial 6, because INV-72 keeps the crown and the other trials
+  apart. INV-1 to INV-4 are global and are also run over sequences that contain the events of trial 6. Each of 63 to 74
+  has its property test in `crown.pbt.test.ts`; the run property (INV-71) judges the steps that start or end in trial 6,
+  as the other trials' run properties do since spec 08.
 - Retired numbers, never reused: 6, 7, 25 and 37 (as the notes above say). Spec `03-trial-tell-vague-request` retired 6 and 7 (one card
   is now a valid request) and added 8 to 14. They are written without the `INV-` prefix here so the
   trace check does not count them as live.
@@ -141,3 +149,15 @@ INV-1 and INV-2 to match the real state.
 | INV-60 | `TapPart`, `FixPart` and `NextLantern` return the same state outside a run of trial 5 (the end screen included); in a run they change only `lantern` (`FixPart` also scores, so it changes `run` too). `lantern` is the initial value whenever `trial` is not 5. In trial 5 the events of trials 1 to 4 return the same state, so the lane, the shed, the field and the shadows stay initial. | `lantern.pbt.test.ts` |
 | INV-61 | `LeaveLantern` from a run or the end screen of trial 5 goes to the title (`phase` `title`, `trial` 0, `lantern` initial, the run restarted with only `best` kept) and changes nothing else. Anywhere else it returns the same state. | `lantern.pbt.test.ts` |
 | INV-62 | `StartLantern` from the title or the end screen of trial 5 begins a run: `phase` `trial`, `trial` 5, round 0 of the seed, a full clock, a score of 0, `best` kept. Anywhere else it returns the same state. | `lantern.pbt.test.ts` |
+| INV-63 | A chain is `wishAt(seed, chain)`, `jobAt(seed, chain)`, `thingsAt(seed, chain)` and `slipAt(seed, chain)`. The seed holds for the whole visit; the chain grows only by 1, only by `NextLamp` after a lit lamp, and stays below 3; no wish repeats the one before it, the three jobs of a seed are all different, and the slip part is never the same two chains in a row. | `crown.pbt.test.ts` |
+| INV-64 | The stage moves only along the chain, each move by its own step's event: tell to give (`Tell`), give to go (`GiveItem` with a tool), go to give or check (`Go`), check to fix or lit (`CheckLamp`), fix to check (`FixLamp`), lit to the next chain's tell or the clear (`NextLamp`). Every other event of trial 6 leaves the stage, and no event moves a chain back to its tell step. | `crown.pbt.test.ts` |
+| INV-65 | `SayLook` while telling sets exactly its part's told look and changes nothing else in the chain (a look that is not a roof's or a light's returns the same state). `Tell` with both parts told moves to give with exactly the looks told; with a part missing it moves nothing and notes the first missing part. | `crown.pbt.test.ts` |
+| INV-66 | `GiveItem` with one of the chain's three things: a tool moves to go holding exactly that tool; a secret moves nothing and only notes that it is a secret; any other thing returns the same state. `Go` tries exactly the held tool: the job's tool moves to check with the made lamp, any other tool moves back to give with the told lamp kept and a note of the tool. | `crown.pbt.test.ts` |
+| INV-67 | The made lamp (the lamp at the check right after `Go`) has the told look in every part but the chain's slip part, and there a look that is neither the told look nor the wish's. So the lamp the wisp makes is never the wish. | `crown.pbt.test.ts` |
+| INV-68 | `CheckLamp` "same" on a lamp that is the wish lights it, "not the same" on a lamp that differs moves to fix; the other two change only the note. A lamp is lit only by "same" on a lamp that is the wish. | `crown.pbt.test.ts` |
+| INV-69 | `PointLamp` in the fix step on a part that differs from the wish points at it, and its two cards are the looks it does not have; on a part that is the same it only notes that the part is fine. `FixLamp` with one of the two cards gives the pointed part exactly that look, changes no other part, and moves to check; any other `FixLamp` returns the same state. | `crown.pbt.test.ts` |
+| INV-70 | The trial is clear only after `NextLamp` on the third lit lamp, and the clear stays until `StartCrown` or `LeaveCrown`. | `crown.pbt.test.ts` |
+| INV-71 | Trial 6 has no clock and no score: every step that starts or ends in trial 6, `Tick` included, leaves `run` equal. | `crown.pbt.test.ts` |
+| INV-72 | The crown's step events return the same state outside trial 6; in it they change only `crown`. `crown` is the initial value whenever `trial` is not 6. In trial 6 the events of trials 1 to 5 return the same state, so the lane, the shed, the field, the shadows and the lantern stay initial. | `crown.pbt.test.ts` |
+| INV-73 | `LeaveCrown` in trial 6, in any stage, returns to the title (`phase` `title`, `trial` 0, `crown` initial) and changes nothing else. Anywhere else it returns the same state. | `crown.pbt.test.ts` |
+| INV-74 | `StartCrown` from the title or the clear begins a visit: `phase` `trial`, `trial` 6, the tell step of chain 0 of the seed, nothing told, and nothing else changes. Anywhere else it returns the same state. | `crown.pbt.test.ts` |

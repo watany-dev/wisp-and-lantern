@@ -68,7 +68,8 @@ const icons: Record<Exclude<ButtonIcon, "none">, (g: Graphics) => void> = {
   ...lookIcons,
 };
 
-function drawIcon(g: Graphics, icon: ButtonIcon): void {
+/** Draws a button's picture at (0, 0) of `g`; trial 6's controls share the pictures. */
+export function drawIcon(g: Graphics, icon: ButtonIcon): void {
   g.clear();
   if (icon !== "none") icons[icon](g);
 }

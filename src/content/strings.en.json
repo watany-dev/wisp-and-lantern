@@ -133,6 +133,48 @@
       "moon": "moon"
     }
   },
+  "crown": {
+    "enter": "Light the town",
+    "caption": "Three lamps to light",
+    "steps": {
+      "tell": "Tell",
+      "give": "Give",
+      "go": "Go",
+      "check": "Check",
+      "fix": "Fix"
+    },
+    "wish": "The lamp you want",
+    "panel": {
+      "told": "What you said",
+      "shed": "The shed",
+      "lamp": "The wisp's lamp"
+    },
+    "guide": {
+      "tell": "Pick a roof and a light\nThen tap Tell",
+      "go": "Now ask the wisp\nTap Go!",
+      "check": "Is it the lamp you want?\nLook at both",
+      "fix": "Which part to fix?\nTap it and say how",
+      "lit": "The lamp is lit!\nTap Next",
+      "clear": "The town is lit up!\nFive steps, three lamps"
+    },
+    "tell": "Which lamp do you want?\nTell the wisp",
+    "missing": "Which {0}?\nThe wisp is asking",
+    "give": "What will you give?\nKeep secrets to yourself",
+    "secret": "The {0} is a secret\nGive a tool instead",
+    "going": "You gave the {0}\nThe wisp holds it",
+    "made": "The wisp made a lamp\nIs it the same?",
+    "again": "Look closely\nCompare row by row",
+    "said": "You said: {0}\nIs it the same now?",
+    "fix": "Tap the part\nthat is different",
+    "point": "Which {0}?\nLook at the lamp you want",
+    "fine": "The {0} is the same\nTap the other part",
+    "lit": "The town got brighter",
+    "clear": "Three lamps are lit",
+    "tellButton": "Tell",
+    "go": "Go!",
+    "same": "Same",
+    "different": "Different"
+  },
   "run": {
     "intro": "How many can you\nfind in 60 seconds?",
     "score": "Score {0}",

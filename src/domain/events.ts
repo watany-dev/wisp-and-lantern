@@ -1,6 +1,7 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
 import type { CardId } from "./lane";
+import type { LampPart, Thing } from "./crown";
 import type { Verdict } from "./field";
 import type { LookId, PartId } from "./lantern";
 import type { Choice } from "./shadows";
@@ -47,6 +48,22 @@ export type LanternEvent =
   | { type: "FixPart"; look: LookId }
   | { type: "NextLantern" };
 
+/**
+ * Events of trial 6, one for each step of a chain: `SayLook` picks a card and `Tell` tells the wisp (tell), `GiveItem`
+ * gives it a thing (give), `Go` asks it to go (go), `CheckLamp` says whether its lamp is the wish (check), `PointLamp`
+ * and `FixLamp` say where and how (fix), and `NextLamp` brings the next chain after a lit lamp. They have their own
+ * names so that no other trial's event can act on trial 6, and no trial 6 event on another trial.
+ */
+export type CrownEvent =
+  | { type: "SayLook"; look: LookId }
+  | { type: "Tell" }
+  | { type: "GiveItem"; thing: Thing }
+  | { type: "Go" }
+  | { type: "CheckLamp"; same: boolean }
+  | { type: "PointLamp"; part: LampPart }
+  | { type: "FixLamp"; look: LookId }
+  | { type: "NextLamp" };
+
 export type GameEvent =
   | { type: "Start"; lang?: Lang }
   | { type: "SetLang"; lang: Lang }
@@ -81,8 +98,16 @@ export type GameEvent =
   | { type: "StartLantern"; seed: number }
   /** Back to the title from trial 5, in a run or on its end screen: the only way out of trial 5. */
   | { type: "LeaveLantern" }
+  /**
+   * Starts trial 6: from the title, or from its own clear to play again. `seed` picks the wishes, the jobs, the things
+   * and the slips. Trial 6 has no clock and no score.
+   */
+  | { type: "StartCrown"; seed: number }
+  /** Back to the title from trial 6, in any stage: the only way out of trial 6. */
+  | { type: "LeaveCrown" }
   | LaneEvent
   | ShedEvent
   | FieldEvent
   | ShadowsEvent
-  | LanternEvent;
+  | LanternEvent
+  | CrownEvent;

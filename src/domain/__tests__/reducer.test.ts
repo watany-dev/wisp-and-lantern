@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { balance } from "../balance";
+import { newCrown, slipAt, toolFor, wishAt, type Thing } from "../crown";
 import type { GameEvent } from "../events";
 import { fakesOf } from "../field";
 import { broughtAt, cardsOf, newLantern, type LookId } from "../lantern";
@@ -1719,5 +1720,247 @@ describe("reduce: trying every card does not pay in trial 5 (REQ-8.9.8)", () => 
     expect(play(lightRounds(8), inLantern()).lantern.round).toBe(8);
     expect(tryInTurn(0) * 1.8).toBeLessThan(1900);
     expect(tryInTurn(1) * 1.8).toBeLessThan(1900);
+  });
+});
+
+// Trial 6, The Hollow Crown (spec 09-trial-hollow-crown).
+
+const enterCrown: GameEvent = { type: "StartCrown", seed: 0 };
+const leaveCrown: GameEvent = { type: "LeaveCrown" };
+const inCrown = fixture(() => play([enterCrown]));
+const sayLook = (look: LookId): GameEvent => ({ type: "SayLook", look });
+const tellWisp: GameEvent = { type: "Tell" };
+const giveThing = (thing: Thing): GameEvent => ({ type: "GiveItem", thing });
+const goWisp: GameEvent = { type: "Go" };
+const checkLamp = (same: boolean): GameEvent => ({ type: "CheckLamp", same });
+const pointLamp = (part: "roof" | "light"): GameEvent => ({ type: "PointLamp", part });
+const fixLamp = (look: LookId): GameEvent => ({ type: "FixLamp", look });
+const nextLamp: GameEvent = { type: "NextLamp" };
+
+/** One chain of seed `seed` played right, from its tell step to its lit lamp. */
+function crownChain(seed: number, chain: number): GameEvent[] {
+  const wish = wishAt(seed, chain);
+  const slip = slipAt(seed, chain);
+  return [
+    sayLook(wish.roof),
+    sayLook(wish.light),
+    tellWisp,
+    giveThing(toolFor(seed, chain)),
+    goWisp,
+    checkLamp(false),
+    pointLamp(slip),
+    fixLamp(wish[slip]),
+    checkLamp(true),
+  ];
+}
+const crownSteps = fixture(() => play(crownChain(0, 0).slice(0, 5), inCrown()));
+const crownCleared = fixture(() =>
+  play(
+    [...crownChain(0, 0), nextLamp, ...crownChain(0, 1), nextLamp, ...crownChain(0, 2), nextLamp],
+    inCrown(),
+  ),
+);
+
+describe("reduce: opening trial 6 (REQ-9.1, REQ-9.11)", () => {
+  it("StartCrown on the title opens trial 6 at the tell step of chain 0 of the seed and touches nothing else", () => {
+    expect(inCrown()).toEqual({ ...initialState, phase: "trial", trial: 6 });
+    expect(reduce(initialState, { type: "StartCrown", seed: 7 }).crown).toEqual(newCrown(7));
+    expect(reduce(initialState, { type: "StartCrown", seed: -1 }).crown.seed).toBe(4_294_967_295);
+    const before = play([
+      { type: "SetLang", lang: "ja" },
+      { type: "MoveHeroTo", x: 5, y: 6 },
+    ]);
+    expect(reduce(before, enterCrown)).toEqual({ ...before, phase: "trial", trial: 6 });
+  });
+
+  it("keeps the run of the title, with its best score", () => {
+    const first = reduce(play(tell(0, "ring"), inLantern()), runOut);
+    const back = reduce(first, leaveLantern);
+    expect(back.run.best).toBe(100);
+    expect(reduce(back, enterCrown).run).toBe(back.run);
+  });
+
+  it("StartCrown is ignored in every trial and on every end screen, and in trial 6 before the clear", () => {
+    for (const state of [started(), inShed(), inField(), inShadows(), inLantern(), inCrown()]) {
+      expect(reduce(state, enterCrown)).toBe(state);
+    }
+    for (const over of [
+      reduce(started(), runOut),
+      shedOver(),
+      fieldOver(),
+      shadowsOver(),
+      lanternOver(),
+    ]) {
+      expect(reduce(over, enterCrown)).toBe(over);
+    }
+    expect(reduce(crownSteps(), enterCrown)).toBe(crownSteps());
+  });
+
+  it("StartCrown on the clear plays again: the tell step of chain 0 of the new seed", () => {
+    expect(crownCleared().crown).toEqual({ stage: "clear", seed: 0 });
+    expect(reduce(crownCleared(), { type: "StartCrown", seed: 9 })).toEqual({
+      ...crownCleared(),
+      crown: newCrown(9),
+    });
+  });
+
+  it("the other entrances are ignored in trial 6, and Start sets the language only", () => {
+    for (const state of [inCrown(), crownSteps(), crownCleared()]) {
+      for (const event of [enterShed, enterField, enterShadows, enterLantern])
+        expect(reduce(state, event)).toBe(state);
+      expect(reduce(state, { type: "Start" })).toEqual(state);
+      expect(reduce(state, { type: "Start", lang: "ja" })).toEqual({ ...state, lang: "ja" });
+    }
+  });
+
+  it("Start on an end screen drops trial 6 too", () => {
+    const next = reduce(lanternOver(), { type: "Start" });
+    expect(next.crown).toBe(initialState.crown);
+  });
+});
+
+describe("reduce: the steps of trial 6 (REQ-9.3 to REQ-9.7)", () => {
+  it("plays a chain through the reducer, each step changing only the crown", () => {
+    let state = inCrown();
+    const stages: string[] = [];
+    for (const event of crownChain(0, 0)) {
+      const next = reduce(state, event);
+      expect(next).toEqual({ ...state, crown: next.crown });
+      stages.push(next.crown.stage);
+      state = next;
+    }
+    expect(stages).toEqual([
+      "telling",
+      "telling",
+      "giving",
+      "going",
+      "checking",
+      "fixing",
+      "fixing",
+      "checking",
+      "lit",
+    ]);
+    expect(state.run).toBe(inCrown().run);
+  });
+
+  it("a step event out of order returns the same state", () => {
+    expect(reduce(inCrown(), goWisp)).toBe(inCrown());
+    expect(reduce(inCrown(), checkLamp(true))).toBe(inCrown());
+    expect(reduce(inCrown(), nextLamp)).toBe(inCrown());
+    expect(reduce(crownSteps(), tellWisp)).toBe(crownSteps());
+    expect(reduce(crownSteps(), sayLook("flat"))).toBe(crownSteps());
+  });
+});
+
+describe("reduce: the steps of trial 6 stay in trial 6 (REQ-9.11)", () => {
+  it("the crown's events do nothing outside trial 6: on the title, in the other trials and on any end screen", () => {
+    const events = [
+      sayLook("flat"),
+      tellWisp,
+      giveThing("broom"),
+      goWisp,
+      checkLamp(true),
+      checkLamp(false),
+      pointLamp("roof"),
+      fixLamp("flat"),
+      nextLamp,
+    ];
+    for (const state of [
+      initialState,
+      started(),
+      inShed(),
+      inField(),
+      inShadows(),
+      inLantern(),
+      reduce(started(), runOut),
+      shedOver(),
+      fieldOver(),
+      shadowsOver(),
+      lanternOver(),
+    ]) {
+      for (const event of events) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("the other trials' events and ways back do nothing in trial 6", () => {
+    const events: GameEvent[] = [
+      ...pick("red"),
+      ask,
+      retry,
+      { type: "PickTool", tool: "broom" },
+      { type: "GiveTool" },
+      { type: "RetryShed" },
+      { type: "LeaveShed" },
+      { type: "InspectStar", index: 0 },
+      { type: "SortStar", verdict: "real" },
+      { type: "KeepStars" },
+      { type: "RetryField" },
+      { type: "LeaveField" },
+      { type: "DecideItem", choice: "give" },
+      { type: "NextItem" },
+      { type: "LeaveShadows" },
+      tapPart("roof"),
+      fixPart("flat"),
+      nextLantern,
+      leaveLantern,
+    ];
+    for (const state of [inCrown(), crownSteps(), crownCleared()]) {
+      for (const event of events) expect(reduce(state, event)).toBe(state);
+    }
+  });
+
+  it("SetLang and MoveHeroTo keep the crown", () => {
+    const next = play(
+      [
+        { type: "SetLang", lang: "ja" },
+        { type: "MoveHeroTo", x: 1, y: 2 },
+      ],
+      crownSteps(),
+    );
+    expect(next.crown).toBe(crownSteps().crown);
+    expect(next).toMatchObject({ lang: "ja", hero: { x: 1, y: 2 } });
+  });
+});
+
+describe("reduce: trial 6 has no clock and no score (REQ-9.9.1)", () => {
+  it("Tick does nothing in trial 6, short or long, in every stage and on the clear", () => {
+    for (const state of [inCrown(), crownSteps(), crownCleared()]) {
+      expect(reduce(state, tick(1_000))).toBe(state);
+      expect(reduce(state, runOut)).toBe(state);
+      expect(reduce(state, tick(70_000))).toBe(state);
+    }
+  });
+
+  it("a whole visit leaves the run as it was on the title", () => {
+    expect(crownCleared().run).toBe(inCrown().run);
+    expect(crownCleared()).toMatchObject({ phase: "trial", trial: 6 });
+  });
+});
+
+describe("reduce: the way back to the title from trial 6 (REQ-9.10.4)", () => {
+  it("LeaveCrown in every stage and on the clear goes to the title and keeps the language, the hero and the run", () => {
+    for (const state of [inCrown(), crownSteps(), crownCleared()]) {
+      expect(reduce(state, leaveCrown)).toEqual({
+        ...state,
+        phase: "title",
+        trial: 0,
+        crown: initialState.crown,
+      });
+    }
+  });
+
+  it("LeaveCrown anywhere else returns the same state, and from the title every trial opens again", () => {
+    for (const state of [initialState, started(), inShed(), inLantern(), lanternOver()]) {
+      expect(reduce(state, leaveCrown)).toBe(state);
+    }
+    const left = reduce(crownSteps(), leaveCrown);
+    for (const [event, trial] of [
+      [enterCrown, 6],
+      [enterLantern, 5],
+      [enterShed, 2],
+      [{ type: "Start" }, 1],
+    ] as const) {
+      expect(reduce(left, event).trial).toBe(trial);
+    }
   });
 });

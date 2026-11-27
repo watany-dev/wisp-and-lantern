@@ -1,5 +1,6 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
+import { initialCrown, type Crown } from "./crown";
 import { initialField, type Field } from "./field";
 import { initialLane, type Lane } from "./lane";
 import { initialLantern, type Lantern } from "./lantern";
@@ -14,10 +15,10 @@ type Phase = "title" | "trial" | "over";
 
 /**
  * The trial numbers: `trial` is 1 in the lane (The Dark Lane), 2 in the shed (The Locked Shed), 3 in
- * the field (The Wisp Field), 4 in the shadows (The Listening Shadows) and 5 in the lantern (The Flickering
- * Lantern).
+ * the field (The Wisp Field), 4 in the shadows (The Listening Shadows), 5 in the lantern (The Flickering
+ * Lantern) and 6 in the crown (The Hollow Crown).
  */
-export const trials = { lane: 1, shed: 2, field: 3, shadows: 4, lantern: 5 } as const;
+export const trials = { lane: 1, shed: 2, field: 3, shadows: 4, lantern: 5, crown: 6 } as const;
 
 export type GameState = {
   phase: Phase;
@@ -35,6 +36,8 @@ export type GameState = {
   shadows: Shadows;
   /** Trial 5. It is `initialLantern` whenever `trial` is not 5. */
   lantern: Lantern;
+  /** Trial 6. It is `initialCrown` whenever `trial` is not 6. */
+  crown: Crown;
 };
 
 export const initialState: GameState = {
@@ -49,4 +52,5 @@ export const initialState: GameState = {
   field: initialField,
   shadows: initialShadows,
   lantern: initialLantern,
+  crown: initialCrown,
 };

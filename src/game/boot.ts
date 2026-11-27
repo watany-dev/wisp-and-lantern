@@ -2,6 +2,7 @@
 
 import Phaser from "phaser";
 import type { Game } from "./judge";
+import { CrownScene } from "./scenes/CrownScene";
 import { FieldScene } from "./scenes/FieldScene";
 import { LanternScene } from "./scenes/LanternScene";
 import { LaneScene } from "./scenes/LaneScene";
@@ -33,6 +34,7 @@ export function boot(parent: HTMLElement, game: Game): Phaser.Game {
       new FieldScene(game),
       new ShadowsScene(game),
       new LanternScene(game),
+      new CrownScene(game),
     ],
   });
 }

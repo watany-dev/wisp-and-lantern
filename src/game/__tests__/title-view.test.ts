@@ -17,6 +17,8 @@ describe("titleView (REQ-6.1.6)", () => {
       shadowsCaption: ja.shadows.timeAttack,
       lantern: ja.lantern.enter,
       lanternCaption: ja.lantern.timeAttack,
+      crown: ja.crown.enter,
+      crownCaption: ja.crown.caption,
     });
     expect(titleView("en")).toEqual({
       title: en.title,
@@ -30,6 +32,8 @@ describe("titleView (REQ-6.1.6)", () => {
       shadowsCaption: en.shadows.timeAttack,
       lantern: en.lantern.enter,
       lanternCaption: en.lantern.timeAttack,
+      crown: en.crown.enter,
+      crownCaption: en.crown.caption,
     });
   });
 
@@ -60,6 +64,19 @@ describe("titleView (REQ-6.1.6)", () => {
       expect(titleView(lang).fieldCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
       expect(titleView(lang).shadowsCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
       expect(titleView(lang).lanternCaption).not.toMatch(/timer|\u306a\u3044\u3088/i);
+    }
+  });
+});
+
+describe("titleView: trial 6's button (REQ-9.1.6)", () => {
+  it("says in its caption that trial 6 is three lamps, with no 60 seconds, and has no number in its label", () => {
+    expect(titleView("en").crownCaption).toBe("Three lamps to light");
+    for (const lang of ["ja", "en"] as const) {
+      const view = titleView(lang);
+      expect(view.crownCaption).toMatch(/3|Three/);
+      expect(view.crownCaption).not.toMatch(/60/);
+      expect(view.crown).not.toMatch(/\d/);
+      expect(view.crown).not.toBe(view.lantern);
     }
   });
 });
