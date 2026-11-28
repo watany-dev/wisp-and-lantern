@@ -247,11 +247,13 @@ describe("the title's four buttons and trial 1's card (REQ-8.1.1, REQ-8.1.6)", (
     expect(titleShedButton).toEqual({ x: 195, y: 736, width: 300, height: 80 });
   });
 
-  it("moves the name, the card and the art up 88 pixels, and keeps all four buttons below the art", () => {
-    expect(titleText).toEqual({ x: 195, y: 62 });
-    expect(titleCard).toEqual({ x: 195, y: 194, width: 340, height: 144 });
-    expect(titlePrompt).toEqual({ x: 195, y: 160, size: 26 });
-    expect(titleIntro).toEqual({ x: 195, y: 222, size: 22 });
+  it("moves the name, the card and the art up, and keeps all four buttons below the art", () => {
+    // Spec 08 moved them up 88 pixels; spec 09 moves the name and the card up again, and the card 16 pixels shorter,
+    // so that trial 6's button fits between the card and the art (REQ-9.1.1). The art did not move again.
+    expect(titleText).toEqual({ x: 195, y: 34 });
+    expect(titleCard).toEqual({ x: 195, y: 128, width: 340, height: 128 });
+    expect(titlePrompt).toEqual({ x: 195, y: 96, size: 26 });
+    expect(titleIntro).toEqual({ x: 195, y: 154, size: 22 });
     expect(titleArtBottom).toBe(426);
     const wispBottom = titleArt.wisp.y + titleArt.wisp.scale * titleArt.wisp.bottom;
     const heroBottom = titleArt.hero.y + titleArt.hero.scale * titleArt.hero.bottom;

@@ -6,6 +6,11 @@ be, and the helper fixes just that part. Requirement ids are `REQ-8.n`. `REQ-7.n
 `REQ-6.n` to `06-trial-verify-stars`, `REQ-5.n` to `05-trial-grant-tools`, `REQ-4.n` to `04-score-attack`, `REQ-3.n` to
 `03-trial-tell-vague-request`, `REQ-2.n` to `02-trial-tell` and `REQ-1.n` to the missing `01-core-loop`; none is reused.
 
+> **Scope note: a sixth trial now exists ([`09-trial-hollow-crown`](../09-trial-hollow-crown/requirements.md)).**
+> "Trial 6" being out below describes this spec's scope. Trial 6 (The Hollow Crown) is added by `09`, which puts its
+> button between trial 1's card and the title's art, moves the title's name and card up and makes the card 16 pixels
+> shorter. The art and the four buttons of trials 2 to 5 do not move, and nothing else in this spec changes.
+
 This adds a fifth trial on top of the existing base. It does not rebuild trials 1 to 4: the lane, the shed, the field
 and the shadows keep their flows, clocks, scores and end screens. Like trial 4, trial 5 is a 60-second time attack with
 a score, a streak, trial 1's end screen and a "Title" button from its first version.

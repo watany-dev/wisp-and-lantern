@@ -1,6 +1,8 @@
 // Scaffold stub: replaced by .kiro/specs/01-core-loop
 
+import { initialCrown, newCrown, reduceCrown } from "./crown";
 import type {
+  CrownEvent,
   FieldEvent,
   GameEvent,
   LaneEvent,
@@ -15,6 +17,9 @@ import { finishRun, restartRun, runDown, scoreSearch } from "./run";
 import { decisionRight, initialShadows, newShadows, reduceShadows } from "./shadows";
 import { initialShed, newShed, reduceShed, shedOutcome } from "./shed";
 import { trials, type GameState, type Lang } from "./state";
+
+/** The way into and out of trial 6. */
+type CrownEntrance = Extract<GameEvent, { type: "StartCrown" | "LeaveCrown" }>;
 
 export function reduce(state: GameState, event: GameEvent): GameState {
   switch (event.type) {
@@ -50,7 +55,14 @@ export function reduce(state: GameState, event: GameEvent): GameState {
 /** The events of one trial each: they act only in their own trial and return the state otherwise. */
 function reduceTrial(
   state: GameState,
-  event: LaneEvent | ShedEvent | FieldEvent | ShadowsEvent | LanternEvent,
+  event:
+    | LaneEvent
+    | ShedEvent
+    | FieldEvent
+    | ShadowsEvent
+    | LanternEvent
+    | CrownEvent
+    | CrownEntrance,
 ): GameState {
   switch (event.type) {
     case "Ask":
@@ -68,10 +80,10 @@ function reduceTrial(
   }
 }
 
-/** Trial 3's, trial 4's and trial 5's events, each acting only in its own trial. */
+/** Trial 3's to trial 6's events, each acting only in its own trial. */
 function reduceLaterTrial(
   state: GameState,
-  event: FieldEvent | ShadowsEvent | LanternEvent,
+  event: FieldEvent | ShadowsEvent | LanternEvent | CrownEvent | CrownEntrance,
 ): GameState {
   switch (event.type) {
     case "FixPart":
@@ -86,6 +98,32 @@ function reduceLaterTrial(
     case "NextItem":
       return inTrial(state, trials.shadows)
         ? withShadows(state, reduceShadows(state.shadows, event))
+        : state;
+    default:
+      return reduceLastTrial(state, event);
+  }
+}
+
+/** Trial 3's and trial 6's events, each acting only in its own trial, and the way into and out of trial 6. */
+function reduceLastTrial(
+  state: GameState,
+  event: FieldEvent | CrownEvent | CrownEntrance,
+): GameState {
+  switch (event.type) {
+    case "StartCrown":
+      return startCrown(state, event.seed);
+    case "LeaveCrown":
+      return leaveCrown(state);
+    case "SayLook":
+    case "Tell":
+    case "GiveItem":
+    case "Go":
+    case "CheckLamp":
+    case "PointLamp":
+    case "FixLamp":
+    case "NextLamp":
+      return inTrial(state, trials.crown)
+        ? withCrown(state, reduceCrown(state.crown, event))
         : state;
     default:
       return reduceFieldTrial(state, event);
@@ -119,6 +157,7 @@ function start(state: GameState, lang: Lang | undefined): GameState {
     field: initialField,
     shadows: initialShadows,
     lantern: initialLantern,
+    crown: initialCrown,
   };
 }
 
@@ -239,9 +278,34 @@ function leaveLantern(state: GameState): GameState {
   };
 }
 
+/**
+ * Trial 6 starts from the title, or from its own clear to play again. It has no clock and no score, so the run is
+ * not touched: on the title it is already a fresh one. The other trials are untouched.
+ */
+function startCrown(state: GameState, seed: number): GameState {
+  const again = inTrial(state, trials.crown) && state.crown.stage === "clear";
+  if (state.phase !== "title" && !again) return state;
+  return { ...state, phase: "trial", trial: trials.crown, crown: newCrown(seed) };
+}
+
+/** The way back to the title from trial 6, in any stage. It keeps the language, the hero and the run. */
+function leaveCrown(state: GameState): GameState {
+  if (state.trial !== trials.crown) return state;
+  return { ...state, phase: "title", trial: 0, crown: initialCrown };
+}
+
+/** The trials that are 60-second runs. Trial 6 has no clock (REQ-9.9.1). */
+const timed: readonly number[] = [
+  trials.lane,
+  trials.shed,
+  trials.field,
+  trials.shadows,
+  trials.lantern,
+];
+
 /** Time passes only during a run of trial 1, 2, 3, 4 or 5. At zero the run is over and its score is final. */
 function tick(state: GameState, ms: number): GameState {
-  const running = Object.values(trials).some((trial) => inTrial(state, trial));
+  const running = timed.some((trial) => inTrial(state, trial));
   if (!running || !(ms > 0)) return state;
   const run = runDown(state.run, ms);
   if (run.remainingMs > 0) return { ...state, run };
@@ -306,4 +370,8 @@ function withShadows(state: GameState, shadows: GameState["shadows"]): GameState
 
 function withLantern(state: GameState, lantern: GameState["lantern"]): GameState {
   return lantern === state.lantern ? state : { ...state, lantern };
+}
+
+function withCrown(state: GameState, crown: GameState["crown"]): GameState {
+  return crown === state.crown ? state : { ...state, crown };
 }
